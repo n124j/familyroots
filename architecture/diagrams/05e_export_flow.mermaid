@@ -1,0 +1,45 @@
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant API as FastAPI
+    participant Q as Celery Queue
+    participant W as Celery Worker
+    participant DB as PostgreSQL
+    participant S3 as AWS S3
+    participant WS as WebSocket
+
+    Note over B,WS: Async export generation (all format types)
+    B->>+API: POST /api/v1/exports {tree_id, format:PDF, options:{generations:5}}
+    API->>API: Validate quota (exports/month per tier)
+    API->>DB: INSERT INTO exports (tenant_id, tree_id, format, status=QUEUED)
+    DB-->>API: export_id
+    API->>Q: enqueue generate_export(export_id, format=PDF, options)
+    API-->>-B: 202 Accepted {export_id, status:QUEUED, poll_url, ws_channel}
+
+    Note over W,S3: Worker processes export (background)
+    Q->>W: generate_export(export_id)
+    W->>DB: SELECT export, tree, persons (recursive CTE for N generations)
+    DB-->>W: tree data (potentially 10,000+ profiles)
+    W->>W: Build in-memory tree graph
+
+    alt format = GEDCOM
+        W->>W: Serialize to GEDCOM 5.5.1 spec
+    else format = PDF Tree
+        W->>W: Render SVG via D3 layout engine (headless)
+        W->>W: Convert SVG → PDF (WeasyPrint / ReportLab)
+    else format = PNG Tree
+        W->>W: Render SVG → rasterize PNG at 300 DPI
+    else format = Narrative Report
+        W->>W: Generate prose narrative per generation
+        W->>W: Render PDF with citations (ReportLab)
+    end
+
+    W->>S3: PUT exports/{tenant_id}/{export_id}.{ext} (presigned, 24h TTL)
+    W->>DB: UPDATE exports SET status=READY, s3_key=..., expires_at=...
+    W->>Q: enqueue notify_export_ready(export_id)
+
+    Note over WS,B: Real-time notification (no polling needed)
+    W->>WS: PUBLISH ws:user:{user_id} {type:export_ready, export_id, download_url}
+    WS-->>B: {type:export_ready, download_url}
+    B->>S3: GET {download_url} (presigned, one-time)
+    S3-->>B: file download

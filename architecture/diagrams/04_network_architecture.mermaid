@@ -1,0 +1,73 @@
+%%{init: {'theme': 'base'}}%%
+graph TB
+    INET(("🌐 Internet"))
+    CF["☁️ CloudFront CDN\n(Global Edge Network)"]
+    R53["🔵 Route 53\n(DNS + Health Checks)"]
+
+    subgraph VPC["AWS VPC — 10.0.0.0/16  |  us-east-1"]
+
+        subgraph PUBLIC["Public Subnets — Internet-facing"]
+            subgraph AZ1A_PUB["AZ us-east-1a  ·  10.0.1.0/24"]
+                ALB["⚖️ ALB\n(HTTPS :443)"]
+                NAT1["🔁 NAT Gateway 1"]
+            end
+            subgraph AZ1B_PUB["AZ us-east-1b  ·  10.0.2.0/24"]
+                NAT2["🔁 NAT Gateway 2"]
+            end
+            subgraph AZ1C_PUB["AZ us-east-1c  ·  10.0.3.0/24"]
+                NAT3["🔁 NAT Gateway 3"]
+            end
+            IGW["🚪 Internet Gateway"]
+        end
+
+        subgraph PRIVATE["Private Subnets — EKS Node Groups"]
+            subgraph AZ1A_PRV["us-east-1a  ·  10.0.11.0/24"]
+                N1["EKS Node\n(m6i.2xlarge)"]
+                N2["EKS Node\n(m6i.2xlarge)"]
+            end
+            subgraph AZ1B_PRV["us-east-1b  ·  10.0.12.0/24"]
+                N3["EKS Node\n(m6i.2xlarge)"]
+                N4["EKS Node\n(m6i.2xlarge)"]
+            end
+            subgraph AZ1C_PRV["us-east-1c  ·  10.0.13.0/24"]
+                N5["EKS Node\n(m6i.2xlarge)"]
+                N6["EKS Node\n(m6i.2xlarge)"]
+            end
+        end
+
+        subgraph DB_TIER["Database Subnets — No direct internet access"]
+            subgraph AZ1A_DB["us-east-1a  ·  10.0.21.0/24"]
+                PGP[("PostgreSQL\nPrimary")]
+                RDP[("Redis\nPrimary Shard")]
+            end
+            subgraph AZ1B_DB["us-east-1b  ·  10.0.22.0/24"]
+                PGS[("PostgreSQL\nStandby")]
+                RDS_R[("Redis\nReplica")]
+            end
+        end
+
+        subgraph SGS["Security Groups"]
+            SG_ALB["SG-ALB\nInbound: 443 from 0.0.0.0/0\nOutbound: 8000 to SG-EKS"]
+            SG_EKS["SG-EKS\nInbound: 8000-8001 from SG-ALB\nOutbound: 5432,6379 to SG-DB"]
+            SG_DB["SG-DB\nInbound: 5432 from SG-EKS only\nInbound: 6379 from SG-EKS only\nNo public access"]
+        end
+    end
+
+    subgraph EXTERNAL["AWS Services (VPC Endpoints)"]
+        S3_EP["S3 Gateway\nEndpoint"]
+        SM_EP["Secrets Manager\nInterface Endpoint"]
+        ECR_EP["ECR\nInterface Endpoint"]
+    end
+
+    INET --> R53 --> CF
+    CF --> ALB
+    ALB --> IGW
+    IGW --> NAT1 & NAT2 & NAT3
+    NAT1 --> N1 & N2
+    NAT2 --> N3 & N4
+    NAT3 --> N5 & N6
+    N1 & N2 --> PGP & RDP
+    N3 & N4 --> PGP
+    PGP -.failover.- PGS
+    RDP -.replication.- RDS_R
+    N1 --> S3_EP & SM_EP & ECR_EP

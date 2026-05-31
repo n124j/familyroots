@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    participant U1 as User 1 (Editor)
+    participant U2 as User 2 (Viewer)
+    participant WS1 as WebSocket Server (Pod A)
+    participant WS2 as WebSocket Server (Pod B)
+    participant Redis as Redis Pub/Sub
+    participant DB as PostgreSQL
+
+    Note over U1,DB: WebSocket connection establishment
+    U1->>WS1: WS connect + send JWT token
+    WS1->>WS1: Verify JWT, extract user_id, tenant_id
+    WS1->>Redis: SUBSCRIBE channel:tree:{tree_id}
+    WS1->>Redis: SADD presence:tree:{tree_id} user_1 (TTL 30s)
+    WS1-->>U1: Connected {presence: [user_1]}
+
+    U2->>WS2: WS connect + send JWT token
+    WS2->>Redis: SUBSCRIBE channel:tree:{tree_id}
+    WS2->>Redis: SADD presence:tree:{tree_id} user_2 (TTL 30s)
+    WS2->>Redis: PUBLISH channel:tree:{tree_id} {type:presence, users:[user_1, user_2]}
+    Redis-->>WS1: event {type:presence, users:[user_1, user_2]}
+    WS1-->>U1: {type:presence, users:[user_1, user_2]}
+
+    Note over U1,DB: User 1 edits a profile (optimistic update)
+    U1->>U1: Optimistic UI update (immediate local render)
+    U1->>WS1: {type:edit, entity:person, id:p123, field:birth_date, value:1902-05-14, version:42}
+    WS1->>DB: BEGIN; UPDATE persons SET birth_date=?, version=43 WHERE id=p123 AND version=42
+    DB-->>WS1: 1 row affected (version conflict check passed)
+    WS1->>DB: INSERT INTO version_history (person_id, snapshot, actor, ...)
+    WS1->>DB: COMMIT
+
+    Note over WS1,U2: Broadcast to all tree subscribers
+    WS1->>Redis: PUBLISH channel:tree:{tree_id} {type:patch, entity:person, id:p123, field:birth_date, value:1902-05-14, version:43, actor:user_1}
+    Redis-->>WS2: forwarded event
+    WS2-->>U2: {type:patch, ...} — U2 sees live update
+
+    Note over U1,DB: Version conflict scenario
+    U1->>WS1: {type:edit, id:p123, field:death_date, version:42}
+    WS1->>DB: UPDATE persons SET death_date=? WHERE id=p123 AND version=42
+    DB-->>WS1: 0 rows affected (version 42 is stale — now 43)
+    WS1-->>U1: {type:conflict, current_version:43, current_value: ...}
+    U1->>U1: Show merge UI to user

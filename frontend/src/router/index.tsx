@@ -1,0 +1,106 @@
+/**
+ * Application router — React Router v6 with lazy-loaded pages.
+ *
+ * Route tree:
+ *   /login, /register, /reset-password, /auth/callback  → GuestGuard (or public)
+ *   /*                                                   → AuthGuard
+ *     /dashboard
+ *     /trees/:treeId                                     → full-screen canvas
+ *     /trees/:treeId/persons/:personId
+ *     /search
+ *     /reports
+ *     /settings/*
+ */
+
+import React, { lazy, Suspense } from 'react';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { AuthGuard, GuestGuard } from './guards/AuthGuard';
+
+// ── Lazy pages ─────────────────────────────────────────────────────────────
+
+const LoginPage          = lazy(() => import('@pages/auth/LoginPage'));
+const RegisterPage       = lazy(() => import('@pages/auth/RegisterPage'));
+const OAuthCallbackPage  = lazy(() => import('@pages/auth/OAuthCallbackPage'));
+const ResetPasswordPage  = lazy(() => import('@pages/auth/ResetPasswordPage'));
+
+const DashboardPage      = lazy(() => import('@pages/DashboardPage'));
+const FamilyTreePage     = lazy(() => import('@pages/FamilyTreePage'));
+const ProfilePage        = lazy(() => import('@pages/ProfilePage'));
+const SearchPage         = lazy(() => import('@pages/SearchPage'));
+const ReportsPage        = lazy(() => import('@pages/ReportsPage'));
+const SettingsPage       = lazy(() => import('@pages/SettingsPage'));
+const NotFoundPage       = lazy(() => import('@pages/NotFoundPage'));
+
+// AppShell wraps all authenticated routes (sidebar + topbar)
+const AppShell           = lazy(() => import('@shared/components/layout/AppShell'));
+
+// ── Suspense wrapper ───────────────────────────────────────────────────────
+
+function PageLoader() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-surface-muted">
+      <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function Lazy({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+}
+
+// ── Router definition ──────────────────────────────────────────────────────
+
+const router = createBrowserRouter([
+  // ── Public / guest routes ──────────────────────────────────────────────
+  {
+    element: <GuestGuard />,
+    children: [
+      { path: '/login',          element: <Lazy><LoginPage /></Lazy> },
+      { path: '/register',       element: <Lazy><RegisterPage /></Lazy> },
+      { path: '/reset-password', element: <Lazy><ResetPasswordPage /></Lazy> },
+    ],
+  },
+
+  // ── OAuth callback (public — token arrives here) ───────────────────────
+  {
+    path: '/auth/callback',
+    element: <Lazy><OAuthCallbackPage /></Lazy>,
+  },
+
+  // ── Full-screen tree canvas (authenticated, no AppShell) ──────────────
+  {
+    element: <AuthGuard />,
+    children: [
+      {
+        path: '/trees/:treeId',
+        element: <Lazy><FamilyTreePage /></Lazy>,
+      },
+    ],
+  },
+
+  // ── Standard authenticated routes (AuthGuard + AppShell) ──────────────
+  {
+    element: <AuthGuard />,
+    children: [
+      {
+        element: <Lazy><AppShell /></Lazy>,
+        children: [
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { path: '/dashboard',                              element: <Lazy><DashboardPage /></Lazy> },
+          { path: '/trees/:treeId/persons/:personId',        element: <Lazy><ProfilePage /></Lazy> },
+          { path: '/search',                                 element: <Lazy><SearchPage /></Lazy> },
+          { path: '/reports',                                element: <Lazy><ReportsPage /></Lazy> },
+          { path: '/settings',                               element: <Lazy><SettingsPage /></Lazy> },
+          { path: '/settings/:tab',                          element: <Lazy><SettingsPage /></Lazy> },
+        ],
+      },
+    ],
+  },
+
+  // ── 404 ───────────────────────────────────────────────────────────────
+  { path: '*', element: <Lazy><NotFoundPage /></Lazy> },
+]);
+
+export function AppRouter() {
+  return <RouterProvider router={router} />;
+}

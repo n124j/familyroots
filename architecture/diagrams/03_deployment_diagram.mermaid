@@ -1,0 +1,67 @@
+%%{init: {'theme': 'base'}}%%
+graph TB
+    subgraph ECR["AWS ECR — Container Registry"]
+        IMG_API["familyroots/api:tag"]
+        IMG_WKR["familyroots/worker:tag"]
+    end
+
+    subgraph GH["GitHub Actions — CI/CD Pipeline"]
+        BUILD["Build & Test"] --> SCAN["Security Scan\n(Snyk)"] --> PUSH["Push to ECR"] --> DEPLOY["Helm Deploy\nto EKS"]
+    end
+
+    subgraph EKS["AWS EKS Cluster — us-east-1"]
+
+        subgraph NS_ING["Namespace: ingress-nginx"]
+            NGINX["NGINX Ingress Controller\n(2 replicas, DaemonSet)"]
+            CERT["cert-manager\n(Let's Encrypt TLS)"]
+        end
+
+        subgraph NS_PROD["Namespace: production"]
+            subgraph API_DEPLOY["Deployment: api  ┃  HPA: 3–20 pods  ┃  CPU trigger: 60%"]
+                P1["api-pod"] 
+                P2["api-pod"]
+                P3["api-pod"]
+            end
+            subgraph WKR_DEPLOY["Deployment: celery-worker  ┃  HPA: 2–10 pods"]
+                W1["worker-pod"]
+                W2["worker-pod"]
+            end
+            BEAT["Deployment: celery-beat\n(1 replica, single-instance lock)"]
+            subgraph CONFIG["Cluster Config"]
+                CM["ConfigMap\n(app settings)"]
+                SEC["Secret (AWS SM)\n(DB creds, API keys)"]
+                SVC_API["Service: api-svc\n(ClusterIP :8000)"]
+                SVC_WS["Service: ws-svc\n(ClusterIP :8001)"]
+            end
+        end
+
+        subgraph NS_MON["Namespace: monitoring"]
+            PROM["Prometheus\n+ AlertManager"]
+            GRAF["Grafana"]
+            LOKI["Loki + Promtail"]
+        end
+    end
+
+    subgraph AWS_MGD["AWS Managed Services"]
+        RDS["RDS PostgreSQL 15\ndb.r6g.2xlarge · Multi-AZ\nEncrypted · Automated Backups"]
+        REDIS["ElastiCache Redis 7\ncluster.r6g.large\n3 shards · 1 replica/shard"]
+        S3_MED["S3: familyroots-media\n(Intelligent-Tiering)"]
+        S3_BKP["S3: familyroots-backups\n(Glacier Deep Archive)"]
+        SQS["SQS Dead Letter Queue\n(failed tasks)"]
+        SM["AWS Secrets Manager"]
+    end
+
+    PUSH --> ECR
+    DEPLOY --> EKS
+
+    NGINX --> P1 & P2 & P3
+    P1 & P2 & P3 --> RDS
+    P1 & P2 & P3 --> REDIS
+    W1 & W2 --> RDS
+    W1 & W2 --> S3_MED
+    W1 & W2 --> SQS
+    BEAT --> REDIS
+    CM & SEC --> P1 & W1
+    SEC --> SM
+    NS_PROD --> PROM
+    RDS -.WAL archive.-> S3_BKP

@@ -1,0 +1,70 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1E3A5F', 'edgeLabelBackground': '#ffffff'}}}%%
+graph TB
+    subgraph CLIENT["Client Layer"]
+        B["🌐 Browser / PWA (React + Vite)"]
+        M["📱 Mobile Browser"]
+    end
+
+    subgraph EDGE["Edge & CDN Layer"]
+        CF["☁️ CloudFront CDN\n(Static Assets + Media)"]
+        WAF["🛡️ AWS WAF\n(DDoS + OWASP Rules)"]
+    end
+
+    subgraph INGRESS["Ingress Layer"]
+        ALB["⚖️ AWS Application Load Balancer\n(Multi-AZ, SSL Termination)"]
+        NGINX["🔀 NGINX Ingress Controller\n(K8s, Rate Limiting, Routing)"]
+    end
+
+    subgraph APP["Application Layer — AWS EKS"]
+        API["⚡ FastAPI Application\n(3–20 pods, HPA)"]
+        WS["🔌 WebSocket Handler\n(Real-time Collaboration)"]
+    end
+
+    subgraph ASYNC["Async Processing Layer"]
+        MQ["📬 Redis Task Queue\n(Celery Broker)"]
+        CW["⚙️ Celery Workers\n(2–10 pods, HPA)"]
+        CB["🕐 Celery Beat\n(Scheduled Jobs)"]
+    end
+
+    subgraph DATA["Data Layer"]
+        PG[("🐘 PostgreSQL 15\nMulti-AZ Primary + Standby")]
+        RD[("⚡ Redis 7 Cluster\nCache + Sessions + Pub/Sub")]
+        PGB["🔗 PgBouncer\n(Connection Pool)"]
+    end
+
+    subgraph STORAGE["Storage Layer"]
+        S3["🪣 AWS S3\n(Media + Exports + Backups)"]
+        CFM["☁️ CloudFront\n(Media CDN, Signed URLs)"]
+    end
+
+    subgraph OBSERVE["Observability"]
+        PROM["📊 Prometheus\n(Metrics)"]
+        GRAF["📈 Grafana\n(Dashboards)"]
+        LOKI["📋 Loki\n(Logs)"]
+        TRACE["🔍 Tempo\n(Traces)"]
+    end
+
+    subgraph EXTERNAL["External Services"]
+        SMTP["📧 SendGrid\n(Transactional Email)"]
+        OAUTH["🔑 Google / Apple OAuth"]
+        STRIPE["💳 Stripe\n(Payments)"]
+        AI["🤖 OpenAI API\n(Narrative Generation)"]
+    end
+
+    B & M --> CF
+    CF --> WAF --> ALB --> NGINX
+    NGINX --> API & WS
+    API --> PGB --> PG
+    API --> RD
+    API --> MQ --> CW
+    CB --> MQ
+    CW --> PG
+    CW --> S3
+    CW --> AI
+    CW --> SMTP
+    API --> STRIPE & OAUTH
+    S3 --> CFM --> B & M
+    API & CW --> PROM
+    PROM --> GRAF
+    API --> LOKI
+    API --> TRACE

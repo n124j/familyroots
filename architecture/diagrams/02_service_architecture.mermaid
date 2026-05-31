@@ -1,0 +1,53 @@
+%%{init: {'theme': 'base'}}%%
+graph TB
+    subgraph GATEWAY["API Gateway (FastAPI Middleware Stack)"]
+        CORS["CORS\nMiddleware"]
+        AUTH["JWT Auth\nMiddleware"]
+        TENANT["Tenant\nResolver"]
+        RATE["Rate\nLimiter"]
+        LOG["Request\nLogger"]
+    end
+
+    subgraph DOMAINS["Domain Layer — Modular Monolith"]
+        direction TB
+        subgraph CORE["Core Domains"]
+            AUTHDM["auth\n──────\nJWT · OAuth · MFA\nSession Management"]
+            PERSON["person\n──────\nProfile CRUD\nRelationship Engine\nEvent Management"]
+            TREE["tree\n──────\nTree Structure\nGraph Traversal\nAncestor/Descendant"]
+        end
+        subgraph FEATURES["Feature Domains"]
+            MEDIA["media\n──────\nUpload Pipeline\nFace Tagging\nGallery Management"]
+            COLLAB["collaboration\n──────\nPermissions · RBAC\nVersion History\nReal-time Presence"]
+            SEARCH["search\n──────\nFull-text Search\nAncestor Search\nPath Finder"]
+        end
+        subgraph OUTPUT["Output Domains"]
+            EXPORT["export\n──────\nGEDCOM · GEDCOM-X\nPNG · SVG · PDF\nCSV / JSON"]
+            REPORT["report\n──────\nLineage Reports\nFamily Sheets\nAI Narratives"]
+            NOTIF["notification\n──────\nEmail · Push\nIn-app Alerts\nWebhooks"]
+            BILLING["billing\n──────\nStripe Integration\nSubscription Mgmt\nUsage Tracking"]
+        end
+    end
+
+    subgraph INFRA["Shared Infrastructure Layer"]
+        direction LR
+        EVTBUS["Event Bus\n(Redis Pub/Sub)"]
+        CACHE["Cache Layer\n(Redis)"]
+        REPO["Repository Layer\n(SQLAlchemy)"]
+        STORE["Storage Layer\n(S3 SDK)"]
+        TASKS["Task Queue\n(Celery)"]
+    end
+
+    CORS --> AUTH --> TENANT --> RATE --> LOG
+
+    LOG --> AUTHDM & PERSON & TREE & MEDIA & COLLAB & SEARCH & EXPORT & REPORT & NOTIF & BILLING
+
+    PERSON --> EVTBUS
+    COLLAB --> EVTBUS
+    TREE --> EVTBUS
+    EVTBUS --> NOTIF
+    EVTBUS --> SEARCH
+
+    PERSON & TREE & COLLAB & SEARCH & BILLING --> REPO
+    PERSON & TREE --> CACHE
+    MEDIA & EXPORT & REPORT --> STORE
+    MEDIA & EXPORT & REPORT --> TASKS

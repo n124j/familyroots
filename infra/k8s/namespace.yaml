@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: familyroots
+  labels:
+    app.kubernetes.io/name: familyroots
+    env: production

@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant API as FastAPI
+    participant Redis as Redis
+    participant DB as PostgreSQL
+    participant OAuth as Google OAuth
+
+    Note over B,OAuth: Standard Email/Password Login
+    B->>+API: POST /api/v1/auth/login {email, password}
+    API->>DB: SELECT user WHERE email=? (bcrypt verify)
+    DB-->>API: user record
+    API->>API: Verify bcrypt hash (timing-safe)
+    API->>API: Generate access_token (JWT, 15 min, RS256)
+    API->>API: Generate refresh_token (opaque, 30 days)
+    API->>Redis: SET session:{refresh_token} = user_id (TTL 30d)
+    API-->>-B: 200 {access_token} + Set-Cookie: refresh_token (HttpOnly, SameSite=Strict)
+
+    Note over B,OAuth: Subsequent API Requests
+    B->>+API: GET /api/v1/trees (Authorization: Bearer {access_token})
+    API->>API: Verify JWT signature (RS256 public key)
+    API->>API: Extract tenant_id, user_id, roles from claims
+    API-->>-B: 200 {data}
+
+    Note over B,OAuth: Silent Token Refresh
+    B->>+API: POST /api/v1/auth/refresh (Cookie: refresh_token)
+    API->>Redis: GET session:{refresh_token}
+    Redis-->>API: user_id (if not expired/revoked)
+    API->>API: Issue new access_token (15 min)
+    API->>Redis: Rotate refresh_token (old invalidated)
+    API-->>-B: 200 {new_access_token} + Set-Cookie: new_refresh_token
+
+    Note over B,OAuth: OAuth 2.0 Social Login
+    B->>OAuth: Redirect to Google consent screen
+    OAuth-->>B: Authorization code
+    B->>+API: POST /api/v1/auth/oauth/google {code}
+    API->>OAuth: Exchange code for id_token
+    OAuth-->>API: id_token (verified JWT)
+    API->>DB: UPSERT user WHERE google_sub=?
+    API-->>-B: 200 {access_token} + Set-Cookie: refresh_token

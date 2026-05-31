@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant API as FastAPI
+    participant Cache as Redis Cache
+    participant Bus as Redis Pub/Sub
+    participant DB as PostgreSQL
+    participant Search as Search Index
+    participant Notif as Notification Worker
+
+    B->>+API: POST /api/v1/trees/{tree_id}/persons {name, birth_date, ...}
+    API->>API: Validate request (Pydantic schema)
+    API->>API: Resolve tenant_id from JWT
+    API->>API: Check permissions (RBAC: requires contributor+)
+
+    Note over API,DB: Write path (Command side of CQRS)
+    API->>+DB: BEGIN TRANSACTION
+    DB-->>API: tx_id
+    API->>DB: INSERT INTO persons (tenant_id, tree_id, ...)
+    DB-->>API: person_id
+    API->>DB: INSERT INTO audit_log (action=CREATE, entity=person, ...)
+    API->>DB: COMMIT
+    DB-->>-API: success
+
+    Note over API,Cache: Cache invalidation
+    API->>Cache: DEL tree:{tree_id}:summary
+    API->>Cache: DEL search:{tenant_id}:persons:*
+
+    Note over API,Bus: Domain event emission
+    API->>Bus: PUBLISH domain.person.created {person_id, tree_id, tenant_id, actor_id}
+
+    API-->>-B: 201 {person_id, created_at}
+
+    Note over Bus,Notif: Async event handlers (decoupled)
+    Bus->>Search: SUBSCRIBE domain.person.created → update_search_index(person_id)
+    Search->>DB: SELECT person for indexing
+    Search->>DB: UPDATE persons SET ts_vector = to_tsvector(...)
+
+    Bus->>Notif: SUBSCRIBE domain.person.created → notify_collaborators
+    Notif->>DB: SELECT collaborators for tree_id
+    Notif->>Notif: Send in-app + email notifications

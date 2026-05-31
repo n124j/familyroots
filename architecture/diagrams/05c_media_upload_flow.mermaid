@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant API as FastAPI
+    participant DB as PostgreSQL
+    participant S3 as AWS S3
+    participant Q as Celery Queue
+    participant W as Celery Worker
+    participant CF as CloudFront
+
+    Note over B,CF: Step 1 — Request presigned upload URL
+    B->>+API: POST /api/v1/media/presign {filename, content_type, size, tree_id}
+    API->>API: Validate: check file type allowlist, size quota, auth
+    API->>DB: INSERT INTO media (tenant_id, tree_id, status=PENDING, ...)
+    DB-->>API: media_id
+    API->>S3: generate_presigned_post(key={tenant}/{tree}/{media_id}/original, TTL=900s)
+    S3-->>API: presigned_url + fields
+    API-->>-B: 200 {media_id, presigned_url, fields}
+
+    Note over B,S3: Step 2 — Direct browser-to-S3 upload (no API proxy)
+    B->>S3: POST {presigned_url} multipart/form-data (direct upload)
+    S3-->>B: 204 No Content
+
+    Note over B,API: Step 3 — Confirm upload to API
+    B->>+API: POST /api/v1/media/{media_id}/confirm
+    API->>S3: head_object({key}) — verify upload exists
+    S3-->>API: object metadata (size, etag)
+    API->>DB: UPDATE media SET status=PROCESSING, s3_key=..., size=...
+    API->>Q: enqueue task process_media(media_id)
+    API-->>-B: 202 Accepted {media_id, status=PROCESSING}
+
+    Note over W,CF: Step 4 — Async media processing pipeline (Celery Worker)
+    Q->>W: process_media(media_id)
+    W->>DB: SELECT media WHERE id=media_id
+    W->>S3: download original file
+    W->>W: Virus scan (ClamAV)
+    W->>W: Extract EXIF metadata
+    W->>W: Compute perceptual hash (dupe check)
+    W->>W: Generate 4 resizes: thumb(150), small(400), medium(800), large(1600)
+    W->>W: Convert to WebP (keep original)
+    W->>S3: Upload thumb, small, medium, large, webp variants
+    W->>DB: UPDATE media SET status=READY, variants=JSON, exif=JSON, phash=...
+    W->>Q: enqueue notify_collaborators(media_id)
+
+    Note over B,CF: Step 5 — Serving media via CDN
+    B->>CF: GET /media/{tenant}/{tree}/{media_id}/medium.webp
+    CF->>CF: Check edge cache (HIT → serve directly)
+    CF->>S3: Cache MISS → fetch from S3 (signed URL)
+    S3-->>CF: file bytes
+    CF-->>B: image (Cache-Control: max-age=31536000)
