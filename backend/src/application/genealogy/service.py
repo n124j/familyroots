@@ -75,6 +75,7 @@ class FamilyTreeApplicationService:
             sex=person.sex.value,
             is_living=person.is_living,
             is_deceased=person.is_deceased,
+            photo_url=person.photo_url,
             parents=graph.parents_of(person_id),
             children=graph.children_of(person_id),
             spouses=graph.spouses_of(person_id),

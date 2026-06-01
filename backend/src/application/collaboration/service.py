@@ -45,8 +45,22 @@ class CollaborationService:
         tree_id: uuid.UUID,
         actor_id: uuid.UUID,
         action: Action,
+        app_role: Optional[str] = None,
     ) -> TreeMembership:
-        """Load the actor's membership and assert they can perform *action*."""
+        """Load the actor's membership and assert they can perform *action*.
+
+        Pass app_role="ADMIN" or "AUDITOR" to bypass the DB membership lookup
+        and grant a synthetic owner-level membership (write protection for
+        AUDITOR is enforced at the API layer via NotAuditorDep).
+        """
+        if app_role in ("ADMIN", "AUDITOR"):
+            return TreeMembership(
+                id=uuid.uuid4(),
+                tree_id=tree_id,
+                user_id=actor_id,
+                tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                role=TreeRole.OWNER,
+            )
         membership = await self._members.get(tree_id, actor_id)
         if not membership:
             raise InsufficientPermissionError(action, TreeRole.VIEWER)
@@ -69,9 +83,10 @@ class CollaborationService:
         actor_id: uuid.UUID,
         actor_name: str,
         ip_address: Optional[str] = None,
+        app_role: Optional[str] = None,
     ) -> None:
         actor_membership = await self.require_permission(
-            tree_id, actor_id, Action.CHANGE_MEMBER_ROLE
+            tree_id, actor_id, Action.CHANGE_MEMBER_ROLE, app_role=app_role
         )
         target = await self._members.get(tree_id, target_user_id)
         if not target:
@@ -110,8 +125,9 @@ class CollaborationService:
         actor_name: str,
         tenant_id: uuid.UUID,
         ip_address: Optional[str] = None,
+        app_role: Optional[str] = None,
     ) -> None:
-        await self.require_permission(tree_id, actor_id, Action.REMOVE_MEMBER)
+        await self.require_permission(tree_id, actor_id, Action.REMOVE_MEMBER, app_role=app_role)
         target = await self._members.get(tree_id, target_user_id)
         if not target:
             return  # idempotent
@@ -145,8 +161,9 @@ class CollaborationService:
         role: TreeRole,
         message: Optional[str] = None,
         ip_address: Optional[str] = None,
+        app_role: Optional[str] = None,
     ) -> Invitation:
-        await self.require_permission(tree_id, actor_id, Action.INVITE_MEMBER)
+        await self.require_permission(tree_id, actor_id, Action.INVITE_MEMBER, app_role=app_role)
 
         # Check invitee isn't already a member
         # (Would need user lookup by email; simplified here)
@@ -233,8 +250,9 @@ class CollaborationService:
         actor_id: uuid.UUID,
         tenant_id: uuid.UUID,
         actor_name: str,
+        app_role: Optional[str] = None,
     ) -> None:
-        await self.require_permission(tree_id, actor_id, Action.INVITE_MEMBER)
+        await self.require_permission(tree_id, actor_id, Action.INVITE_MEMBER, app_role=app_role)
         inv = await self._invitations.get_by_id(invitation_id)
         if not inv or inv.tree_id != tree_id:
             return
@@ -253,8 +271,9 @@ class CollaborationService:
         entity_type: Optional[AuditEntityType] = None,
         entity_id: Optional[uuid.UUID] = None,
         filter_actor_id: Optional[uuid.UUID] = None,
+        app_role: Optional[str] = None,
     ) -> list[AuditEntry]:
-        await self.require_permission(tree_id, actor_id, Action.VIEW_AUDIT_LOG)
+        await self.require_permission(tree_id, actor_id, Action.VIEW_AUDIT_LOG, app_role=app_role)
         return await self._audit.list_by_tree(
             tree_id, limit, offset, entity_type, entity_id, filter_actor_id
         )
@@ -297,8 +316,9 @@ class CollaborationService:
         actor_id: uuid.UUID,
         limit: int = 20,
         offset: int = 0,
+        app_role: Optional[str] = None,
     ) -> list[PersonVersion]:
-        await self.require_permission(tree_id, actor_id, Action.VIEW_VERSION)
+        await self.require_permission(tree_id, actor_id, Action.VIEW_VERSION, app_role=app_role)
         return await self._versions.list_by_person(person_id, limit, offset)
 
     async def restore_person_version(

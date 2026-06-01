@@ -2,6 +2,7 @@
 
 from src.infrastructure.database.models.tenant import TenantModel
 from src.infrastructure.database.models.user import UserModel, UserOAuthProviderModel
+from src.infrastructure.database.models.login_event import LoginEventModel
 from src.infrastructure.database.models.collaboration import (
     FamilyTreeModel,
     TreeMemberModel,
@@ -16,6 +17,7 @@ __all__ = [
     "TenantModel",
     "UserModel",
     "UserOAuthProviderModel",
+    "LoginEventModel",
     "FamilyTreeModel",
     "TreeMemberModel",
     "PersonModel",

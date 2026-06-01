@@ -523,20 +523,36 @@ class SearchRepository:
         distance = len(path_ids) - 1
 
         # Fetch names for path nodes
-        name_sql = text("""
-            SELECT id, display_given_name AS given_name, display_surname AS surname
-            FROM persons
-            WHERE id = ANY(:ids::uuid[])
-        """)
-        name_rows = (await self._session.execute(
-            name_sql, {"ids": path_ids}
-        )).fetchall()
+        # Build an IN-list directly (path_ids are internal BFS UUIDs, not user input)
+        if path_ids:
+            uuid_list = ", ".join(f"'{pid}'::uuid" for pid in path_ids)
+            name_sql = text(f"""
+                SELECT id, display_given_name AS given_name, display_surname AS surname, sex
+                FROM persons
+                WHERE id IN ({uuid_list})
+            """)
+            name_rows = (await self._session.execute(name_sql)).fetchall()
+        else:
+            name_rows = []
         name_map = {str(r.id): f"{r.given_name or ''} {r.surname or ''}".strip() for r in name_rows}
+        sex_map  = {str(r.id): r.sex for r in name_rows}
 
         path_steps = [
             {"person_id": pid, "name": name_map.get(pid, pid)}
             for pid in path_ids
         ]
+
+        relationship_label = _infer_specific_label(path_ids, person_to_fgs)
+
+        # For a 1st cousin, also surface the culturally-common in-law alias
+        # (female 1st cousin → Sister-in-law, male → Brother-in-law)
+        alternative_label: str | None = None
+        if relationship_label == "1st Cousins":
+            target_sex = sex_map.get(end)
+            if target_sex == "FEMALE":
+                alternative_label = "Sister-in-law"
+            elif target_sex == "MALE":
+                alternative_label = "Brother-in-law"
 
         return RelationshipPath(
             person_id_1=q.person_id_1,
@@ -544,7 +560,8 @@ class SearchRepository:
             found=True,
             distance=distance,
             path=path_steps,
-            relationship_label=_degree_to_label(distance),
+            relationship_label=relationship_label,
+            alternative_label=alternative_label,
         )
 
     # ── 5. All relatives (bidirectional BFS) ──────────────────────────────────
@@ -689,14 +706,7 @@ def _ancestor_to_dict(a: AncestorHit) -> dict:
 
 
 def _degree_to_label(distance: int) -> str:
-    """
-    Heuristic label based on BFS hops through family groups.
-    Each hop = one person-to-person step through a shared family group.
-      1 hop : parent / child / sibling / spouse
-      2 hops: grandparent, grandchild, uncle, aunt, nephew, niece, step-sibling
-      3 hops: great-grandparent/child, 1st cousin, great-uncle/aunt/nephew/niece
-      4 hops: 2×great-grandparent/child, 1st cousin once removed, 2nd cousin
-    """
+    """Generic fallback label when roles cannot be determined."""
     labels = {
         0: "Same person",
         1: "Parent, child, sibling, or spouse",
@@ -707,3 +717,78 @@ def _degree_to_label(distance: int) -> str:
         6: "2nd cousin once removed",
     }
     return labels.get(distance, f"Distant relative ({distance} steps)")
+
+
+def _infer_specific_label(
+    path_ids: list[str],
+    person_to_fgs: dict[str, list[tuple[str, str]]],
+) -> str:
+    """
+    Derive a precise relationship label by inspecting PARENT/CHILD roles along
+    the BFS path.  Falls back to _degree_to_label when the pattern is unknown.
+
+    Each 'hop' in the path goes through exactly one shared family group.
+    The role each person holds in that group determines direction (up/down/lateral).
+    """
+    distance = len(path_ids) - 1
+    if distance == 0:
+        return "Same person"
+
+    # Helper: find the first shared family group between two people and return
+    # (role_of_a, role_of_b).  Returns (None, None) when no shared group exists.
+    def roles_in_shared_fg(a: str, b: str) -> tuple[str | None, str | None]:
+        a_fgs = {fg: role for fg, role in person_to_fgs.get(a, [])}
+        b_fgs = {fg: role for fg, role in person_to_fgs.get(b, [])}
+        for fg in a_fgs:
+            if fg in b_fgs:
+                return a_fgs[fg], b_fgs[fg]
+        return None, None
+
+    if distance == 1:
+        r1, r2 = roles_in_shared_fg(path_ids[0], path_ids[1])
+        if r1 == "CHILD"  and r2 == "CHILD":   return "Siblings"
+        if r1 == "PARENT" and r2 == "CHILD":   return "Parent / Child"
+        if r1 == "CHILD"  and r2 == "PARENT":  return "Child / Parent"
+        if r1 == "PARENT" and r2 == "PARENT":  return "Spouses / Partners"
+        return "Direct family member"
+
+    if distance == 2:
+        p1, mid, p2 = path_ids
+        r1,  r_m1 = roles_in_shared_fg(p1,  mid)
+        r_m2, r2  = roles_in_shared_fg(mid, p2)
+        combo = (r1, r_m1, r_m2, r2)
+        mapping = {
+            ("PARENT", "CHILD",  "PARENT", "CHILD"):  "Grandparent / Grandchild",
+            ("CHILD",  "PARENT", "CHILD",  "PARENT"): "Grandchild / Grandparent",
+            ("CHILD",  "PARENT", "PARENT", "CHILD"):  "Half-siblings / Step-siblings",
+            ("PARENT", "CHILD",  "CHILD",  "PARENT"): "Co-parents",
+            ("CHILD",  "CHILD",  "PARENT", "CHILD"):  "Uncle/Aunt ↔ Nephew/Niece",
+            ("CHILD",  "PARENT", "CHILD",  "CHILD"):  "Nephew/Niece ↔ Uncle/Aunt",
+            ("PARENT", "CHILD",  "CHILD",  "CHILD"):  "Grandparent / Grandchild (via sibling)",
+            ("CHILD",  "CHILD",  "CHILD",  "PARENT"): "Grandchild / Grandparent (via sibling)",
+        }
+        return mapping.get(combo, _degree_to_label(distance))
+
+    if distance == 3:
+        p1, a, b, p2 = path_ids
+        r_p1, r_a1 = roles_in_shared_fg(p1, a)
+        r_a2, r_b1 = roles_in_shared_fg(a,  b)
+        r_b2, r_p2 = roles_in_shared_fg(b,  p2)
+        roles6 = (r_p1, r_a1, r_a2, r_b1, r_b2, r_p2)
+        mapping3 = {
+            # p1 → parent(a) → a's sibling(b) → b's child(p2) : 1st cousins
+            ("CHILD",  "PARENT", "CHILD",  "CHILD",  "PARENT", "CHILD"):  "1st Cousins",
+            # p1 ← child(a) ← a's sibling(b) ← b's parent(p2) : same viewed from p2
+            ("PARENT", "CHILD",  "CHILD",  "CHILD",  "CHILD",  "PARENT"): "1st Cousins",
+            # Great-grandparent chain going up
+            ("CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD",  "PARENT"): "Great-grandchild / Great-grandparent",
+            # Great-grandparent chain going down
+            ("PARENT", "CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD"):  "Great-grandparent / Great-grandchild",
+            # Great-uncle/aunt: p1 ← parent(a) ← a's parent(b) ← b's sibling(p2)
+            ("CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD",  "CHILD"):  "Great-nephew/niece ↔ Great-uncle/aunt",
+            # Reverse
+            ("CHILD",  "CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD"):  "Great-uncle/aunt ↔ Great-nephew/niece",
+        }
+        return mapping3.get(roles6, _degree_to_label(distance))
+
+    return _degree_to_label(distance)

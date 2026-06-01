@@ -30,6 +30,7 @@ const ProfilePage        = lazy(() => import('@pages/ProfilePage'));
 const SearchPage         = lazy(() => import('@pages/SearchPage'));
 const ReportsPage        = lazy(() => import('@pages/ReportsPage'));
 const SettingsPage       = lazy(() => import('@pages/SettingsPage'));
+const ActivityPage       = lazy(() => import('@pages/ActivityPage'));
 const NotFoundPage       = lazy(() => import('@pages/NotFoundPage'));
 
 // AppShell wraps all authenticated routes (sidebar + topbar)
@@ -94,6 +95,7 @@ const router = createBrowserRouter([
           { path: '/reports',                                element: <Lazy><ReportsPage /></Lazy> },
           { path: '/settings',                               element: <Lazy><SettingsPage /></Lazy> },
           { path: '/settings/:tab',                          element: <Lazy><SettingsPage /></Lazy> },
+          { path: '/activity',                               element: <Lazy><ActivityPage /></Lazy> },
         ],
       },
     ],

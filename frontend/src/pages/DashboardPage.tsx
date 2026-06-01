@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -24,14 +24,16 @@ const ROLE_BADGE: Record<string, string> = {
 
 interface TreeCardProps {
   tree: TreeSummary;
+  onEdit: (tree: TreeSummary) => void;
   onDelete: (tree: TreeSummary) => void;
 }
 
-function TreeCard({ tree, onDelete }: TreeCardProps) {
+function TreeCard({ tree, onEdit, onDelete }: TreeCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
+  const canEdit = tree.role === 'OWNER' || tree.role === 'ADMIN';
+
   useEffect(() => {
     if (!menuOpen) return;
     function handle(e: MouseEvent) {
@@ -66,8 +68,8 @@ function TreeCard({ tree, onDelete }: TreeCardProps) {
         </div>
       </Link>
 
-      {/* Actions menu — only for OWNER */}
-      {tree.role === 'OWNER' && (
+      {/* Actions menu — OWNER or ADMIN */}
+      {canEdit && (
         <div className="absolute top-3 right-3" ref={menuRef}>
           <button
             onClick={(e) => { e.preventDefault(); setMenuOpen((v) => !v); }}
@@ -77,13 +79,21 @@ function TreeCard({ tree, onDelete }: TreeCardProps) {
             ⋯
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-8 z-20 w-40 bg-white rounded-xl border border-gray-200 shadow-lg py-1">
+            <div className="absolute right-0 top-8 z-20 w-44 bg-white rounded-xl border border-gray-200 shadow-lg py-1">
               <button
-                onClick={(e) => { e.preventDefault(); setMenuOpen(false); onDelete(tree); }}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                onClick={(e) => { e.preventDefault(); setMenuOpen(false); onEdit(tree); }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Delete tree
+                Edit tree
               </button>
+              {tree.role === 'OWNER' && (
+                <button
+                  onClick={(e) => { e.preventDefault(); setMenuOpen(false); onDelete(tree); }}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Delete tree
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -97,10 +107,66 @@ function TreeCard({ tree, onDelete }: TreeCardProps) {
 export default function DashboardPage() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user        = useAuthStore((s) => s.user);
+  const navigate    = useNavigate();
 
   const [trees,   setTrees]   = useState<TreeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+
+  // Import .frt
+  const importInputRef             = useRef<HTMLInputElement>(null);
+  const [importing, setImporting]  = useState(false);
+  const [importError, setImportError] = useState('');
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportError('');
+    try {
+      let tree_id: string;
+
+      if (file.name.endsWith('.zip')) {
+        // ZIP import — send as multipart/form-data
+        const form = new FormData();
+        form.append('file', file);
+        const res = await fetch(`${API_BASE}/trees/import-zip`, {
+          method: 'POST',
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+          credentials: 'include',
+          body: form,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).detail ?? 'Import failed');
+        }
+        ({ tree_id } = await res.json());
+      } else {
+        // Plain .frt import — send as JSON
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data.frt_version || !data.tree_name) throw new Error('Invalid .frt file format');
+        const res = await fetch(`${API_BASE}/trees/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error((err as any).detail ?? 'Import failed');
+        }
+        ({ tree_id } = await res.json());
+      }
+
+      navigate(`/trees/${tree_id}`);
+    } catch (err) {
+      setImportError((err as Error).message);
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  }
 
   // Create tree modal
   const [modalOpen,   setModalOpen]   = useState(false);
@@ -108,6 +174,49 @@ export default function DashboardPage() {
   const [newDesc,     setNewDesc]     = useState('');
   const [creating,    setCreating]    = useState(false);
   const [createError, setCreateError] = useState('');
+
+  // Edit tree modal
+  const [editTarget,  setEditTarget]  = useState<TreeSummary | null>(null);
+  const [editName,    setEditName]    = useState('');
+  const [editDesc,    setEditDesc]    = useState('');
+  const [editing,     setEditing]     = useState(false);
+  const [editError,   setEditError]   = useState('');
+
+  function openEdit(tree: TreeSummary) {
+    setEditTarget(tree);
+    setEditName(tree.name);
+    setEditDesc(tree.description ?? '');
+    setEditError('');
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditing(true);
+    setEditError('');
+    try {
+      const res = await fetch(`${API_BASE}/trees/${editTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ name: editName.trim(), description: editDesc.trim() || null }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).detail ?? 'Failed to update tree');
+      }
+      const updated = await res.json();
+      setTrees((prev) => prev.map((t) => t.id === editTarget.id
+        ? { ...t, name: updated.name, description: updated.description }
+        : t
+      ));
+      setEditTarget(null);
+    } catch (err) {
+      setEditError((err as Error).message);
+    } finally {
+      setEditing(false);
+    }
+  }
 
   // Delete tree confirmation
   const [deleteTarget, setDeleteTarget] = useState<TreeSummary | null>(null);
@@ -195,12 +304,30 @@ export default function DashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Your family trees</p>
         </div>
-        <button
-          className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
-          onClick={openModal}
-        >
-          + New tree
-        </button>
+        <div className="flex items-center gap-2">
+          {importError && <p className="text-xs text-red-600">{importError}</p>}
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".frt,.zip"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <button
+            onClick={() => { setImportError(''); importInputRef.current?.click(); }}
+            disabled={importing}
+            title="Import a .frt backup or a .zip with photos"
+            className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            {importing ? 'Importing…' : '↑ Import .frt / .zip'}
+          </button>
+          <button
+            className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
+            onClick={openModal}
+          >
+            + New tree
+          </button>
+        </div>
       </div>
 
       {loading && (
@@ -225,7 +352,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {trees.map((tree) => (
-          <TreeCard key={tree.id} tree={tree} onDelete={setDeleteTarget} />
+          <TreeCard key={tree.id} tree={tree} onEdit={openEdit} onDelete={setDeleteTarget} />
         ))}
       </div>
 
@@ -271,6 +398,55 @@ export default function DashboardPage() {
                 <button type="submit" disabled={creating || !newName.trim()}
                   className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors">
                   {creating ? 'Creating…' : 'Create tree'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit tree modal */}
+      {editTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget && !editing) setEditTarget(null); }}
+        >
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit tree</h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  maxLength={255}
+                  required
+                  className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                />
+              </div>
+              {editError && <p className="text-sm text-red-600">{editError}</p>}
+              <div className="flex justify-end gap-3 pt-1">
+                <button type="button" onClick={() => setEditTarget(null)} disabled={editing}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={editing || !editName.trim()}
+                  className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors">
+                  {editing ? 'Saving…' : 'Save changes'}
                 </button>
               </div>
             </form>

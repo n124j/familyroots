@@ -194,9 +194,11 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
   useEffect(() => {
     if (!graph || graphLoaded.current) return;
     graphLoaded.current = true;
-    const focus = focusPersonId ?? graph.persons[0]?.id;
-    if (focus) initializeExpanded(graph, focus);
-  }, [graph, focusPersonId, initializeExpanded]);
+    // Expand every branch immediately so the full tree is visible on open
+    expandAll(graph);
+    // Wait for ReactFlow to finish laying out all nodes before fitting
+    setTimeout(() => fitView({ duration: 600, padding: 0.12 }), 150);
+  }, [graph]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const layoutOpts = useMemo(
     () => ({
@@ -363,12 +365,11 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
 
   const handleExportPdf = useCallback(async () => {
     if (!containerRef.current) return;
-    fitView({ duration: 800, padding: 0.12 });
-    await new Promise((r) => setTimeout(r, 950));
 
     const { toPng } = await import('html-to-image');
     const { default: jsPDF } = await import('jspdf');
 
+    // Capture exactly what is visible — no fitView, no zoom change
     const dataUrl = await toPng(containerRef.current, { pixelRatio: 2, cacheBust: true });
 
     const img = new Image();
@@ -385,7 +386,7 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
     });
     pdf.addImage(dataUrl, 'PNG', 0, 0, w, h);
     pdf.save('family-tree.pdf');
-  }, [fitView]);
+  }, []);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -436,7 +437,7 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
         maxZoom={3}
         selectionMode={SelectionMode.Partial}
         fitView
-        fitViewOptions={{ padding: 0.15, duration: 600 }}
+        fitViewOptions={{ padding: 0.12, duration: 600, minZoom: 0.05 }}
         onlyRenderVisibleElements
         panOnScroll={false}
         zoomOnScroll

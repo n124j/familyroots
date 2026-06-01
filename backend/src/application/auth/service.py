@@ -60,7 +60,7 @@ class AuthService:
 
     # ── Register ──────────────────────────────────────────────────
 
-    async def register(self, req: RegisterRequest) -> TokenResponse:
+    async def register(self, req: RegisterRequest) -> tuple[TokenResponse, str]:
         async with self._uow:
             # 1. Create or fetch tenant
             tenant = await self._uow.tenants.get_by_slug(req.tenant_slug)
@@ -97,7 +97,7 @@ class AuthService:
 
     # ── Login ─────────────────────────────────────────────────────
 
-    async def login(self, req: LoginRequest) -> TokenResponse:
+    async def login(self, req: LoginRequest, ip_address: str | None = None) -> tuple[TokenResponse, str]:
         async with self._uow:
             # 1. Find tenant implicitly via email (single-tenant mode for now;
             #    multi-tenant login requires tenant slug in request)
@@ -127,6 +127,16 @@ class AuthService:
             user.last_login_at = datetime.now(tz=timezone.utc)
             await self._uow.users.update(user)
 
+            # 6. Record login event
+            await self._record_login_event(
+                user_id=user.id,
+                tenant_id=user.tenant_id,
+                display_name=user.full_name,
+                email=user.email,
+                success=True,
+                ip_address=ip_address,
+            )
+
         log.info("user.login", user_id=str(user.id))
         return await self._issue_tokens(user, remember_me=req.remember_me)
 
@@ -147,7 +157,6 @@ class AuthService:
         tenant_id = self._jwt.extract_tenant_id(payload)
 
         access_token, _ = self._jwt.create_access_token(user_id, tenant_id)
-        expires_in = self._jwt.jwt_access_token_expire_minutes * 60  # type: ignore[attr-defined]
         return access_token, 900  # 15 min in seconds
 
     # ── Logout ────────────────────────────────────────────────────
@@ -250,21 +259,43 @@ class AuthService:
         self,
         user: UserModel,
         remember_me: bool = False,
-    ) -> TokenResponse:
+    ) -> tuple[TokenResponse, str]:
+        """Returns (TokenResponse, refresh_token_string).
+
+        The caller (API layer) is responsible for setting the refresh token as
+        an HttpOnly cookie — it must NOT be included in the response body.
+        """
         access_token, _ = self._jwt.create_access_token(user.id, user.tenant_id)
         refresh_token_str, refresh_jti = self._jwt.create_refresh_token(user.id, user.tenant_id)
 
         expire_seconds = self._jwt.refresh_expire_seconds
         await self._tokens.store(refresh_jti, user.id, expire_seconds)
 
-        # The refresh token string is returned to the caller so the API layer
-        # can set it as an HttpOnly cookie. We do NOT embed it in the response body.
-        # Store on a transient attribute so the API layer can read it.
-        user.__dict__["_refresh_token"] = refresh_token_str  # type: ignore[index]
-
-        return TokenResponse(
+        token_response = TokenResponse(
             access_token=access_token,
             expires_in=900,  # 15 min
             user_id=user.id,
             tenant_id=user.tenant_id,
         )
+        return token_response, refresh_token_str
+
+    async def _record_login_event(
+        self,
+        user_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        display_name: str,
+        email: str,
+        success: bool,
+        ip_address: str | None,
+    ) -> None:
+        from src.infrastructure.database.models.login_event import LoginEventModel
+        session = self._uow._session  # type: ignore[attr-defined]
+        event = LoginEventModel(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            user_display_name=display_name,
+            user_email=email,
+            success=success,
+            ip_address=ip_address,
+        )
+        session.add(event)

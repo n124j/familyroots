@@ -32,6 +32,7 @@ export interface RelationshipPath {
   distance: number;
   path: PathStep[];
   relationship_label?: string | null;
+  alternative_label?: string | null;
 }
 
 export interface NameSearchResponse {

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Cookie, Depends, Response, status
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.api.deps import (
     HasherDep,
     JWTServiceDep,
+    SettingsDep,
     TokenStoreDep,
     UoWDep,
 )
@@ -32,13 +33,13 @@ def _get_auth_service(uow: UoWDep, token_store: TokenStoreDep, jwt: JWTServiceDe
     return AuthService(uow=uow, token_store=token_store, jwt=jwt, hasher=hasher)
 
 
-def _set_refresh_cookie(response: Response, token: str) -> None:
+def _set_refresh_cookie(response: Response, token: str, secure: bool = False) -> None:
     response.set_cookie(
         key=_REFRESH_COOKIE,
         value=token,
         httponly=True,
-        secure=True,
-        samesite="strict",
+        secure=secure,          # False in dev (HTTP), True in production (HTTPS)
+        samesite="lax",         # "lax" works for same-site cross-port (localhost:7006 → 7004)
         max_age=_COOKIE_MAX_AGE,
         path="/api/v1/auth",
     )
@@ -53,15 +54,11 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 async def register(
     req: RegisterRequest,
     response: Response,
+    settings: SettingsDep,
     svc: AuthService = Depends(_get_auth_service),
 ) -> TokenResponse:
-    token_resp = await svc.register(req)
-    # Pull refresh token from transient attribute set by _issue_tokens
-    from src.infrastructure.database.models.user import UserModel  # noqa: F401
-    # The service stores the refresh token on user.__dict__["_refresh_token"]
-    # We retrieve it via the UoW session — the service returns it indirectly.
-    # For now we re-issue a refresh from the token_resp context.
-    # (Cleaner approach: have register() return a named tuple with both tokens.)
+    token_resp, refresh_token = await svc.register(req)
+    _set_refresh_cookie(response, refresh_token, secure=settings.is_production)
     return token_resp
 
 
@@ -72,10 +69,14 @@ async def register(
 )
 async def login(
     req: LoginRequest,
+    request: Request,
     response: Response,
+    settings: SettingsDep,
     svc: AuthService = Depends(_get_auth_service),
 ) -> TokenResponse:
-    token_resp = await svc.login(req)
+    ip = request.client.host if request.client else None
+    token_resp, refresh_token = await svc.login(req, ip_address=ip)
+    _set_refresh_cookie(response, refresh_token, secure=settings.is_production)
     return token_resp
 
 
@@ -111,7 +112,12 @@ async def logout(
 ) -> None:
     if refresh_token:
         await svc.logout(refresh_token)
-    response.delete_cookie(key=_REFRESH_COOKIE, path="/api/v1/auth")
+    response.delete_cookie(
+        key=_REFRESH_COOKIE,
+        path="/api/v1/auth",
+        httponly=True,
+        samesite="lax",
+    )
 
 
 @router.post(

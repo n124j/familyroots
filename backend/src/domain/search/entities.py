@@ -130,6 +130,7 @@ class RelationshipPath:
     distance: int                           # number of hops (0 if same person)
     path: list[dict[str, Any]]              # [{person_id, name, step_label}, ...]
     relationship_label: Optional[str]       # human-readable: "2nd cousin once removed"
+    alternative_label: Optional[str] = None # e.g. "Sister-in-law" for female 1st cousin
 
 
 @dataclass

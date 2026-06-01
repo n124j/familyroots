@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     s3_bucket: str = "familyroots-media"
     s3_endpoint_url: str = ""          # override for MinIO / localstack
+    s3_public_url: str = ""            # browser-accessible base URL (e.g. http://localhost:7002)
     s3_presigned_url_expire_seconds: int = 900
 
     # ── OAuth ────────────────────────────────────────────────

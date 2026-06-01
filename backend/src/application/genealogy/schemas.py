@@ -32,6 +32,7 @@ class UpdatePersonRequest(BaseModel):
     sex: Sex = Sex.UNKNOWN
     is_living: bool = True
     is_deceased: bool = False
+    photo_url: Optional[str] = Field(default=None, max_length=2048)
 
 
 class PersonResponse(BaseModel):
@@ -42,6 +43,7 @@ class PersonResponse(BaseModel):
     sex: str
     is_living: bool
     is_deceased: bool
+    photo_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

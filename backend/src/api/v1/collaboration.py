@@ -4,13 +4,13 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel, EmailStr, Field
 
-from src.api.deps import CurrentUserDep, UoWDep
+from src.api.deps import CurrentUserDep, NotAuditorDep, UoWDep
 from src.application.collaboration.service import CollaborationService
 from src.domain.collaboration.entities import (
-    Action, AuditEntityType, AuditEntry, Invitation,
+    Action, AppRole, AuditEntityType, AuditEntry, Invitation,
     PersonVersion, TreeMembership, TreeRole,
 )
 from src.domain.collaboration.exceptions import (
@@ -153,7 +153,7 @@ class CreateTreeRequest(BaseModel):
 @router.post("/trees", response_model=TreeSummaryResponse, status_code=status.HTTP_201_CREATED, summary="Create a new family tree")
 async def create_tree(
     body: CreateTreeRequest,
-    current_user: CurrentUserDep,
+    current_user: NotAuditorDep,
     uow: UoWDep,
 ) -> TreeSummaryResponse:
     from sqlalchemy import text
@@ -189,19 +189,20 @@ async def create_tree(
 )
 async def delete_tree(
     tree_id: uuid.UUID,
-    current_user: CurrentUserDep,
+    current_user: NotAuditorDep,
     uow: UoWDep,
 ) -> None:
     from sqlalchemy import text
 
-    row = (await uow._session.execute(
-        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-        {"tid": tree_id, "uid": current_user.id},
-    )).first()
-    if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-    if row.role != "OWNER":
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the tree owner can delete this tree")
+    if current_user.app_role != AppRole.ADMIN:
+        row = (await uow._session.execute(
+            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+        if row.role != "OWNER":
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the tree owner can delete this tree")
 
     await uow._session.execute(
         text("UPDATE family_trees SET is_deleted = true WHERE id = :tid"),
@@ -209,15 +210,311 @@ async def delete_tree(
     )
 
 
+class UpdateTreeRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+@router.patch(
+    "/trees/{tree_id}",
+    response_model=TreeSummaryResponse,
+    summary="Update a tree's name and description (admin or owner)",
+)
+async def update_tree(
+    tree_id: uuid.UUID,
+    body: UpdateTreeRequest,
+    current_user: NotAuditorDep,
+    uow: UoWDep,
+) -> TreeSummaryResponse:
+    from sqlalchemy import text
+
+    # App-level admin bypasses; otherwise require ADMIN or OWNER tree role
+    if current_user.app_role != AppRole.ADMIN:
+        row = (await uow._session.execute(
+            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+        if row.role not in ("OWNER", "ADMIN"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can edit this tree")
+
+    result = await uow._session.execute(
+        text("""
+            UPDATE family_trees
+            SET name = :name, description = :description
+            WHERE id = :tid AND is_deleted = false
+            RETURNING id, name, description
+        """),
+        {"tid": tree_id, "name": body.name, "description": body.description},
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+
+    counts = (await uow._session.execute(
+        text("""
+            SELECT
+              (SELECT COUNT(*) FROM persons WHERE tree_id = :tid AND is_deleted = false) AS person_count,
+              (SELECT COUNT(*) FROM tree_members WHERE tree_id = :tid) AS member_count
+        """),
+        {"tid": tree_id},
+    )).first()
+
+    # Determine effective role for response
+    if current_user.app_role == AppRole.ADMIN:
+        effective_role = TreeRole.OWNER
+    else:
+        effective_role = TreeRole(row_role) if (row_role := (await uow._session.execute(
+            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).scalar()) else TreeRole.ADMIN
+
+    await uow._session.commit()
+    return TreeSummaryResponse(
+        id=row.id,
+        name=row.name,
+        description=row.description,
+        role=effective_role,
+        person_count=counts.person_count if counts else 0,
+        member_count=counts.member_count if counts else 0,
+    )
+
+
+@router.get(
+    "/trees/{tree_id}/export-zip",
+    summary="Export tree as a ZIP archive containing the .frt backup and all member photos",
+)
+async def export_tree_zip(
+    tree_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    uow: UoWDep,
+) -> Response:
+    import io
+    import json
+    import zipfile
+    from fastapi.responses import StreamingResponse
+    from sqlalchemy import text
+
+    # Membership / admin bypass (same pattern as tree_graph)
+    if current_user.app_role not in (AppRole.ADMIN, AppRole.AUDITOR):
+        row = (await uow._session.execute(
+            text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if row is None:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this tree")
+
+    # Fetch tree metadata
+    tree_row = (await uow._session.execute(
+        text("SELECT name, description FROM family_trees WHERE id = :tid AND is_deleted = false LIMIT 1"),
+        {"tid": tree_id},
+    )).first()
+    if tree_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+
+    # Fetch all persons with photo_url
+    person_rows = (await uow._session.execute(text("""
+        SELECT id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url
+        FROM persons
+        WHERE tree_id = :tid AND is_deleted = false
+        ORDER BY display_surname, display_given_name
+    """), {"tid": tree_id})).fetchall()
+
+    # Fetch family groups + members
+    fg_rows = (await uow._session.execute(text("""
+        SELECT fg.id, fg.union_type,
+               fgm.person_id, fgm.role, fgm.parentage_type
+        FROM family_groups fg
+        LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
+        WHERE fg.tree_id = :tid
+    """), {"tid": tree_id})).fetchall()
+
+    # Build family_groups dict
+    fgs: dict[str, dict] = {}
+    for r in fg_rows:
+        fgid = str(r.id)
+        if fgid not in fgs:
+            fgs[fgid] = {"id": fgid, "union_type": r.union_type, "parent_ids": [], "children": {}}
+        if r.person_id is None:
+            continue
+        pid = str(r.person_id)
+        if r.role == "PARENT":
+            if pid not in fgs[fgid]["parent_ids"]:
+                fgs[fgid]["parent_ids"].append(pid)
+        elif r.role == "CHILD":
+            fgs[fgid]["children"][pid] = r.parentage_type or "BIOLOGICAL"
+
+    # Resolve S3 keys from photo_url
+    from src.config import get_settings
+    settings = get_settings()
+    bucket = settings.s3_bucket or "familyroots-local"
+    public_base = (settings.s3_public_url or settings.s3_endpoint_url or "").rstrip("/")
+    url_prefix = f"{public_base}/{bucket}/" if public_base else f"/{bucket}/"
+
+    # Build persons list; track which need photos downloaded
+    persons_payload = []
+    photo_downloads: list[tuple[str, str, str]] = []  # (person_id, s3_key, filename_in_zip)
+
+    for r in person_rows:
+        photo_filename = None
+        if r.photo_url:
+            url = r.photo_url
+            if url.startswith(url_prefix):
+                s3_key = url[len(url_prefix):]
+            elif url.startswith("/"):
+                s3_key = url.lstrip("/")
+            else:
+                s3_key = None
+            if s3_key:
+                ext = s3_key.rsplit(".", 1)[-1] if "." in s3_key else "jpg"
+                photo_filename = f"photos/{r.id}.{ext}"
+                photo_downloads.append((str(r.id), s3_key, photo_filename))
+
+        persons_payload.append({
+            "id": str(r.id),
+            "display_given_name": r.display_given_name or "",
+            "display_surname": r.display_surname or "",
+            "sex": r.sex or "UNKNOWN",
+            "is_living": r.is_living,
+            "is_deceased": r.is_deceased,
+            **({"photo_filename": photo_filename} if photo_filename else {}),
+        })
+
+    frt_payload = {
+        "frt_version": "1.1",
+        "exported_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "tree_name": tree_row.name,
+        "tree_description": tree_row.description,
+        "persons": persons_payload,
+        "family_groups": list(fgs.values()),
+    }
+
+    # Build ZIP in memory
+    import boto3
+    from botocore.config import Config as BotoCfg
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        # Write .frt JSON
+        tree_slug = tree_row.name.replace(" ", "_")[:50]
+        zf.writestr(f"{tree_slug}.frt", json.dumps(frt_payload, indent=2))
+
+        # Download and write each photo
+        if photo_downloads:
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=settings.s3_endpoint_url or None,
+                aws_access_key_id=settings.aws_access_key_id or "minioadmin",
+                aws_secret_access_key=settings.aws_secret_access_key or "minioadmin",
+                region_name=settings.aws_region,
+                config=BotoCfg(signature_version="s3v4"),
+            )
+            for _person_id, s3_key, zip_path in photo_downloads:
+                try:
+                    obj = s3.get_object(Bucket=bucket, Key=s3_key)
+                    zf.writestr(zip_path, obj["Body"].read())
+                except Exception:
+                    pass  # skip missing photos silently
+
+    zip_buffer.seek(0)
+
+    safe_name = tree_row.name.replace(" ", "_")[:60]
+    return StreamingResponse(
+        iter([zip_buffer.read()]),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}.zip"'},
+    )
+
+
+@router.delete(
+    "/trees/{tree_id}/family-groups/{family_group_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    response_class=Response,
+    summary="Remove a union (family group) and all its member links",
+)
+async def delete_family_group(
+    tree_id: uuid.UUID,
+    family_group_id: uuid.UUID,
+    current_user: NotAuditorDep,
+    uow: UoWDep,
+) -> None:
+    from sqlalchemy import text
+    from src.domain.collaboration.entities import Action, AuditEntityType
+    from src.infrastructure.repositories.collaboration import AuditLogRepository
+
+    # Verify it belongs to this tree
+    row = (await uow._session.execute(
+        text("SELECT id FROM family_groups WHERE id = :fgid AND tree_id = :tid LIMIT 1"),
+        {"fgid": family_group_id, "tid": tree_id},
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Family group not found")
+
+    # Remove all member links then the group itself
+    await uow._session.execute(
+        text("DELETE FROM family_group_members WHERE family_group_id = :fgid"),
+        {"fgid": family_group_id},
+    )
+    await uow._session.execute(
+        text("DELETE FROM family_groups WHERE id = :fgid"),
+        {"fgid": family_group_id},
+    )
+
+    actor_name = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
+    await AuditLogRepository(uow._session).append(
+        AuditEntry.create(
+            tree_id=tree_id,
+            tenant_id=current_user.tenant_id,
+            actor_id=current_user.id,
+            actor_display_name=actor_name,
+            action=Action.REMOVE_RELATIONSHIP,
+            entity_type=AuditEntityType.FAMILY_GROUP,
+            entity_id=family_group_id,
+        )
+    )
+    await uow._session.commit()
+
+
 @router.get("/trees", response_model=list[TreeSummaryResponse], summary="List trees the current user belongs to")
 async def list_my_trees(
     current_user: CurrentUserDep,
     uow: UoWDep,
 ) -> list[TreeSummaryResponse]:
-    from sqlalchemy import select, func, text
-    from sqlalchemy.sql import literal_column
+    from sqlalchemy import text
 
-    # Trees where the current user is a member
+    is_elevated = current_user.app_role in (AppRole.ADMIN, AppRole.AUDITOR)
+
+    if is_elevated:
+        # Admin/auditor can see all trees; their effective role is OWNER (admin) or VIEWER (auditor)
+        effective_role = "OWNER" if current_user.app_role == AppRole.ADMIN else "VIEWER"
+        q = text("""
+            SELECT
+                ft.id,
+                ft.name,
+                ft.description,
+                (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
+                (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
+            FROM family_trees ft
+            WHERE ft.is_deleted = false
+            ORDER BY ft.created_at DESC
+        """)
+        result = await uow._session.execute(q)
+        rows = result.fetchall()
+        return [
+            TreeSummaryResponse(
+                id=row.id,
+                name=row.name,
+                description=row.description,
+                role=TreeRole(effective_role),
+                person_count=row.person_count,
+                member_count=row.member_count,
+            )
+            for row in rows
+        ]
+
+    # Standard user: trees where the current user is a member
     q = text("""
         SELECT
             ft.id,
@@ -257,18 +554,23 @@ async def get_tree_graph(
 ) -> dict:
     from sqlalchemy import text
 
-    # Verify membership
-    membership_q = text(
-        "SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"
-    )
-    row = (await uow._session.execute(membership_q, {"tid": tree_id, "uid": current_user.id})).first()
-    if row is None:
-        raise HTTPException(403, "Not a member of this tree")
+    # Admin and auditor bypass membership check
+    if current_user.app_role not in (AppRole.ADMIN, AppRole.AUDITOR):
+        membership_q = text(
+            "SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"
+        )
+        row = (await uow._session.execute(membership_q, {"tid": tree_id, "uid": current_user.id})).first()
+        if row is None:
+            raise HTTPException(403, "Not a member of this tree")
+
+    # Tree metadata
+    tree_q = text("SELECT name, description FROM family_trees WHERE id = :tid")
+    tree_row = (await uow._session.execute(tree_q, {"tid": tree_id})).first()
 
     # Persons
     persons_q = text("""
         SELECT id, tree_id, display_given_name, display_surname,
-               sex, is_living, is_deceased
+               sex, is_living, is_deceased, photo_url
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -284,6 +586,7 @@ async def get_tree_graph(
             "sex": r.sex,
             "isLiving": r.is_living,
             "isDeceased": r.is_deceased,
+            **({"photoUrl": r.photo_url} if r.photo_url else {}),
         }
         for r in person_rows
     ]
@@ -322,10 +625,338 @@ async def get_tree_graph(
             groups[gid]["children"][pid] = r.parentage_type or "BIOLOGICAL"
 
     return {
-        "treeId": str(tree_id),
-        "persons": persons,
-        "familyGroups": list(groups.values()),
+        "treeId":          str(tree_id),
+        "treeName":        tree_row.name if tree_row else "",
+        "treeDescription": tree_row.description if tree_row else None,
+        "persons":         persons,
+        "familyGroups":    list(groups.values()),
     }
+
+
+# ── Import tree (.frt) ─────────────────────────────────────────────────────────
+
+class _FrtPerson(BaseModel):
+    id: str
+    display_given_name: str = ""
+    display_surname: str = ""
+    sex: str = "UNKNOWN"
+    is_living: bool = True
+    is_deceased: bool = False
+
+
+class _FrtFamilyGroup(BaseModel):
+    id: str
+    union_type: str = "UNKNOWN"
+    parent_ids: list[str] = []
+    children: dict[str, str] = {}   # old_person_id → parentage_type
+
+
+class ImportTreeRequest(BaseModel):
+    frt_version: str = "1.0"
+    tree_name: str = Field(..., min_length=1, max_length=200)
+    tree_description: Optional[str] = None
+    persons: list[_FrtPerson] = []
+    family_groups: list[_FrtFamilyGroup] = []
+
+
+@router.post("/trees/{tree_id}/export-log", status_code=204, summary="Record a tree export event in the audit log")
+async def log_tree_export(
+    tree_id: uuid.UUID,
+    current_user: NotAuditorDep,
+    uow: UoWDep,
+) -> Response:
+    from sqlalchemy import text
+    from src.domain.collaboration.entities import AuditEntry, Action, AuditEntityType
+    from src.infrastructure.repositories.collaboration import AuditLogRepository
+    actor_name = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
+    await AuditLogRepository(uow._session).append(
+        AuditEntry.create(
+            tree_id=tree_id,
+            tenant_id=current_user.tenant_id,
+            actor_id=current_user.id,
+            actor_display_name=actor_name,
+            action=Action.EXPORT_TREE,
+            entity_type=AuditEntityType.TREE,
+            entity_id=tree_id,
+        )
+    )
+    await uow._session.commit()
+    return Response(status_code=204)
+
+
+@router.post("/trees/import", status_code=201, summary="Import a .frt backup file as a new tree")
+async def import_tree(
+    body: ImportTreeRequest,
+    current_user: NotAuditorDep,
+    uow: UoWDep,
+) -> dict:
+    from sqlalchemy import text
+
+    # 1. Create the new tree
+    new_tree_id = uuid.uuid4()
+    await uow._session.execute(text("""
+        INSERT INTO family_trees (id, tenant_id, name, description)
+        VALUES (:id, :tenant, :name, :desc)
+    """), {
+        "id":     new_tree_id,
+        "tenant": current_user.tenant_id,
+        "name":   body.tree_name,
+        "desc":   body.tree_description,
+    })
+
+    # 2. Add creator as OWNER
+    await uow._session.execute(text("""
+        INSERT INTO tree_members (id, tree_id, user_id, tenant_id, role)
+        VALUES (gen_random_uuid(), :tid, :uid, :tenant, 'OWNER')
+    """), {"tid": new_tree_id, "uid": current_user.id, "tenant": current_user.tenant_id})
+
+    # 3. Create persons — map old_id → new_id
+    old_to_new: dict[str, uuid.UUID] = {}
+    for p in body.persons:
+        new_pid = uuid.uuid4()
+        old_to_new[p.id] = new_pid
+        await uow._session.execute(text("""
+            INSERT INTO persons
+              (id, tenant_id, tree_id, display_given_name, display_surname,
+               sex, is_living, is_deceased)
+            VALUES
+              (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased)
+        """), {
+            "id":      new_pid,
+            "tenant":  current_user.tenant_id,
+            "tid":     new_tree_id,
+            "given":   p.display_given_name,
+            "surname": p.display_surname,
+            "sex":     p.sex,
+            "living":  p.is_living,
+            "deceased": p.is_deceased,
+        })
+
+    # 4. Create family groups + members
+    for fg in body.family_groups:
+        new_fg_id = uuid.uuid4()
+        parent_ids = [old_to_new.get(pid) for pid in fg.parent_ids if pid in old_to_new]
+        p1 = parent_ids[0] if len(parent_ids) > 0 else None
+        p2 = parent_ids[1] if len(parent_ids) > 1 else None
+
+        await uow._session.execute(text("""
+            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, parent1_id, parent2_id)
+            VALUES (:id, :tenant, :tid, :utype, :p1, :p2)
+        """), {
+            "id":     new_fg_id,
+            "tenant": current_user.tenant_id,
+            "tid":    new_tree_id,
+            "utype":  fg.union_type,
+            "p1":     p1,
+            "p2":     p2,
+        })
+
+        for old_pid in fg.parent_ids:
+            new_pid = old_to_new.get(old_pid)
+            if new_pid is None:
+                continue
+            await uow._session.execute(text("""
+                INSERT INTO family_group_members
+                  (id, tenant_id, tree_id, family_group_id, person_id, role)
+                VALUES (gen_random_uuid(), :tenant, :tid, :fgid, :pid, 'PARENT')
+            """), {"tenant": current_user.tenant_id, "tid": new_tree_id,
+                   "fgid": new_fg_id, "pid": new_pid})
+
+        for old_child_id, parentage in fg.children.items():
+            new_child_id = old_to_new.get(old_child_id)
+            if new_child_id is None:
+                continue
+            await uow._session.execute(text("""
+                INSERT INTO family_group_members
+                  (id, tenant_id, tree_id, family_group_id, person_id, role, parentage_type)
+                VALUES (gen_random_uuid(), :tenant, :tid, :fgid, :pid, 'CHILD', :pt)
+            """), {"tenant": current_user.tenant_id, "tid": new_tree_id,
+                   "fgid": new_fg_id, "pid": new_child_id, "pt": parentage})
+
+    # Audit: log the import action on the new tree
+    from src.domain.collaboration.entities import AuditEntry, Action, AuditEntityType
+    from src.infrastructure.repositories.collaboration import AuditLogRepository
+    actor_name = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
+    await AuditLogRepository(uow._session).append(
+        AuditEntry.create(
+            tree_id=new_tree_id,
+            tenant_id=current_user.tenant_id,
+            actor_id=current_user.id,
+            actor_display_name=actor_name,
+            action=Action.IMPORT_TREE,
+            entity_type=AuditEntityType.TREE,
+            entity_id=new_tree_id,
+            entity_display_name=body.tree_name,
+            after={"tree_name": body.tree_name, "person_count": len(body.persons)},
+        )
+    )
+    await uow._session.commit()
+    return {"tree_id": str(new_tree_id), "tree_name": body.tree_name}
+
+
+@router.post("/trees/import-zip", status_code=201, summary="Import a .zip (tree + photos) produced by the export-zip endpoint")
+async def import_tree_zip(
+    current_user: NotAuditorDep,
+    uow: UoWDep,
+    file: UploadFile = File(...),
+) -> dict:
+    """Accept a ZIP produced by GET /trees/{id}/export-zip and restore the tree with photos."""
+    import io
+    import json
+    import zipfile
+    from sqlalchemy import text
+
+    raw = await file.read()
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(raw))
+    except zipfile.BadZipFile:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "File is not a valid ZIP archive")
+
+    # Find the .frt file inside the ZIP
+    frt_names = [n for n in zf.namelist() if n.endswith(".frt") and "/" not in n]
+    if not frt_names:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "ZIP does not contain a .frt file")
+    frt_data = json.loads(zf.read(frt_names[0]))
+    if not frt_data.get("frt_version") or not frt_data.get("tree_name"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid .frt format")
+
+    tree_name = frt_data["tree_name"]
+    tree_description = frt_data.get("tree_description")
+    persons_raw = frt_data.get("persons", [])
+    fgs_raw = frt_data.get("family_groups", [])
+
+    # 1. Create tree
+    new_tree_id = uuid.uuid4()
+    await uow._session.execute(text("""
+        INSERT INTO family_trees (id, tenant_id, name, description)
+        VALUES (:id, :tenant, :name, :desc)
+    """), {"id": new_tree_id, "tenant": current_user.tenant_id,
+           "name": tree_name, "desc": tree_description})
+
+    await uow._session.execute(text("""
+        INSERT INTO tree_members (id, tree_id, user_id, tenant_id, role)
+        VALUES (gen_random_uuid(), :tid, :uid, :tenant, 'OWNER')
+    """), {"tid": new_tree_id, "uid": current_user.id, "tenant": current_user.tenant_id})
+
+    # 2. Create persons — old_id → new_id
+    old_to_new: dict[str, uuid.UUID] = {}
+    photo_filename_map: dict[str, str] = {}  # old_id → photo_filename in ZIP
+
+    for p in persons_raw:
+        new_pid = uuid.uuid4()
+        old_to_new[p["id"]] = new_pid
+        if p.get("photo_filename"):
+            photo_filename_map[p["id"]] = p["photo_filename"]
+        await uow._session.execute(text("""
+            INSERT INTO persons
+              (id, tenant_id, tree_id, display_given_name, display_surname,
+               sex, is_living, is_deceased)
+            VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased)
+        """), {
+            "id":      new_pid,
+            "tenant":  current_user.tenant_id,
+            "tid":     new_tree_id,
+            "given":   p.get("display_given_name", ""),
+            "surname": p.get("display_surname", ""),
+            "sex":     p.get("sex", "UNKNOWN"),
+            "living":  p.get("is_living", True),
+            "deceased": p.get("is_deceased", False),
+        })
+
+    # 3. Create family groups + members
+    for fg in fgs_raw:
+        new_fg_id = uuid.uuid4()
+        parent_ids = [old_to_new.get(pid) for pid in fg.get("parent_ids", []) if pid in old_to_new]
+        p1 = parent_ids[0] if len(parent_ids) > 0 else None
+        p2 = parent_ids[1] if len(parent_ids) > 1 else None
+        await uow._session.execute(text("""
+            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, parent1_id, parent2_id)
+            VALUES (:id, :tenant, :tid, :utype, :p1, :p2)
+        """), {"id": new_fg_id, "tenant": current_user.tenant_id, "tid": new_tree_id,
+               "utype": fg.get("union_type", "UNKNOWN"), "p1": p1, "p2": p2})
+
+        for old_pid in fg.get("parent_ids", []):
+            new_pid = old_to_new.get(old_pid)
+            if new_pid is None:
+                continue
+            await uow._session.execute(text("""
+                INSERT INTO family_group_members
+                  (id, tenant_id, tree_id, family_group_id, person_id, role)
+                VALUES (gen_random_uuid(), :tenant, :tid, :fgid, :pid, 'PARENT')
+            """), {"tenant": current_user.tenant_id, "tid": new_tree_id,
+                   "fgid": new_fg_id, "pid": new_pid})
+
+        for old_child_id, parentage in fg.get("children", {}).items():
+            new_child_id = old_to_new.get(old_child_id)
+            if new_child_id is None:
+                continue
+            await uow._session.execute(text("""
+                INSERT INTO family_group_members
+                  (id, tenant_id, tree_id, family_group_id, person_id, role, parentage_type)
+                VALUES (gen_random_uuid(), :tenant, :tid, :fgid, :pid, 'CHILD', :pt)
+            """), {"tenant": current_user.tenant_id, "tid": new_tree_id,
+                   "fgid": new_fg_id, "pid": new_child_id, "pt": parentage})
+
+    await uow._session.commit()
+
+    # 4. Upload photos to S3 and update photo_url on each person
+    if photo_filename_map:
+        import boto3
+        from botocore.config import Config as BotoCfg
+        from src.config import get_settings
+        settings = get_settings()
+        bucket = settings.s3_bucket or "familyroots-local"
+        public_base = (settings.s3_public_url or settings.s3_endpoint_url or "").rstrip("/")
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=settings.s3_endpoint_url or None,
+            aws_access_key_id=settings.aws_access_key_id or "minioadmin",
+            aws_secret_access_key=settings.aws_secret_access_key or "minioadmin",
+            region_name=settings.aws_region,
+            config=BotoCfg(signature_version="s3v4"),
+        )
+        zip_names = set(zf.namelist())
+        for old_pid, zip_path in photo_filename_map.items():
+            new_pid = old_to_new.get(old_pid)
+            if new_pid is None or zip_path not in zip_names:
+                continue
+            try:
+                photo_bytes = zf.read(zip_path)
+                ext = zip_path.rsplit(".", 1)[-1] if "." in zip_path else "jpg"
+                content_type = {"jpg": "image/jpeg", "jpeg": "image/jpeg",
+                                "png": "image/png", "webp": "image/webp",
+                                "gif": "image/gif"}.get(ext.lower(), "image/jpeg")
+                s3_key = f"tenants/{current_user.tenant_id}/trees/{new_tree_id}/persons/{new_pid}/photo/{uuid.uuid4()}.{ext}"
+                s3.put_object(Bucket=bucket, Key=s3_key, Body=photo_bytes, ContentType=content_type)
+                photo_url = f"{public_base}/{bucket}/{s3_key}" if public_base else f"/{bucket}/{s3_key}"
+                await uow._session.execute(text("""
+                    UPDATE persons SET photo_url = :url WHERE id = :pid
+                """), {"url": photo_url, "pid": new_pid})
+            except Exception:
+                pass  # skip individual photo failures
+
+        await uow._session.commit()
+
+    # Audit
+    from src.domain.collaboration.entities import AuditEntry, Action, AuditEntityType
+    from src.infrastructure.repositories.collaboration import AuditLogRepository
+    actor_name = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
+    await AuditLogRepository(uow._session).append(
+        AuditEntry.create(
+            tree_id=new_tree_id,
+            tenant_id=current_user.tenant_id,
+            actor_id=current_user.id,
+            actor_display_name=actor_name,
+            action=Action.IMPORT_TREE,
+            entity_type=AuditEntityType.TREE,
+            entity_id=new_tree_id,
+            entity_display_name=tree_name,
+            after={"tree_name": tree_name, "person_count": len(persons_raw),
+                   "photos": len(photo_filename_map)},
+        )
+    )
+    await uow._session.commit()
+    return {"tree_id": str(new_tree_id), "tree_name": tree_name}
 
 
 # ── Members ────────────────────────────────────────────────────────────────────
@@ -338,13 +969,14 @@ async def list_members(
 ) -> list[MemberResponse]:
     from sqlalchemy import text
 
-    # Verify caller is a member
-    check = (await uow._session.execute(
-        text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-        {"tid": tree_id, "uid": current_user.id},
-    )).first()
-    if check is None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this tree")
+    # Admin/auditor bypass membership check
+    if current_user.app_role not in (AppRole.ADMIN, AppRole.AUDITOR):
+        check = (await uow._session.execute(
+            text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if check is None:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this tree")
 
     rows = (await uow._session.execute(text("""
         SELECT
@@ -379,7 +1011,7 @@ async def change_member_role(
     user_id: uuid.UUID,
     body: ChangeRoleRequest,
     request: Request,
-    current_user: CurrentUserDep,
+    current_user: NotAuditorDep,
     svc: CollabDep,
 ) -> None:
     await svc.change_member_role(
@@ -389,6 +1021,7 @@ async def change_member_role(
         actor_id=current_user.id,
         actor_name=current_user.display_name,
         ip_address=request.client.host if request.client else None,
+        app_role=current_user.app_role,
     )
 
 
@@ -397,7 +1030,7 @@ async def remove_member(
     tree_id: uuid.UUID,
     user_id: uuid.UUID,
     request: Request,
-    current_user: CurrentUserDep,
+    current_user: NotAuditorDep,
     svc: CollabDep,
     uow: UoWDep,
 ) -> None:
@@ -408,6 +1041,7 @@ async def remove_member(
         actor_name=current_user.display_name,
         tenant_id=current_user.tenant_id,
         ip_address=request.client.host if request.client else None,
+        app_role=current_user.app_role,
     )
 
 
@@ -419,7 +1053,7 @@ async def list_invitations(
     current_user: CurrentUserDep,
     svc: CollabDep,
 ) -> list[InvitationResponse]:
-    await svc.require_permission(tree_id, current_user.id, Action.VIEW_MEMBERS)
+    await svc.require_permission(tree_id, current_user.id, Action.VIEW_MEMBERS, app_role=current_user.app_role)
     from src.infrastructure.repositories.collaboration import InvitationRepository
     repo = InvitationRepository(svc._session)
     invitations = await repo.list_by_tree(tree_id)
@@ -431,7 +1065,7 @@ async def send_invitation(
     tree_id: uuid.UUID,
     body: InviteRequest,
     request: Request,
-    current_user: CurrentUserDep,
+    current_user: NotAuditorDep,
     svc: CollabDep,
 ) -> InvitationResponse:
     invitation = await svc.send_invitation(
@@ -443,6 +1077,7 @@ async def send_invitation(
         role=body.role,
         message=body.message,
         ip_address=request.client.host if request.client else None,
+        app_role=current_user.app_role,
     )
     # TODO: dispatch email via background task
     return InvitationResponse.from_domain(invitation)
@@ -467,7 +1102,7 @@ async def accept_invitation(
 async def revoke_invitation(
     tree_id: uuid.UUID,
     invitation_id: uuid.UUID,
-    current_user: CurrentUserDep,
+    current_user: NotAuditorDep,
     svc: CollabDep,
 ) -> None:
     await svc.revoke_invitation(
@@ -476,6 +1111,7 @@ async def revoke_invitation(
         actor_id=current_user.id,
         tenant_id=current_user.tenant_id,
         actor_name=current_user.display_name,
+        app_role=current_user.app_role,
     )
 
 
@@ -500,6 +1136,7 @@ async def get_audit_log(
         entity_type=entity_type,
         entity_id=entity_id,
         filter_actor_id=actor_id,
+        app_role=current_user.app_role,
     )
     return [AuditEntryResponse.from_domain(e) for e in entries]
 
@@ -524,6 +1161,7 @@ async def list_person_versions(
         actor_id=current_user.id,
         limit=limit,
         offset=offset,
+        app_role=current_user.app_role,
     )
     return [PersonVersionResponse.from_domain(v) for v in versions]
 

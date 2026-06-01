@@ -19,6 +19,7 @@ class UserProfileResponse(BaseModel):
     locale: str
     timezone: str
     is_active: bool
+    app_role: str = "STANDARD"
     last_login_at: datetime | None
     created_at: datetime
     updated_at: datetime

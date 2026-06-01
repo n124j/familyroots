@@ -15,6 +15,7 @@ interface PersonDetail {
   sex: string;
   is_living: boolean;
   is_deceased: boolean;
+  photo_url?: string | null;
   parents: string[];
   children: string[];
   spouses: string[];
@@ -40,12 +41,13 @@ const SEX_AVATAR: Record<string, string> = {
 // ── Relative list ──────────────────────────────────────────────────────────
 
 function RelativeList({
-  ids, label, treeId, nameMap,
+  ids, label, treeId, nameMap, photoMap,
 }: {
   ids: string[];
   label: string;
   treeId: string;
   nameMap: Record<string, string>;
+  photoMap: Record<string, string | undefined>;
 }) {
   if (ids.length === 0) return null;
   return (
@@ -55,15 +57,24 @@ function RelativeList({
         {ids.map((id) => {
           const name = nameMap[id] ?? 'Unknown';
           const initial = name[0]?.toUpperCase() ?? '?';
+          const photo = photoMap[id];
           return (
             <Link
               key={id}
               to={`/trees/${treeId}/persons/${id}`}
               className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 group transition-colors"
             >
-              <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors flex-shrink-0">
-                {initial}
-              </span>
+              {photo ? (
+                <img
+                  src={photo}
+                  alt={name}
+                  className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                />
+              ) : (
+                <span className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-500 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors flex-shrink-0">
+                  {initial}
+                </span>
+              )}
               <span className="text-sm text-gray-800 group-hover:text-brand-600 transition-colors">{name}</span>
             </Link>
           );
@@ -120,6 +131,14 @@ export default function ProfilePage() {
     return map;
   }, [graph]);
 
+  const photoMap = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    graph?.persons.forEach((p) => {
+      map[p.id] = p.photoUrl ?? undefined;
+    });
+    return map;
+  }, [graph]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-32">
@@ -160,9 +179,17 @@ export default function ProfilePage() {
 
       {/* Header card */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-5 flex items-start gap-5">
-        <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold flex-shrink-0 ${avatarCls}`}>
-          {initial}
-        </div>
+        {person.photo_url ? (
+          <img
+            src={person.photo_url}
+            alt={fullName}
+            className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+          />
+        ) : (
+          <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-2xl font-bold flex-shrink-0 ${avatarCls}`}>
+            {initial}
+          </div>
+        )}
 
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{fullName}</h1>
@@ -188,10 +215,10 @@ export default function ProfilePage() {
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Relationships</h2>
         {hasRelatives ? (
           <div className="space-y-5">
-            <RelativeList ids={person.parents}  label="Parents"  treeId={treeId ?? ''} nameMap={nameMap} />
-            <RelativeList ids={person.spouses}  label="Spouses"  treeId={treeId ?? ''} nameMap={nameMap} />
-            <RelativeList ids={person.children} label="Children" treeId={treeId ?? ''} nameMap={nameMap} />
-            <RelativeList ids={person.siblings} label="Siblings" treeId={treeId ?? ''} nameMap={nameMap} />
+            <RelativeList ids={person.parents}  label="Parents"  treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.spouses}  label="Spouses"  treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.children} label="Children" treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.siblings} label="Siblings" treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
           </div>
         ) : (
           <div className="text-center py-8 text-gray-400">

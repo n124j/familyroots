@@ -43,13 +43,20 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await login(email, password);
+      // Fetch full profile (including app_role) before storing
+      const meRes = await fetch(`${API_BASE}/users/me`, {
+        headers: { Authorization: `Bearer ${data.access_token}` },
+        credentials: 'include',
+      });
+      const me = meRes.ok ? await meRes.json() : null;
       storeLogin(data.access_token, {
         id: data.user_id,
         tenantId: data.tenant_id,
         email,
-        displayName: email,
-        avatarUrl: undefined,
+        displayName: me ? `${me.given_name ?? ''} ${me.family_name ?? ''}`.trim() || email : email,
+        avatarUrl: me?.avatar_url ?? undefined,
         isEmailVerified: true,
+        appRole: me?.app_role ?? 'STANDARD',
       });
       const next = searchParams.get('next') ?? '/dashboard';
       navigate(next, { replace: true });

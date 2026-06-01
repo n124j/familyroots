@@ -18,6 +18,7 @@ export interface AuthUser {
   displayName: string;
   avatarUrl?: string;
   isEmailVerified: boolean;
+  appRole: 'ADMIN' | 'STANDARD' | 'AUDITOR';
 }
 
 interface AuthStore {
@@ -73,23 +74,35 @@ export async function initAuth(): Promise<void> {
   if (store.isInitialised) return;
 
   try {
-    const res = await fetch(`${_API_BASE}/auth/refresh`, {
+    // Step 1: use the httpOnly refresh cookie to get a new access token
+    const refreshRes = await fetch(`${_API_BASE}/auth/refresh`, {
       method: 'POST',
-      credentials: 'include',  // sends the httpOnly refresh_token cookie
+      credentials: 'include',
     });
 
-    if (res.ok) {
-      const { access_token, user } = await res.json();
-      store.login(access_token, {
-        id: user.id,
-        tenantId: user.tenant_id,
-        email: user.email,
-        displayName: `${user.display_given_name ?? ''} ${user.display_surname ?? ''}`.trim() || user.email,
-        avatarUrl: user.avatar_url,
-        isEmailVerified: user.is_email_verified,
+    if (!refreshRes.ok) return; // no valid session — stay logged out
+
+    const { access_token } = await refreshRes.json();
+    store.setAccessToken(access_token);
+
+    // Step 2: fetch the user profile with the new access token
+    const meRes = await fetch(`${_API_BASE}/users/me`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+      credentials: 'include',
+    });
+
+    if (meRes.ok) {
+      const u = await meRes.json();
+      store.setUser({
+        id: u.id,
+        tenantId: u.tenant_id,
+        email: u.email,
+        displayName: `${u.given_name ?? ''} ${u.family_name ?? ''}`.trim() || u.email,
+        avatarUrl: u.avatar_url,
+        isEmailVerified: u.email_verified,
+        appRole: u.app_role ?? 'STANDARD',
       });
     }
-    // If refresh fails (401), user stays logged out — that's correct
   } catch {
     // Network error: stay logged out
   } finally {

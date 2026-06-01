@@ -19,7 +19,9 @@ from typing import Annotated
 from fastapi import Cookie, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException
 from src.config import Settings, get_settings
+from src.domain.collaboration.entities import AppRole
 from src.domain.exceptions import AccountNotVerifiedError, AuthenticationError, TokenInvalidError
 from src.domain.interfaces.repositories import AbstractRefreshTokenRepository
 from src.domain.interfaces.unit_of_work import AbstractUnitOfWork
@@ -126,3 +128,21 @@ async def require_verified_user(user: CurrentUserDep) -> UserModel:
     return user
 
 VerifiedUserDep = Annotated[UserModel, Depends(require_verified_user)]
+
+
+async def require_not_auditor(user: VerifiedUserDep) -> UserModel:
+    """Block auditor accounts from any write operation."""
+    if user.app_role == AppRole.AUDITOR:
+        raise HTTPException(status_code=403, detail="Auditor accounts are read-only")
+    return user
+
+NotAuditorDep = Annotated[UserModel, Depends(require_not_auditor)]
+
+
+async def require_admin(user: VerifiedUserDep) -> UserModel:
+    """Restrict endpoint to system administrators only."""
+    if user.app_role != AppRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Administrator access required")
+    return user
+
+AdminUserDep = Annotated[UserModel, Depends(require_admin)]

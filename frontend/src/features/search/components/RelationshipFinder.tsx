@@ -139,6 +139,11 @@ function RelationshipResult({ data }: { data: import('../types').RelationshipPat
         <p className="text-sm font-medium text-green-900">
           {data.relationship_label ?? `${data.distance} hops apart`}
         </p>
+        {data.alternative_label && (
+          <p className="text-xs text-green-700 mt-0.5">
+            Also known as: <span className="font-medium">{data.alternative_label}</span>
+          </p>
+        )}
         <p className="text-xs text-green-700 mt-0.5">
           {data.distance} connection{data.distance !== 1 ? 's' : ''} between them
         </p>

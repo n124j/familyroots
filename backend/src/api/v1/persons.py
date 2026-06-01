@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 
-from src.api.deps import SessionDep, VerifiedUserDep
+from src.api.deps import NotAuditorDep, SessionDep, VerifiedUserDep
 from src.application.genealogy.schemas import (
     AddChildRequest,
     AddParentRequest,
@@ -32,6 +32,38 @@ def _svc(session: SessionDep) -> FamilyTreeApplicationService:
     return FamilyTreeApplicationService(session)
 
 
+# ── Audit helper ──────────────────────────────────────────────────
+
+async def _audit(
+    session,
+    tree_id: uuid.UUID,
+    user,
+    action,
+    entity_type,
+    entity_id=None,
+    entity_name: str | None = None,
+    before: dict | None = None,
+    after: dict | None = None,
+) -> None:
+    from src.domain.collaboration.entities import Action, AuditEntry, AuditEntityType
+    from src.infrastructure.repositories.collaboration import AuditLogRepository
+    actor_name = f"{user.given_name or ''} {user.family_name or ''}".strip() or user.email
+    await AuditLogRepository(session).append(
+        AuditEntry.create(
+            tree_id=tree_id,
+            tenant_id=user.tenant_id,
+            actor_id=user.id,
+            actor_display_name=actor_name,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            entity_display_name=entity_name,
+            before=before,
+            after=after,
+        )
+    )
+
+
 # ── Create person ─────────────────────────────────────────────────
 
 @router.post(
@@ -43,7 +75,7 @@ def _svc(session: SessionDep) -> FamilyTreeApplicationService:
 async def create_person(
     tree_id: uuid.UUID,
     req: CreatePersonRequest,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
 ) -> PersonResponse:
     from sqlalchemy import text as sa_text
@@ -64,6 +96,11 @@ async def create_person(
             "living": req.is_living,
         },
     )
+    from src.domain.collaboration.entities import Action, AuditEntityType
+    await _audit(session, tree_id, user, Action.CREATE_PERSON, AuditEntityType.PERSON,
+                 entity_id=person_id,
+                 entity_name=f"{req.given_name} {req.surname}".strip(),
+                 after={"sex": req.sex.value, "is_living": req.is_living})
     await session.commit()
     return PersonResponse(
         id=person_id,
@@ -104,11 +141,20 @@ async def update_person(
     tree_id: uuid.UUID,
     person_id: uuid.UUID,
     req: UpdatePersonRequest,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
 ) -> PersonResponse:
     from sqlalchemy import text as sa_text
     from fastapi import HTTPException
+    from src.domain.collaboration.entities import Action, AuditEntityType
+
+    # Capture before state
+    before_row = (await session.execute(
+        sa_text("SELECT display_given_name, display_surname, sex, is_living, is_deceased FROM persons WHERE id=:pid AND is_deleted=false"),
+        {"pid": person_id},
+    )).first()
+    before_snap = {"name": f"{before_row.display_given_name} {before_row.display_surname}".strip(),
+                   "sex": before_row.sex, "is_living": before_row.is_living} if before_row else None
 
     result = await session.execute(
         sa_text("""
@@ -117,24 +163,31 @@ async def update_person(
                 display_surname    = :surname,
                 sex                = :sex,
                 is_living          = :living,
-                is_deceased        = :deceased
+                is_deceased        = :deceased,
+                photo_url          = COALESCE(:photo_url, photo_url)
             WHERE id = :pid AND tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
-            RETURNING id, tree_id, display_given_name, display_surname, sex, is_living, is_deceased
+            RETURNING id, tree_id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url
         """),
         {
-            "given":   req.given_name,
-            "surname": req.surname,
-            "sex":     req.sex.value,
-            "living":  req.is_living,
-            "deceased": req.is_deceased,
-            "pid":    person_id,
-            "tid":    tree_id,
-            "tenant": user.tenant_id,
+            "given":     req.given_name,
+            "surname":   req.surname,
+            "sex":       req.sex.value,
+            "living":    req.is_living,
+            "deceased":  req.is_deceased,
+            "photo_url": req.photo_url,
+            "pid":       person_id,
+            "tid":       tree_id,
+            "tenant":    user.tenant_id,
         },
     )
     row = result.first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Person not found")
+    full_name = f"{row.display_given_name} {row.display_surname}".strip()
+    await _audit(session, tree_id, user, Action.UPDATE_PERSON, AuditEntityType.PERSON,
+                 entity_id=person_id, entity_name=full_name,
+                 before=before_snap,
+                 after={"name": full_name, "sex": row.sex, "is_living": row.is_living})
     await session.commit()
     return PersonResponse(
         id=row.id,
@@ -144,7 +197,110 @@ async def update_person(
         sex=row.sex,
         is_living=row.is_living,
         is_deceased=row.is_deceased,
+        photo_url=row.photo_url,
     )
+
+
+# ── Upload profile photo ─────────────────────────────────────────
+
+ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_PHOTO_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+@router.post(
+    "/{person_id}/photo",
+    summary="Upload a profile photo (server-side S3 upload — no CORS required)",
+)
+async def upload_person_photo(
+    tree_id: uuid.UUID,
+    person_id: uuid.UUID,
+    file: UploadFile = File(...),
+    user: NotAuditorDep = None,
+    session: SessionDep = None,
+):
+    import boto3
+    from botocore.config import Config as BotoCfg
+    from sqlalchemy import text as sa_text
+    from src.config import get_settings
+
+    settings = get_settings()
+
+    if file.content_type not in ALLOWED_PHOTO_TYPES:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Only JPEG, PNG, WEBP or GIF images are allowed")
+
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "File exceeds 10 MB limit")
+
+    ext = (file.filename or "photo").rsplit(".", 1)[-1].lower()
+    key = f"tenants/{user.tenant_id}/trees/{tree_id}/persons/{person_id}/photo/{uuid.uuid4()}.{ext}"
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=settings.s3_endpoint_url or None,
+        aws_access_key_id=settings.aws_access_key_id or "minioadmin",
+        aws_secret_access_key=settings.aws_secret_access_key or "minioadmin",
+        region_name=settings.aws_region,
+        config=BotoCfg(signature_version="s3v4"),
+    )
+    bucket = settings.s3_bucket or "familyroots-local"
+    s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=file.content_type)
+
+    # Build public URL (browser-accessible)
+    public_base = (settings.s3_public_url or settings.s3_endpoint_url or "").rstrip("/")
+    photo_url = f"{public_base}/{bucket}/{key}" if public_base else f"/{bucket}/{key}"
+
+    # Persist on person
+    result = await session.execute(
+        sa_text("""
+            UPDATE persons SET photo_url = :url
+            WHERE id = :pid AND tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
+            RETURNING id
+        """),
+        {"url": photo_url, "pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
+    )
+    if result.first() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Person not found")
+    from src.domain.collaboration.entities import Action, AuditEntityType
+    await _audit(session, tree_id, user, Action.UPDATE_PHOTO, AuditEntityType.MEDIA,
+                 entity_id=person_id, after={"photo_url": photo_url})
+    await session.commit()
+
+    return {"photo_url": photo_url}
+
+
+# ── Remove profile photo ──────────────────────────────────────────
+
+@router.delete(
+    "/{person_id}/photo",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    response_class=Response,
+    summary="Remove the profile photo from a person",
+)
+async def remove_person_photo(
+    tree_id: uuid.UUID,
+    person_id: uuid.UUID,
+    user: NotAuditorDep,
+    session: SessionDep,
+):
+    from sqlalchemy import text as sa_text
+
+    result = await session.execute(
+        sa_text("""
+            UPDATE persons SET photo_url = NULL
+            WHERE id = :pid AND tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
+            RETURNING id
+        """),
+        {"pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
+    )
+    if result.first() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Person not found")
+    from src.domain.collaboration.entities import Action, AuditEntityType
+    await _audit(session, tree_id, user, Action.DELETE_MEDIA, AuditEntityType.MEDIA,
+                 entity_id=person_id, before={"had_photo": True})
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Delete person ────────────────────────────────────────────────
@@ -159,11 +315,18 @@ async def update_person(
 async def delete_person(
     tree_id: uuid.UUID,
     person_id: uuid.UUID,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
 ) -> None:
     from sqlalchemy import text as sa_text
     from datetime import datetime, timezone
+
+    # Grab name before soft-delete
+    name_row = (await session.execute(
+        sa_text("SELECT display_given_name, display_surname FROM persons WHERE id=:pid AND is_deleted=false"),
+        {"pid": person_id},
+    )).first()
+    person_name = f"{name_row.display_given_name} {name_row.display_surname}".strip() if name_row else None
 
     await session.execute(
         sa_text("""
@@ -178,6 +341,10 @@ async def delete_person(
             "now": datetime.now(timezone.utc),
         },
     )
+    from src.domain.collaboration.entities import Action, AuditEntityType
+    await _audit(session, tree_id, user, Action.DELETE_PERSON, AuditEntityType.PERSON,
+                 entity_id=person_id, entity_name=person_name,
+                 before={"name": person_name})
     await session.commit()
 
 
@@ -194,11 +361,15 @@ async def add_parent(
     tree_id: uuid.UUID,
     person_id: uuid.UUID,
     req: AddParentRequest,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
 ) -> None:
+    from src.domain.collaboration.entities import Action, AuditEntityType
     svc = _svc(session)
     await svc.add_parent(tree_id, user.tenant_id, person_id, req)
+    await _audit(session, tree_id, user, Action.ADD_RELATIONSHIP, AuditEntityType.PERSON,
+                 entity_id=person_id,
+                 after={"type": "parent", "parent_id": str(req.parent_id), "parentage": req.parentage_type.value})
     await session.commit()
 
 
@@ -215,7 +386,7 @@ async def add_child(
     tree_id: uuid.UUID,
     person_id: uuid.UUID,
     req: AddChildRequest,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
     force: bool = Query(default=False, description="Remove existing parent group before linking"),
 ) -> None:
@@ -236,8 +407,12 @@ async def add_child(
             {"pid": req.child_id, "tid": tree_id},
         )
 
+    from src.domain.collaboration.entities import Action, AuditEntityType
     svc = _svc(session)
     await svc.add_child(tree_id, user.tenant_id, person_id, req)
+    await _audit(session, tree_id, user, Action.ADD_RELATIONSHIP, AuditEntityType.PERSON,
+                 entity_id=person_id,
+                 after={"type": "child", "child_id": str(req.child_id), "parentage": req.parentage_type.value})
     await session.commit()
 
 
@@ -254,11 +429,15 @@ async def add_spouse(
     tree_id: uuid.UUID,
     person_id: uuid.UUID,
     req: AddSpouseRequest,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
 ) -> None:
+    from src.domain.collaboration.entities import Action, AuditEntityType
     svc = _svc(session)
     await svc.add_spouse(tree_id, user.tenant_id, person_id, req)
+    await _audit(session, tree_id, user, Action.ADD_RELATIONSHIP, AuditEntityType.PERSON,
+                 entity_id=person_id,
+                 after={"type": "spouse", "spouse_id": str(req.spouse_id), "union_type": req.union_type.value})
     await session.commit()
 
 
@@ -275,11 +454,15 @@ async def add_sibling(
     tree_id: uuid.UUID,
     person_id: uuid.UUID,
     req: AddSiblingRequest,
-    user: VerifiedUserDep,
+    user: NotAuditorDep,
     session: SessionDep,
 ) -> None:
+    from src.domain.collaboration.entities import Action, AuditEntityType
     svc = _svc(session)
     await svc.add_sibling(tree_id, user.tenant_id, person_id, req)
+    await _audit(session, tree_id, user, Action.ADD_RELATIONSHIP, AuditEntityType.PERSON,
+                 entity_id=person_id,
+                 after={"type": "sibling", "sibling_id": str(req.sibling_id), "parentage": req.parentage_type.value})
     await session.commit()
 
 

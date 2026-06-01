@@ -11,6 +11,12 @@ from typing import Any, Optional
 
 # ── Enumerations ──────────────────────────────────────────────────────────────
 
+class AppRole(str, Enum):
+    ADMIN    = "ADMIN"    # System-wide superuser — bypasses all tree membership checks
+    STANDARD = "STANDARD" # Normal user (default)
+    AUDITOR  = "AUDITOR"  # Read-only access to all trees; cannot modify anything
+
+
 class TreeRole(str, Enum):
     OWNER  = "OWNER"    # Full control including delete tree & transfer ownership
     ADMIN  = "ADMIN"    # Manage members, all data edits, view audit log
@@ -52,6 +58,11 @@ class Action(str, Enum):
     # Reports
     GENERATE_REPORT     = "GENERATE_REPORT"
     EXPORT_GEDCOM       = "EXPORT_GEDCOM"
+    # Tree backup
+    EXPORT_TREE         = "EXPORT_TREE"
+    IMPORT_TREE         = "IMPORT_TREE"
+    # Photo
+    UPDATE_PHOTO        = "UPDATE_PHOTO"
 
 
 class InvitationStatus(str, Enum):

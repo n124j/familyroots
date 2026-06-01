@@ -71,6 +71,7 @@ class GraphLoader:
                 is_living=row.is_living,
                 is_deceased=row.is_deceased,
                 is_deleted=row.is_deleted,
+                photo_url=row.photo_url,
             )
             graph.add_person(node)
 

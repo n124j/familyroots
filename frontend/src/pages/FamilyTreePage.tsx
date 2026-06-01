@@ -12,6 +12,7 @@ import { useCanvasStore } from '@store/canvas.store';
 import { useAuthStore } from '@store/auth.store';
 import { queryKeys } from '@queries/keys';
 import type { ApiTreeGraph } from '@features/tree/types';
+import { AuditLogModal } from '@features/audit/AuditLogModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -392,6 +393,7 @@ interface CandidatePerson {
 }
 
 interface AddChildToUnionModalProps {
+  fgId: string;
   parent1Id: string;
   parent2Id: string | null;
   parent1Name: string;
@@ -401,22 +403,42 @@ interface AddChildToUnionModalProps {
   candidates: CandidatePerson[]; // existing persons that can be linked
   onClose: () => void;
   onAdded: () => void;
+  onRemoved: () => void;
 }
 
 function AddChildToUnionModal({
-  parent1Id, parent2Id, parent1Name, parent2Name,
-  treeId, token, candidates, onClose, onAdded,
+  fgId, parent1Id, parent2Id, parent1Name, parent2Name,
+  treeId, token, candidates, onClose, onAdded, onRemoved,
 }: AddChildToUnionModalProps) {
-  const [mode,       setMode]       = useState<'new' | 'existing'>('new');
-  const [fields,     setFields]     = useState<PersonFields>(EMPTY_FIELDS);
-  const [search,     setSearch]     = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState('');
+  const [mode,        setMode]        = useState<'new' | 'existing'>('new');
+  const [fields,      setFields]      = useState<PersonFields>(EMPTY_FIELDS);
+  const [search,      setSearch]      = useState('');
+  const [selectedId,  setSelectedId]  = useState<string | null>(null);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing,    setRemoving]    = useState(false);
 
   const unionLabel = parent2Id
     ? `${parent1Name} & ${parent2Name}`
     : parent1Name;
+
+  async function handleRemoveUnion() {
+    setRemoving(true);
+    try {
+      const res = await fetch(`${API_BASE}/trees/${treeId}/family-groups/${fgId}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to remove union');
+      onRemoved();
+    } catch (err) {
+      setError((err as Error).message);
+      setRemoving(false);
+      setConfirmRemove(false);
+    }
+  }
 
   async function linkChild(childId: string, force = false) {
     const body: Record<string, unknown> = {
@@ -483,7 +505,17 @@ function AddChildToUnionModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="font-bold text-slate-900 mb-0.5">Add Child</h2>
+        <div className="flex items-start justify-between mb-0.5">
+          <h2 className="font-bold text-slate-900">Add Child</h2>
+          <button
+            type="button"
+            onClick={() => setConfirmRemove(true)}
+            className="text-xs text-red-500 hover:text-red-700 px-2 py-0.5 rounded hover:bg-red-50 transition-colors"
+            title="Remove this union"
+          >
+            Remove union
+          </button>
+        </div>
         <p className="text-xs text-slate-400 mb-4">for {unionLabel}</p>
 
         {/* Mode tabs */}
@@ -503,6 +535,35 @@ function AddChildToUnionModal({
             </button>
           ))}
         </div>
+
+        {/* Remove union confirmation */}
+        {confirmRemove && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+            <p className="text-sm font-medium text-red-800">Remove this union?</p>
+            <p className="text-xs text-red-600">
+              This removes the <span className="font-semibold">{unionLabel}</span> union and all its
+              parent/child links. The people themselves stay in the tree.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmRemove(false)}
+                disabled={removing}
+                className="flex-1 h-8 text-xs border border-red-300 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveUnion}
+                disabled={removing}
+                className="flex-1 h-8 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {removing ? 'Removing…' : 'Yes, remove'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {mode === 'new' ? (
           <form onSubmit={handleNewSubmit} className="space-y-3">
@@ -593,6 +654,30 @@ function AddChildToUnionModal({
   );
 }
 
+// ── Profile photo upload helper ───────────────────────────────────────────
+
+async function uploadPersonPhoto(
+  file: File,
+  treeId: string,
+  personId: string,
+  token: string | null,
+): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}/photo`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any).detail ?? 'Upload failed');
+  }
+  const { photo_url } = await res.json();
+  return photo_url as string;
+}
+
 // ── Edit person modal ──────────────────────────────────────────────────────
 
 interface EditPersonFields {
@@ -605,16 +690,60 @@ interface EditPersonFields {
 interface EditPersonModalProps {
   personId: string;
   initial: EditPersonFields;
+  initialPhotoUrl?: string;
   treeId: string;
   token: string | null;
   onClose: () => void;
   onSaved: () => void;
+  onRefresh?: () => void;
 }
 
-function EditPersonModal({ personId, initial, treeId, token, onClose, onSaved }: EditPersonModalProps) {
-  const [fields,  setFields]  = useState<EditPersonFields>(initial);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, onClose, onSaved, onRefresh }: EditPersonModalProps) {
+  const [fields,       setFields]       = useState<EditPersonFields>(initial);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState('');
+  const [photoUrl,     setPhotoUrl]     = useState<string | undefined>(initialPhotoUrl);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError,   setPhotoError]   = useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setPhotoError('Please select an image file.'); return; }
+
+    setPhotoLoading(true);
+    setPhotoError('');
+    try {
+      const url = await uploadPersonPhoto(file, treeId, personId, token);
+      setPhotoUrl(url);
+      onRefresh?.();
+    } catch (err) {
+      setPhotoError((err as Error).message);
+    } finally {
+      setPhotoLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setPhotoLoading(true);
+    setPhotoError('');
+    try {
+      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}/photo`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to remove photo');
+      setPhotoUrl(undefined);
+      onRefresh?.();
+    } catch (err) {
+      setPhotoError((err as Error).message);
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -623,10 +752,7 @@ function EditPersonModal({ personId, initial, treeId, token, onClose, onSaved }:
     try {
       const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
         body: JSON.stringify({
           given_name:  fields.givenName,
@@ -648,6 +774,8 @@ function EditPersonModal({ personId, initial, treeId, token, onClose, onSaved }:
     }
   }
 
+  const initials = [fields.givenName[0], fields.surname[0]].filter(Boolean).join('').toUpperCase() || '?';
+
   return (
     <div
       className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
@@ -655,6 +783,55 @@ function EditPersonModal({ personId, initial, treeId, token, onClose, onSaved }:
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <h2 className="font-bold text-slate-900 mb-4">Edit person</h2>
+
+        {/* Photo section */}
+        <div className="flex items-center gap-4 mb-5 pb-4 border-b border-slate-100">
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-lg">
+              {photoLoading ? (
+                <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              ) : photoUrl ? (
+                <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={photoLoading}
+              className="absolute -bottom-1 -right-1 w-6 h-6 bg-brand-500 text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 shadow"
+              title="Upload photo"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 1v10M1 6h10" />
+              </svg>
+            </button>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-700">Profile photo</p>
+            <p className="text-xs text-slate-400 mt-0.5">JPG, PNG or WEBP · max 10 MB</p>
+            {photoUrl && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                disabled={photoLoading}
+                className="text-xs text-red-500 hover:text-red-700 mt-1 disabled:opacity-50"
+              >
+                Remove photo
+              </button>
+            )}
+            {photoError && <p className="text-xs text-red-600 mt-1">{photoError}</p>}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoChange}
+          />
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -712,7 +889,7 @@ function EditPersonModal({ personId, initial, treeId, token, onClose, onSaved }:
               className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
               Cancel
             </button>
-            <button type="submit" disabled={loading}
+            <button type="submit" disabled={loading || photoLoading}
               className="flex-1 h-9 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50">
               {loading ? 'Saving…' : 'Save changes'}
             </button>
@@ -972,17 +1149,92 @@ function MembersModal({
 
 function TreeTopBar({
   treeName,
+  treeDescription,
   personCount,
+  graph,
+  token,
   onAddPerson,
   onMembers,
   onResetLayout,
+  onShowActivity,
 }: {
   treeName: string;
+  treeDescription?: string | null;
   personCount: number;
+  graph: import('@features/tree/types').ApiTreeGraph | null;
+  token: string | null;
   onAddPerson: () => void;
   onMembers: () => void;
   onResetLayout: () => void;
+  onShowActivity: () => void;
 }) {
+  const [exportingZip, setExportingZip] = React.useState(false);
+
+  function handleExportFrt() {
+    if (!graph) return;
+    const payload = {
+      frt_version: '1.0',
+      exported_at: new Date().toISOString(),
+      tree_name: treeName,
+      tree_description: treeDescription ?? null,
+      persons: graph.persons.map((p) => ({
+        id: p.id,
+        display_given_name: p.displayGivenName,
+        display_surname: p.displaySurname,
+        sex: p.sex,
+        is_living: p.isLiving,
+        is_deceased: p.isDeceased,
+        ...(p.photoUrl ? { photo_url: p.photoUrl } : {}),
+      })),
+      family_groups: graph.familyGroups.map((fg) => ({
+        id: fg.id,
+        union_type: fg.unionType,
+        parent_ids: fg.parentIds,
+        children: fg.children,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${treeName.replace(/\s+/g, '_')}.frt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    fetch(`${API_BASE}/trees/${graph.treeId}/export-log`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    }).catch(() => {});
+  }
+
+  async function handleExportZip() {
+    if (!graph || exportingZip) return;
+    setExportingZip(true);
+    try {
+      const res = await fetch(`${API_BASE}/trees/${graph.treeId}/export-zip`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${treeName.replace(/\s+/g, '_')}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      fetch(`${API_BASE}/trees/${graph.treeId}/export-log`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      }).catch(() => {});
+    } catch {
+      // silently ignore — could show a toast in a real app
+    } finally {
+      setExportingZip(false);
+    }
+  }
+
   return (
     <div className="absolute top-0 left-0 right-0 h-12 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center px-4 gap-3 z-30">
       <Link to="/dashboard" className="text-slate-400 hover:text-slate-600 transition-colors text-sm">
@@ -992,6 +1244,25 @@ function TreeTopBar({
       <span className="font-semibold text-slate-800 text-sm truncate">{treeName}</span>
       <span className="text-xs text-slate-400">{personCount} people</span>
       <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={handleExportFrt}
+          disabled={!graph}
+          title="Export tree data as .frt (no photos)"
+          className="px-3 py-1.5 text-xs font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40"
+        >
+          ↓ .frt
+        </button>
+        <button
+          onClick={handleExportZip}
+          disabled={!graph || exportingZip}
+          title="Export tree + all photos as .zip"
+          className="px-3 py-1.5 text-xs font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 flex items-center gap-1"
+        >
+          {exportingZip ? (
+            <span className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+          ) : '↓'}
+          {' '}.zip + photos
+        </button>
         <button
           onClick={onResetLayout}
           title="Snap nodes back to layout and fit view"
@@ -1027,6 +1298,7 @@ export default function FamilyTreePage() {
   const [showMembers,       setShowMembers]       = useState(false);
   const [unionChildFgId,    setUnionChildFgId]    = useState<string | null>(null);
   const [showEdit,          setShowEdit]          = useState(false);
+  const [showActivity,      setShowActivity]      = useState(false);
 
   const setTreeId        = useCanvasStore((s) => s.setTreeId);
   const resetCanvas      = useCanvasStore((s) => s.reset);
@@ -1077,14 +1349,18 @@ export default function FamilyTreePage() {
     handlePanelClose();
   }
 
-  const treeName    = (graph as any)?.treeName ?? 'Family Tree';
-  const personCount = graph?.persons.length ?? 0;
+  const treeName        = (graph as any)?.treeName ?? 'Family Tree';
+  const treeDescription = (graph as any)?.treeDescription ?? null;
+  const personCount     = graph?.persons.length ?? 0;
 
   return (
     <div className="fixed inset-0 flex flex-col">
       <TreeTopBar
         treeName={treeName}
+        treeDescription={treeDescription}
         personCount={personCount}
+        graph={graph ?? null}
+        token={accessToken}
         onAddPerson={() => setShowAddPerson(true)}
         onMembers={() => setShowMembers(true)}
         onResetLayout={bumpLayoutReset}
@@ -1177,10 +1453,12 @@ export default function FamilyTreePage() {
           <EditPersonModal
             personId={panelPersonId}
             initial={initial}
+            initialPhotoUrl={p.photoUrl}
             treeId={treeId ?? ''}
             token={accessToken}
             onClose={() => setShowEdit(false)}
             onSaved={() => { setShowEdit(false); handleAdded(); }}
+            onRefresh={handleAdded}
           />
         );
       })()}
@@ -1218,6 +1496,7 @@ export default function FamilyTreePage() {
           .map((p) => ({ ...p, hasParents: alreadyHasParents.has(p.id) }));
         return (
           <AddChildToUnionModal
+            fgId={unionChildFgId}
             parent1Id={p1Id}
             parent2Id={p2Id ?? null}
             parent1Name={personName(p1Id)}
@@ -1227,6 +1506,7 @@ export default function FamilyTreePage() {
             candidates={candidates}
             onClose={() => setUnionChildFgId(null)}
             onAdded={() => { setUnionChildFgId(null); handleAdded(); }}
+            onRemoved={() => { setUnionChildFgId(null); handleAdded(); }}
           />
         );
       })()}

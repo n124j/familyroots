@@ -46,6 +46,9 @@ class PersonModel(Base, TenantMixin, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
+    # Profile photo URL (thumbnail from media system, set after upload)
+    photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     # Denormalised search vector (populated by DB trigger)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
 

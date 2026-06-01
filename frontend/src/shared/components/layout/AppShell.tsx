@@ -1,15 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+
 export default function AppShell() {
-  const user   = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+  const user         = useAuthStore((s) => s.user);
+  const logout       = useAuthStore((s) => s.logout);
+  const accessToken  = useAuthStore((s) => s.accessToken);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const isElevated = user?.appRole === 'ADMIN' || user?.appRole === 'AUDITOR';
 
   const nav = [
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/search',    label: 'Search' },
     { to: '/reports',   label: 'Reports' },
+    ...(isElevated ? [{ to: '/activity', label: 'Activity' }] : []),
     { to: '/settings',  label: 'Settings' },
   ];
 
@@ -40,13 +47,24 @@ export default function AppShell() {
         <div className="p-3 border-t border-gray-100">
           <p className="text-xs text-gray-500 truncate mb-2">{user?.email}</p>
           <button
-            onClick={() => {
-              logout();
-              window.location.href = '/login';
+            disabled={loggingOut}
+            onClick={async () => {
+              setLoggingOut(true);
+              try {
+                // Revoke refresh token on server and clear the httpOnly cookie
+                await fetch(`${API_BASE}/auth/logout`, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+                });
+              } finally {
+                logout();               // clear in-memory access token
+                window.location.href = '/login';
+              }
             }}
-            className="w-full text-left text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded"
+            className="w-full text-left text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded disabled:opacity-50"
           >
-            Sign out
+            {loggingOut ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
       </aside>
