@@ -27,7 +27,8 @@ export type LayoutMode =
   | 'horizontal'  // dagre LR — left-to-right
   | 'ancestor'    // ancestors of focus person going up
   | 'descendant'  // descendants of focus person going down
-  | 'fan';        // polar fan chart radiating from focus
+  | 'fan'         // polar fan chart radiating from focus
+  | 'pedigree';   // horizontal binary ancestor tree (focus left, ancestors right)
 
 // ── Node data types ────────────────────────────────────────────────────────
 

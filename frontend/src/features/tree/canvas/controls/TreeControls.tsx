@@ -8,7 +8,7 @@
  *   - Export (PNG)
  */
 
-import React, { memo, useCallback, useState } from 'react';
+import React, { memo, useCallback } from 'react';
 import { useReactFlow } from 'reactflow';
 import type { LayoutMode } from '../../types';
 import { useCanvasStore } from '@store/canvas.store';
@@ -31,14 +31,6 @@ const FitIcon = () => (
     <rect x="4" y="4" width="6" height="6" />
   </svg>
 );
-const PdfIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M2 2a1 1 0 011-1h5l3 3v8a1 1 0 01-1 1H3a1 1 0 01-1-1V2z" />
-    <path d="M8 1v3h3" />
-    <path d="M4 8h6M4 10h4" strokeLinecap="round" />
-  </svg>
-);
-
 // ── Layout mode buttons ────────────────────────────────────────────────────
 
 const LAYOUT_MODES: { mode: LayoutMode; label: string; title: string }[] = [
@@ -47,6 +39,7 @@ const LAYOUT_MODES: { mode: LayoutMode; label: string; title: string }[] = [
   { mode: 'ancestor',    label: '↑',   title: 'Ancestor chart (roots above)' },
   { mode: 'descendant',  label: '↓',   title: 'Descendant chart (roots below)' },
   { mode: 'fan',         label: '◑',   title: 'Fan chart (polar)' },
+  { mode: 'pedigree',   label: '⊢',   title: 'Pedigree chart (ancestors left → right)' },
 ];
 
 // ── Control button ─────────────────────────────────────────────────────────
@@ -84,15 +77,14 @@ interface TreeControlsProps {
   graph: import('../../types').ApiTreeGraph | null;
   onExpandAll: () => void;
   onCollapseAll: () => void;
-  onExportPdf: () => Promise<void>;
 }
 
-export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll, onExportPdf }: TreeControlsProps) => {
+export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeControlsProps) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const layoutMode = useCanvasStore((s) => s.layoutMode);
-  const setLayoutMode = useCanvasStore((s) => s.setLayoutMode);
-  const zoom = useCanvasStore((s) => s.zoom);
-  const [isExporting, setIsExporting] = useState(false);
+  const layoutMode      = useCanvasStore((s) => s.layoutMode);
+  const setLayoutMode   = useCanvasStore((s) => s.setLayoutMode);
+  const zoom            = useCanvasStore((s) => s.zoom);
+  const bumpLayoutReset = useCanvasStore((s) => s.bumpLayoutReset);
 
   const handleFitView = useCallback(() => {
     fitView({ duration: 400, padding: 0.1 });
@@ -100,12 +92,6 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll, onExportP
 
   const handleZoomIn  = useCallback(() => zoomIn({ duration: 200 }),  [zoomIn]);
   const handleZoomOut = useCallback(() => zoomOut({ duration: 200 }), [zoomOut]);
-
-  const handleExportPdf = useCallback(async () => {
-    setIsExporting(true);
-    try { await onExportPdf(); }
-    finally { setIsExporting(false); }
-  }, [onExportPdf]);
 
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 p-1.5 bg-white/90 backdrop-blur rounded-xl border border-slate-200 shadow-card">
@@ -152,17 +138,11 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll, onExportP
 
       <Divider />
 
-      {/* Export */}
-      <CtrlBtn onClick={handleExportPdf} title={isExporting ? 'Exporting…' : 'Export as PDF'}>
-        {isExporting ? (
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" className="animate-spin">
-            <circle cx="7" cy="7" r="5" strokeOpacity="0.3" />
-            <path d="M7 2a5 5 0 015 5" strokeLinecap="round" />
-          </svg>
-        ) : (
-          <PdfIcon />
-        )}
+      {/* Reset layout */}
+      <CtrlBtn onClick={bumpLayoutReset} title="Reset layout and fit view">
+        ↺
       </CtrlBtn>
+
     </div>
   );
 });

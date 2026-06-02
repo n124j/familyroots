@@ -170,6 +170,7 @@ interface TreeCanvasInnerProps {
 export interface TreeCanvasHandle {
   getPositions: () => Record<string, { x: number; y: number }>;
   loadPositions: (positions: Record<string, { x: number; y: number }>) => void;
+  exportPdf: () => Promise<void>;
 }
 
 const TreeCanvasInner = forwardRef<TreeCanvasHandle, TreeCanvasInnerProps>(
@@ -239,6 +240,7 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
 
   const [displayNodes, setDisplayNodes] = useState<TreeNode[]>([]);
   const prevLayoutKey = useRef('');
+  const containerRef  = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({
     getPositions: () =>
@@ -248,6 +250,20 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
         curr.map((n) => ({ ...n, position: positions[n.id] ?? n.position }))
       );
       setTimeout(() => fitView({ duration: 500, padding: 0.15 }), 80);
+    },
+    exportPdf: async () => {
+      if (!containerRef.current) return;
+      const { toPng }         = await import('html-to-image');
+      const { default: jsPDF } = await import('jspdf');
+      const dataUrl = await toPng(containerRef.current, { pixelRatio: 2, cacheBust: true });
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise<void>((r) => { img.onload = () => r(); });
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const pdf = new jsPDF({ orientation: w >= h ? 'landscape' : 'portrait', unit: 'px', format: [w, h] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, w, h);
+      pdf.save('family-tree.pdf');
     },
   }), [displayNodes, fitView]);
 
@@ -380,33 +396,6 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
     setCtrlDragActive(false);
   }, []);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleExportPdf = useCallback(async () => {
-    if (!containerRef.current) return;
-
-    const { toPng } = await import('html-to-image');
-    const { default: jsPDF } = await import('jspdf');
-
-    // Capture exactly what is visible — no fitView, no zoom change
-    const dataUrl = await toPng(containerRef.current, { pixelRatio: 2, cacheBust: true });
-
-    const img = new Image();
-    img.src = dataUrl;
-    await new Promise<void>((r) => { img.onload = () => r(); });
-
-    const w = img.naturalWidth;
-    const h = img.naturalHeight;
-
-    const pdf = new jsPDF({
-      orientation: w >= h ? 'landscape' : 'portrait',
-      unit: 'px',
-      format: [w, h],
-    });
-    pdf.addImage(dataUrl, 'PNG', 0, 0, w, h);
-    pdf.save('family-tree.pdf');
-  }, []);
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -483,7 +472,6 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
           graph={graph}
           onExpandAll={handleExpandAll}
           onCollapseAll={handleCollapseAll}
-          onExportPdf={handleExportPdf}
         />
 
         <div className="absolute bottom-4 left-4 z-10 text-xs text-slate-400 bg-white/80 px-2 py-1 rounded-lg border border-slate-200">

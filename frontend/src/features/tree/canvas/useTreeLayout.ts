@@ -16,6 +16,7 @@ import { dagreLayout } from './algorithms/dagre';
 import { fanChartLayout, fanChartVisibleIds } from './algorithms/fanChart';
 import { ancestorChartLayout, descendantChartLayout } from './algorithms/ancestorChart';
 import { familyTreeLayout } from './algorithms/familyTree';
+import { pedigreeChartLayout, pedigreeChartVisibleIds } from './algorithms/pedigreeChart';
 
 export interface UseTreeLayoutResult {
   nodes: TreeNode[];
@@ -94,6 +95,11 @@ function applyLayout(
         arcSpanDeg: 180,
         generationRadius: 240,
       });
+      break;
+    }
+
+    case 'pedigree': {
+      positions = pedigreeChartLayout(graph, opts.focusPersonId ?? '', 4);
       break;
     }
 
@@ -193,6 +199,12 @@ export function useTreeLayout(
       const visibleIds = fanChartVisibleIds(graph, layoutOpts.focusPersonId, 4);
       filteredNodes = rawNodes.filter((n) => n.type === 'person' && visibleIds.has(n.id));
       filteredEdges = []; // fan chart has no edges
+    } else if (layoutOpts.mode === 'pedigree' && layoutOpts.focusPersonId) {
+      const visibleIds = pedigreeChartVisibleIds(graph, layoutOpts.focusPersonId, 4);
+      filteredNodes = rawNodes.filter((n) => visibleIds.has(n.id));
+      filteredEdges = rawEdges.filter(
+        (e) => visibleIds.has(e.source) && visibleIds.has(e.target),
+      );
     } else {
       ({ nodes: filteredNodes, edges: filteredEdges } = filterByExpanded(
         rawNodes,

@@ -15,3 +15,4 @@
 15. Remove or update the Uploaded Picture effectively
 16. by clicking on the ring union it should also show an option of removing it
 17. Visible tree should be able to export as pdf
+18. Rearrange the icons where it belongs.
