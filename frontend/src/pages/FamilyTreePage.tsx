@@ -9,6 +9,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { TreeCanvas, type TreeCanvasHandle } from '@features/tree/canvas/TreeCanvas';
 import { useThemeStore, THEME_PRESETS, PRESET_LABEL, type CanvasTheme } from '@store/theme.store';
+import { AVATAR_PRESETS, isPreset, presetDataUri } from '@features/tree/avatarPresets';
 import { useCanvasStore } from '@store/canvas.store';
 import { useAuthStore } from '@store/auth.store';
 import { queryKeys } from '@queries/keys';
@@ -706,6 +707,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
   const [photoUrl,     setPhotoUrl]     = useState<string | undefined>(initialPhotoUrl);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError,   setPhotoError]   = useState('');
+  const [showPresets,  setShowPresets]  = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -727,6 +729,27 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
     }
   }
 
+  async function handleSelectPreset(presetId: string) {
+    setPhotoLoading(true);
+    setPhotoError('');
+    try {
+      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ photo_url: presetId }),
+      });
+      if (!res.ok) throw new Error('Failed to set avatar');
+      setPhotoUrl(presetId);
+      setShowPresets(false);
+      onRefresh?.();
+    } catch (err) {
+      setPhotoError((err as Error).message);
+    } finally {
+      setPhotoLoading(false);
+    }
+  }
+
   async function handleRemovePhoto() {
     setPhotoLoading(true);
     setPhotoError('');
@@ -738,6 +761,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
       });
       if (!res.ok) throw new Error('Failed to remove photo');
       setPhotoUrl(undefined);
+      setShowPresets(false);
       onRefresh?.();
     } catch (err) {
       setPhotoError((err as Error).message);
@@ -786,51 +810,87 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
         <h2 className="font-bold text-slate-900 mb-4">Edit person</h2>
 
         {/* Photo section */}
-        <div className="flex items-center gap-4 mb-5 pb-4 border-b border-slate-100">
-          <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-lg">
-              {photoLoading ? (
-                <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-              ) : photoUrl ? (
-                <img src={photoUrl} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                initials
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={photoLoading}
-              className="absolute -bottom-1 -right-1 w-6 h-6 bg-brand-500 text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 shadow"
-              title="Upload photo"
-            >
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 1v10M1 6h10" />
-              </svg>
-            </button>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-700">Profile photo</p>
-            <p className="text-xs text-slate-400 mt-0.5">JPG, PNG or WEBP · max 10 MB</p>
-            {photoUrl && (
+        <div className="mb-5 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-lg">
+                {photoLoading ? (
+                  <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                ) : photoUrl ? (
+                  <img
+                    src={isPreset(photoUrl) ? presetDataUri(photoUrl)! : photoUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
               <button
                 type="button"
-                onClick={handleRemovePhoto}
+                onClick={() => fileInputRef.current?.click()}
                 disabled={photoLoading}
-                className="text-xs text-red-500 hover:text-red-700 mt-1 disabled:opacity-50"
+                className="absolute -bottom-1 -right-1 w-6 h-6 bg-brand-500 text-white rounded-full flex items-center justify-center hover:bg-brand-600 disabled:opacity-50 shadow"
+                title="Upload photo"
               >
-                Remove photo
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 1v10M1 6h10" />
+                </svg>
               </button>
-            )}
-            {photoError && <p className="text-xs text-red-600 mt-1">{photoError}</p>}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-700">Profile photo</p>
+              <p className="text-xs text-slate-400 mt-0.5">JPG, PNG or WEBP · max 10 MB</p>
+              <div className="flex gap-3 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPresets((v) => !v)}
+                  disabled={photoLoading}
+                  className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                >
+                  {showPresets ? 'Hide presets' : 'Choose avatar'}
+                </button>
+                {photoUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={photoLoading}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {photoError && <p className="text-xs text-red-600 mt-1">{photoError}</p>}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoChange}
-          />
+
+          {/* Preset avatar grid */}
+          {showPresets && (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {AVATAR_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset.id)}
+                  disabled={photoLoading}
+                  className={`rounded-full overflow-hidden w-12 h-12 mx-auto ring-2 transition-all disabled:opacity-50 ${
+                    photoUrl === preset.id ? 'ring-brand-500 scale-110' : 'ring-transparent hover:ring-slate-300'
+                  }`}
+                  title={preset.label}
+                >
+                  <img src={presetDataUri(preset.id)!} alt={preset.label} className="w-full h-full" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">

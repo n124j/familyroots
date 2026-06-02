@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@store/auth.store';
 import { queryKeys } from '@queries/keys';
 import type { ApiTreeGraph } from '@features/tree/types';
+import { isPreset, presetDataUri } from '@features/tree/avatarPresets';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -181,7 +182,7 @@ export default function ProfilePage() {
       <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-5 flex items-start gap-5">
         {person.photo_url ? (
           <img
-            src={person.photo_url}
+            src={isPreset(person.photo_url) ? presetDataUri(person.photo_url)! : person.photo_url}
             alt={fullName}
             className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
           />

@@ -140,6 +140,7 @@ class TreeSummaryResponse(BaseModel):
     id: uuid.UUID
     name: str
     description: Optional[str]
+    cover_emoji: Optional[str] = None
     role: TreeRole
     person_count: int
     member_count: int
@@ -237,6 +238,7 @@ async def delete_tree(
 class UpdateTreeRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
+    cover_emoji: Optional[str] = Field(None, max_length=10)
 
 
 @router.patch(
@@ -266,11 +268,13 @@ async def update_tree(
     result = await uow._session.execute(
         text("""
             UPDATE family_trees
-            SET name = :name, description = :description
+            SET name = :name, description = :description,
+                cover_emoji = COALESCE(:cover_emoji, cover_emoji)
             WHERE id = :tid AND is_deleted = false
-            RETURNING id, name, description
+            RETURNING id, name, description, cover_emoji
         """),
-        {"tid": tree_id, "name": body.name, "description": body.description},
+        {"tid": tree_id, "name": body.name, "description": body.description,
+         "cover_emoji": body.cover_emoji},
     )
     row = result.first()
     if row is None:
@@ -315,6 +319,7 @@ async def update_tree(
         id=row.id,
         name=row.name,
         description=row.description,
+        cover_emoji=row.cover_emoji,
         role=effective_role,
         person_count=counts.person_count if counts else 0,
         member_count=counts.member_count if counts else 0,
@@ -534,6 +539,7 @@ async def list_my_trees(
                 ft.id,
                 ft.name,
                 ft.description,
+                ft.cover_emoji,
                 (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
                 (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
             FROM family_trees ft
@@ -547,6 +553,7 @@ async def list_my_trees(
                 id=row.id,
                 name=row.name,
                 description=row.description,
+                cover_emoji=row.cover_emoji,
                 role=TreeRole(effective_role),
                 person_count=row.person_count,
                 member_count=row.member_count,
@@ -560,6 +567,7 @@ async def list_my_trees(
             ft.id,
             ft.name,
             ft.description,
+            ft.cover_emoji,
             tm.role,
             (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
             (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
@@ -576,6 +584,7 @@ async def list_my_trees(
             id=row.id,
             name=row.name,
             description=row.description,
+            cover_emoji=row.cover_emoji,
             role=TreeRole(row.role),
             person_count=row.person_count,
             member_count=row.member_count,

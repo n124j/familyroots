@@ -8,10 +8,14 @@ interface TreeSummary {
   id: string;
   name: string;
   description: string | null;
+  cover_emoji: string | null;
   role: string;
   person_count: number;
   member_count: number;
 }
+
+const TREE_COVER_PRESETS = ['🌳','🌲','🌴','🌿','🌸','🏡','📜','⛩️','🎋','🧬','🗺️','📖'];
+const DEFAULT_COVER = '🌳';
 
 const ROLE_BADGE: Record<string, string> = {
   OWNER:  'bg-brand-100 text-brand-700',
@@ -82,7 +86,7 @@ function TreeCard({ tree, onEdit, onDelete, onShare }: TreeCardProps) {
     <div className="relative bg-white rounded-xl border border-gray-200 hover:border-brand-300 hover:shadow-sm transition-all group">
       <Link to={`/trees/${tree.id}`} className="block p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className="text-3xl">🌳</div>
+          <div className="text-3xl">{tree.cover_emoji || DEFAULT_COVER}</div>
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[tree.role] ?? ROLE_BADGE.VIEWER}`}>
             {tree.role.charAt(0) + tree.role.slice(1).toLowerCase()}
           </span>
@@ -215,16 +219,18 @@ export default function DashboardPage() {
   const [createError, setCreateError] = useState('');
 
   // Edit tree modal
-  const [editTarget,  setEditTarget]  = useState<TreeSummary | null>(null);
-  const [editName,    setEditName]    = useState('');
-  const [editDesc,    setEditDesc]    = useState('');
-  const [editing,     setEditing]     = useState(false);
-  const [editError,   setEditError]   = useState('');
+  const [editTarget,      setEditTarget]      = useState<TreeSummary | null>(null);
+  const [editName,        setEditName]        = useState('');
+  const [editDesc,        setEditDesc]        = useState('');
+  const [editCoverEmoji,  setEditCoverEmoji]  = useState('');
+  const [editing,         setEditing]         = useState(false);
+  const [editError,       setEditError]       = useState('');
 
   function openEdit(tree: TreeSummary) {
     setEditTarget(tree);
     setEditName(tree.name);
     setEditDesc(tree.description ?? '');
+    setEditCoverEmoji(tree.cover_emoji || DEFAULT_COVER);
     setEditError('');
   }
 
@@ -238,7 +244,7 @@ export default function DashboardPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
         credentials: 'include',
-        body: JSON.stringify({ name: editName.trim(), description: editDesc.trim() || null }),
+        body: JSON.stringify({ name: editName.trim(), description: editDesc.trim() || null, cover_emoji: editCoverEmoji || null }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -246,7 +252,7 @@ export default function DashboardPage() {
       }
       const updated = await res.json();
       setTrees((prev) => prev.map((t) => t.id === editTarget.id
-        ? { ...t, name: updated.name, description: updated.description }
+        ? { ...t, name: updated.name, description: updated.description, cover_emoji: updated.cover_emoji }
         : t
       ));
       setEditTarget(null);
@@ -479,6 +485,25 @@ export default function DashboardPage() {
                   rows={3}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Cover</label>
+                <div className="flex flex-wrap gap-2">
+                  {TREE_COVER_PRESETS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setEditCoverEmoji(emoji)}
+                      className={`w-10 h-10 text-xl rounded-lg border-2 transition-colors ${
+                        editCoverEmoji === emoji
+                          ? 'border-brand-500 bg-brand-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
               {editError && <p className="text-sm text-red-600">{editError}</p>}
               <div className="flex justify-end gap-3 pt-1">

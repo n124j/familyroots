@@ -20,6 +20,7 @@ import {
 } from '../../types';
 import { useCanvasStore } from '@store/canvas.store';
 import { useThemeStore } from '@store/theme.store';
+import { isPreset, presetDataUri } from '../../avatarPresets';
 
 // ── Avatar ─────────────────────────────────────────────────────────────────
 
@@ -35,13 +36,15 @@ const Avatar = memo(({ photoUrl, givenName, surname, sex, size = 44 }: AvatarPro
   const initials = [givenName[0], surname[0]].filter(Boolean).join('').toUpperCase() || '?';
   const bg = SEX_BORDER_COLOR[sex];
 
+  const resolvedUrl = photoUrl && isPreset(photoUrl) ? presetDataUri(photoUrl) : photoUrl;
+
   return (
     <div
       className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center text-white font-semibold select-none"
       style={{ width: size, height: size, background: bg, fontSize: size * 0.36 }}
     >
-      {photoUrl ? (
-        <img src={photoUrl} alt={`${givenName} ${surname}`} className="w-full h-full object-cover" />
+      {resolvedUrl ? (
+        <img src={resolvedUrl} alt={`${givenName} ${surname}`} className="w-full h-full object-cover" />
       ) : (
         initials
       )}
