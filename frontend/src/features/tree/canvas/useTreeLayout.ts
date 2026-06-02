@@ -98,6 +98,12 @@ function applyLayout(
       break;
     }
 
+    case 'ancestry-fan': {
+      // Rendered as a single custom node in TreeCanvasInner; no positions needed.
+      positions = [];
+      break;
+    }
+
     case 'pedigree': {
       positions = pedigreeChartLayout(graph, opts.focusPersonId ?? '', 4);
       break;

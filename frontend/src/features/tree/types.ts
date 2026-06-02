@@ -23,12 +23,13 @@ export type UnionType =
   | 'UNKNOWN';
 
 export type LayoutMode =
-  | 'vertical'    // dagre TB — top-to-bottom generations
-  | 'horizontal'  // dagre LR — left-to-right
-  | 'ancestor'    // ancestors of focus person going up
-  | 'descendant'  // descendants of focus person going down
-  | 'fan'         // polar fan chart radiating from focus
-  | 'pedigree';   // horizontal binary ancestor tree (focus left, ancestors right)
+  | 'vertical'      // dagre TB — top-to-bottom generations
+  | 'horizontal'    // dagre LR — left-to-right
+  | 'ancestor'      // ancestors of focus person going up
+  | 'descendant'    // descendants of focus person going down
+  | 'fan'           // polar fan chart — semicircle (180°)
+  | 'ancestry-fan'  // ancestry fan chart — full circle (360°)
+  | 'pedigree';     // horizontal binary ancestor tree (focus left, ancestors right)
 
 // ── Node data types ────────────────────────────────────────────────────────
 

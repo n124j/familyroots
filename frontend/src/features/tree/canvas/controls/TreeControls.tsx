@@ -38,8 +38,9 @@ const LAYOUT_MODES: { mode: LayoutMode; label: string; title: string }[] = [
   { mode: 'horizontal',  label: '↔',   title: 'Horizontal (left → right)' },
   { mode: 'ancestor',    label: '↑',   title: 'Ancestor chart (roots above)' },
   { mode: 'descendant',  label: '↓',   title: 'Descendant chart (roots below)' },
-  { mode: 'fan',         label: '◑',   title: 'Fan chart (polar)' },
-  { mode: 'pedigree',   label: '⊢',   title: 'Pedigree chart (ancestors left → right)' },
+  { mode: 'fan',          label: '◑',   title: 'Fan chart — semicircle (180°)' },
+  { mode: 'ancestry-fan', label: '◎',   title: 'Ancestry fan chart — full circle (360°)' },
+  { mode: 'pedigree',    label: '⊢',   title: 'Pedigree chart (ancestors left → right)' },
 ];
 
 // ── Control button ─────────────────────────────────────────────────────────
