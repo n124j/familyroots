@@ -1172,6 +1172,7 @@ function TreeTopBar({
   onResetLayout,
   onLayouts,
   onExportCsv,
+  onTheme,
   onShowActivity,
 }: {
   treeName: string;
