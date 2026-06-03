@@ -43,8 +43,41 @@ def create_app() -> FastAPI:
         docs_url="/docs" if not settings.is_production else None,
         redoc_url="/redoc" if not settings.is_production else None,
         openapi_url="/openapi.json" if not settings.is_production else None,
+        swagger_ui_parameters={"persistAuthorization": True},
         lifespan=lifespan,
     )
+
+    # ── Swagger / OpenAPI: inject Bearer auth scheme ──────────
+    # Without this FastAPI's auto-generated spec has no securitySchemes,
+    # so the Swagger UI "Authorize" button never appears.
+    def _custom_openapi() -> dict:
+        if app.openapi_schema:
+            return app.openapi_schema
+        from fastapi.openapi.utils import get_openapi
+        schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            routes=app.routes,
+        )
+        schema.setdefault("components", {})["securitySchemes"] = {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": (
+                    "Paste the **access_token** returned by "
+                    "`POST /api/v1/auth/login`. "
+                    "Tokens expire in 15 minutes."
+                ),
+            }
+        }
+        # Apply BearerAuth as the global default; individual public endpoints
+        # can override with security: [] to opt out.
+        schema["security"] = [{"BearerAuth": []}]
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = _custom_openapi  # type: ignore[method-assign]
 
     # ── Middleware (order matters — outermost first) ──────────
     app.add_middleware(GZipMiddleware, minimum_size=1000)
