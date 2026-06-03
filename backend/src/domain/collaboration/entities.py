@@ -124,6 +124,12 @@ ACTION_MIN_ROLE: dict[Action, TreeRole] = {
     Action.VIEW_PERSON:         TreeRole.VIEWER,
     Action.VIEW_MEMBERS:        TreeRole.VIEWER,
     Action.VIEW_VERSION:        TreeRole.VIEWER,
+    # Editor+ (audit-only, no in-app UI gate beyond being an editor)
+    Action.EXPORT_TREE:         TreeRole.EDITOR,
+    Action.IMPORT_TREE:         TreeRole.EDITOR,
+    Action.UPDATE_PHOTO:        TreeRole.EDITOR,
+    # App-admin only — mapped to OWNER so is_permitted() returns False for all tree roles
+    Action.MERGE_TREES:         TreeRole.OWNER,
 }
 
 

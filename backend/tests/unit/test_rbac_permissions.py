@@ -88,6 +88,37 @@ class TestAdminPermissions:
             assert is_permitted(TreeRole.ADMIN, action) is True, f"Admin denied {action}"
 
 
+# ── App-admin-only actions ────────────────────────────────────────────────────
+
+class TestAppAdminActions:
+    """MERGE_TREES is an app-admin-only operation.
+    It is mapped to TreeRole.OWNER so that is_permitted() returns False for
+    every tree role including ADMIN — enforcement is done at the API layer via
+    AdminUserDep, not via the tree-role permission matrix."""
+
+    def test_merge_trees_requires_owner_mapping(self):
+        from src.domain.collaboration.entities import ACTION_MIN_ROLE, TreeRole
+        assert ACTION_MIN_ROLE[Action.MERGE_TREES] == TreeRole.OWNER
+
+    def test_merge_trees_not_permitted_for_admin_role(self):
+        assert is_permitted(TreeRole.ADMIN, Action.MERGE_TREES) is False
+
+    def test_merge_trees_not_permitted_for_editor_role(self):
+        assert is_permitted(TreeRole.EDITOR, Action.MERGE_TREES) is False
+
+    def test_export_tree_permitted_for_editor(self):
+        assert is_permitted(TreeRole.EDITOR, Action.EXPORT_TREE) is True
+
+    def test_import_tree_permitted_for_editor(self):
+        assert is_permitted(TreeRole.EDITOR, Action.IMPORT_TREE) is True
+
+    def test_update_photo_permitted_for_editor(self):
+        assert is_permitted(TreeRole.EDITOR, Action.UPDATE_PHOTO) is True
+
+    def test_export_tree_not_permitted_for_viewer(self):
+        assert is_permitted(TreeRole.VIEWER, Action.EXPORT_TREE) is False
+
+
 # ── Monotonicity: higher role always has >= permissions ───────────────────────
 
 class TestPermissionMonotonicity:

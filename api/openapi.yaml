@@ -4071,6 +4071,115 @@ paths:
         "404":
           $ref: "#/components/responses/404NotFound"
 
+  /trees/merge:
+    post:
+      tags: [Trees]
+      operationId: mergeTrees
+      summary: Merge multiple family trees into one new tree
+      description: |
+        **Admin only.** Creates a new family tree by merging two or more existing
+        trees. Each source tree contributes a "pivot person" — a real-world person
+        who appears in multiple trees. All pivot persons are collapsed into a single
+        person in the resulting tree; every other person is copied with a new ID.
+
+        Family groups are rewritten to use the new person IDs. Photo URL references
+        are preserved. The calling admin becomes OWNER of the merged tree; source
+        trees are left untouched.
+
+        A `MERGE_TREES` audit log entry is written to the new tree.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_tree_name, sources]
+              properties:
+                new_tree_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  example: Combined Shah Family
+                new_tree_description:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+                sources:
+                  type: array
+                  minItems: 2
+                  description: At least two source trees with their pivot persons.
+                  items:
+                    type: object
+                    required: [tree_id, pivot_person_id]
+                    properties:
+                      tree_id:
+                        type: string
+                        format: uuid
+                      pivot_person_id:
+                        type: string
+                        format: uuid
+                        description: ID of the person in this tree who represents the shared real-world ancestor.
+      responses:
+        "201":
+          description: Merged tree created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tree_id:    { type: string, format: uuid }
+                  tree_name:  { type: string }
+                  person_count: { type: integer }
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+        "404":
+          description: One of the source trees or pivot persons was not found
+          $ref: "#/components/responses/404NotFound"
+        "422":
+          $ref: "#/components/responses/422UnprocessableEntity"
+
+  /admin/trees/{treeId}/persons:
+    parameters:
+      - name: treeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Tree whose persons to list
+    get:
+      tags: [Admin]
+      operationId: adminListTreePersons
+      summary: List persons in a tree (for admin tooling)
+      description: |
+        Returns a lightweight list of all non-deleted persons in the given tree,
+        scoped to the admin's tenant. Intended for dropdown / picker UIs such as
+        the "Merge Trees" pivot-person selector in the Admin Dashboard.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Person list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:                   { type: string, format: uuid }
+                    display_given_name:   { type: string }
+                    display_surname:      { type: string }
+                    photo_url:            { type: string, nullable: true }
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
 # ============================================================
 # AdminUser schema — referenced by admin endpoints above
 # (add to components.schemas in a full spec refactor)

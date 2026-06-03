@@ -133,3 +133,87 @@ ParentChildEdge  UnionEdge   ← custom SVG path edges
 | 200–1,000 | Expand/collapse; viewport culling |
 | 1,000–5,000 | Progressive loading per branch; simplified nodes at zoom < 0.3 |
 | > 5,000 | Cytoscape GL (future v2 feature) |
+
+---
+
+## TreeCanvasHandle — Imperative API
+
+`TreeCanvas` exposes a ref handle (`TreeCanvasHandle`) for parent components to call canvas operations imperatively:
+
+| Method | Description |
+|---|---|
+| `getPositions()` | Returns a `Record<id, {x,y}>` snapshot of all current node positions |
+| `loadPositions(positions)` | Restores a saved layout snapshot and fits the view |
+| `scrollToNode(personId)` | Smooth fly-to animation centred on a single person node |
+| `refitView()` | Fits all visible nodes into the viewport with a 500 ms animation |
+| `exportPdf()` | Rasterises the canvas via `html-to-image` and downloads a PDF |
+
+---
+
+## Ctrl+Space Member Search
+
+A floating search bar appears at the bottom-centre of the canvas when the user presses `Ctrl+Space`.
+
+- **Trigger**: `keydown` listener on `window` checks `e.ctrlKey && e.code === 'Space'`
+- **Dismiss**: second `Ctrl+Space` or `Escape`
+- **Filter**: filters `graph.persons` by full name as the user types (up to 10 results)
+- **Navigation**: clicking a result or pressing `Enter` calls `canvasRef.current.scrollToNode(personId)` and closes the bar
+- Implemented in `FamilyTreePage.tsx`; no canvas-layer changes required
+
+---
+
+## Ctrl+Drag on Union Nodes (Ring Drag)
+
+By default, `FamilyGroupNode` has `draggable: false` (set in `useTreeTransform.ts`) to prevent accidental drags when clicking to add children.
+
+When the user holds `Ctrl`, a `keydown/keyup` listener (`ctrlHeld` state) flips every `family-group` node to `draggable: true` via `useMemo` on `reactFlowNodes`. The union node can then be dragged freely; **no companion nodes move with it** (the ring union moves alone). A banner hint is shown at the top of the canvas while Ctrl is held.
+
+The existing Ctrl+drag behaviour for `PersonNode` (move with all visible descendants) is unchanged.
+
+---
+
+## Immediate Tree Updates after Add / Remove
+
+When a child is created or removed via a Ring union, the following chain ensures the canvas updates immediately without a viewport jump:
+
+1. `handleAdded` in `FamilyTreePage` calls `await refetch()` (React Query forced fetch)
+2. After the fetch resolves, all person IDs in the new graph are added to `expandedNodeIds` via `useCanvasStore.getState().setExpandedNodeIds(next)` — this is what makes newly-created persons visible (they would otherwise be absent from the expand set)
+3. `useTreeLayout` re-runs (`useMemo` on `graph` + `expandedNodeIds`) → new layout computed
+4. The `useEffect` in `TreeCanvas` detects the changed layout key → `setDisplayNodes(layoutNodes)`
+5. React Flow renders the new/removed node in-place; the viewport is not changed
+
+---
+
+## Instant Edit Reflection (Data-Patch)
+
+When a person is edited (name, living/deceased status, photo), the layout positions do not change. The `useEffect` in `TreeCanvas` uses a key built from `node.id + position` only. If the key is unchanged, instead of skipping the update entirely, it now **patches only `node.data`** in the existing `displayNodes`:
+
+```typescript
+// Key unchanged → patch data in-place, preserve user's drag positions
+const dataMap = new Map(layoutNodes.map((n) => [n.id, n.data]));
+setDisplayNodes((curr) =>
+  curr.map((dn) => {
+    const newData = dataMap.get(dn.id);
+    return newData ? { ...dn, data: newData } : dn;
+  }),
+);
+```
+
+This means edits are visible immediately without resetting manually-dragged node positions.
+
+---
+
+## Legend Theming
+
+`ChartLegend` (the draggable statistics overlay) uses `useThemeStore` to derive all colours from the active canvas theme:
+
+| Element | Theme token |
+|---|---|
+| Background | `nodeBg` |
+| Border | `nodeBorder` |
+| Title & drag-handle dots | `nodeSubtext` |
+| Row labels and counts | `nodeText` |
+| Dividers | `nodeBorder` |
+| Male / Female / Living icons | Fixed semantic colours (blue / pink / green) |
+
+The `LegendRow` component accepts a `textColor` prop so `ChartLegend` can pass `theme.nodeText` dynamically.
