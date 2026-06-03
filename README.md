@@ -11,18 +11,19 @@ A genealogy platform for building, exploring, and collaborating on family trees.
 - [Local Deployment](#local-deployment)
   - [1. Clone and configure](#1-clone-and-configure)
   - [2. Start core services](#2-start-core-services)
-  - [Email Configuration](#email-configuration)
   - [3. Run database migrations](#3-run-database-migrations)
-  - [3.5. Seed initial data](#35-seed-initial-data)
-  - [4. Access the app](#4-access-the-app)
-  - [5. Optional: monitoring stack](#5-optional-monitoring-stack)
+  - [4. Seed initial data](#4-seed-initial-data)
+  - [5. Access the app](#5-access-the-app)
+  - [6. Optional: monitoring stack](#6-optional-monitoring-stack)
+  - [Stopping the stack](#stopping-the-stack)
   - [Running tests](#running-tests)
+- [Staging Deployment](#staging-deployment)
 - [Production Deployment](#production-deployment)
-  - [Prerequisites](#prerequisites-1)
   - [1. Configure secrets](#1-configure-secrets)
   - [2. Build and push images](#2-build-and-push-images)
   - [3. Deploy with Helm](#3-deploy-with-helm)
   - [4. Verify the deployment](#4-verify-the-deployment)
+  - [Rolling back](#rolling-back)
   - [CI/CD pipeline](#cicd-pipeline)
 - [Port Reference](#port-reference)
 
@@ -36,8 +37,9 @@ A genealogy platform for building, exploring, and collaborating on family trees.
 | Frontend | React 18, TypeScript, Vite, TanStack Query, Zustand, ReactFlow, Tailwind CSS |
 | Database | PostgreSQL 15 |
 | Cache / Queue | Redis 7 |
-| Object Storage | MinIO (local) / AWS S3 (production) |
+| Object Storage | MinIO (local) / AWS S3 (staging & production) |
 | Migrations | Alembic |
+| Email | Gmail SMTP (all environments) |
 | Monitoring | Prometheus, Grafana, Loki, Promtail |
 | Production infra | Kubernetes, Helm, GitHub Actions (blue/green deploy) |
 
@@ -45,21 +47,24 @@ A genealogy platform for building, exploring, and collaborating on family trees.
 
 ## Prerequisites
 
-**Local development**
+### Local development
+
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with Docker Compose v2)
 - Git
 
-**Running the backend or frontend outside Docker (optional)**
+### Outside Docker (optional)
+
 - Python 3.11+
 - Node.js 20+
 
-**Production**
+### Staging / Production
+
 - Kubernetes cluster (1.28+)
 - Helm 3.14+
 - `kubectl` configured for your cluster
 - GitHub repository with Actions enabled
 - AWS account (S3) or equivalent object storage
-- Container registry (the defaults use GitHub Container Registry)
+- Container registry (defaults use GitHub Container Registry)
 
 ---
 
@@ -74,41 +79,54 @@ git clone <repo-url>
 cd familyroots
 ```
 
-Copy the backend environment file and fill in the required values:
+Copy the backend environment file:
 
 ```bash
 cp backend/.env.example backend/.env
 ```
 
-Open `backend/.env` and set at minimum:
+Open `backend/.env` and fill in the required values:
 
 ```env
-# Required — generate with: openssl rand -hex 64
-JWT_SECRET_KEY=<your-secret-key>
+# ── Required: generate with: openssl rand -hex 64 ──────────────────────────
+JWT_SECRET_KEY=<your-64-char-hex-secret>
 
-# Single shared tenant slug — all registered users join this tenant
-DEFAULT_TENANT_SLUG=familyroots-system
+# ── Required: PostgreSQL credentials ───────────────────────────────────────
+POSTGRES_PASSWORD=<choose-a-local-password>
 
-# Pre-filled for local Docker Compose — change only if needed
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:7000/familyroots
-REDIS_URL=redis://localhost:7001/0
+# ── Required: MinIO credentials (local S3) ─────────────────────────────────
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
 
-# Gmail SMTP — required for email verification and password reset
+# ── Required: Gmail SMTP (for email verification and password reset) ────────
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=<your-gmail-address>
 SMTP_PASSWORD=<your-gmail-app-password>
 EMAIL_FROM=<your-gmail-address>
 
-# MinIO public URL — must be reachable by browsers for presigned download links
+# ── Pre-filled — change only if needed ─────────────────────────────────────
+DEFAULT_TENANT_SLUG=familyroots-system
 S3_PUBLIC_URL=http://localhost:7002
 ```
 
-Everything else (MinIO credentials, S3 endpoint, CORS) is already set in `docker-compose.yml` for local use and does not need to be changed.
+**Gmail App Password** — Do not use your Google account password. Go to
+[Google Account → Security → App passwords](https://myaccount.google.com/apppasswords),
+enable 2-Step Verification, then create a new app password for FamilyRoots and
+paste the 16-character result into `SMTP_PASSWORD`.
 
-> **`DEFAULT_TENANT_SLUG`** — FamilyRoots uses a single-tenant architecture. All users are placed into one shared tenant identified by this slug. There is no per-user or per-organisation tenant selection at registration. Changing this value after data has been seeded requires a data migration.
->
-> **`S3_PUBLIC_URL`** — Presigned MinIO download URLs are rewritten to use this host before being returned to the browser. The internal `minio:9000` hostname is not accessible from outside Docker, so this must point to the externally reachable MinIO API port (`http://localhost:7002` in local dev).
+**`JWT_SECRET_KEY`** — Must be at least 32 characters. Generate a strong value with:
+
+```bash
+openssl rand -hex 64
+```
+
+**`DEFAULT_TENANT_SLUG`** — FamilyRoots is single-tenant. All registered users join one
+shared tenant identified by this slug. Changing it after data is seeded requires a data migration.
+
+**`S3_PUBLIC_URL`** — Presigned MinIO download URLs are rewritten to this host before being
+returned to the browser. The internal `minio:9000` hostname is unreachable outside Docker,
+so this must point to the externally reachable MinIO API port (`http://localhost:7002` locally).
 
 ### 2. Start core services
 
@@ -117,42 +135,25 @@ docker compose up -d
 ```
 
 This starts:
-- **PostgreSQL** on port 7000
-- **Redis** on port 7001
-- **MinIO** (S3-compatible storage) on ports 7002 (API) and 7003 (Console)
-- **Backend API** on port 7004
-- **Celery worker** (no external port — background task processor)
-- **Flower** (Celery task monitor) on port 7005
-- **Frontend** (Vite dev server) on port 7006
 
-Wait for all services to be healthy:
+| Service | Description | Port |
+|---------|-------------|------|
+| **PostgreSQL** | Primary database | 7000 |
+| **Redis** | Cache and Celery broker | 7001 |
+| **MinIO** (S3 API) | Local object storage for media uploads | 7002 |
+| **MinIO Console** | Web UI for browsing buckets | 7003 |
+| **Backend API** | FastAPI + Uvicorn (hot reload) | 7004 |
+| **Celery worker** | Background task processor (media, email) | — |
+| **Flower** | Celery task monitor | 7005 |
+| **Frontend** | Vite dev server (hot reload) | 7006 |
+
+Wait until all services are healthy before proceeding:
 
 ```bash
 docker compose ps
 ```
 
-All services should show `healthy` or `running` before proceeding.
-
-### Email Configuration
-
-FamilyRoots sends transactional email (verification links, password reset, admin notifications) via Gmail SMTP. MailHog is no longer used in local development.
-
-#### Setting up a Gmail App Password
-
-1. Enable 2-Step Verification on the Google account you want to send from.
-2. Go to [Google Account → Security → App passwords](https://myaccount.google.com/apppasswords).
-3. Create a new app password (name it something like "FamilyRoots local").
-4. Copy the 16-character password into `SMTP_PASSWORD` in `backend/.env`.
-
-The following env vars control email sending:
-
-| Variable | Example | Description |
-| -------- | ------- | ----------- |
-| `SMTP_HOST` | `smtp.gmail.com` | SMTP server hostname |
-| `SMTP_PORT` | `587` | SMTP port (STARTTLS) |
-| `SMTP_USER` | `you@gmail.com` | Gmail address used for authentication |
-| `SMTP_PASSWORD` | `abcd efgh ijkl mnop` | Gmail App Password (not your account password) |
-| `EMAIL_FROM` | `you@gmail.com` | Address that appears in the From header |
+All services should show `healthy` or `running`.
 
 ### 3. Run database migrations
 
@@ -160,13 +161,15 @@ The following env vars control email sending:
 docker compose run --rm migrate
 ```
 
-This applies the full Alembic migration history, including the baseline schema (PostgreSQL enums, core tables, row-level security, indexes, and triggers).
+This applies the full Alembic migration history, creating all tables, enums, indexes, and triggers.
 
-> Run this once on first setup, and again after pulling changes that include new migrations.
+> Run once on first setup, and again after pulling changes that include new migrations.
 
-### 3.5. Seed initial data
+### 4. Seed initial data
 
-After running migrations on a fresh database, seed the three built-in accounts:
+#### System accounts
+
+After running migrations on a fresh database, create the built-in system accounts:
 
 ```bash
 python backend/scripts/seed_users.py
@@ -175,42 +178,87 @@ python backend/scripts/seed_users.py
 This creates the following accounts in the `familyroots-system` tenant:
 
 | Email | Password | Role |
-| ----- | -------- | ---- |
+|-------|----------|------|
 | `admin@familyroots.app` | `Admin@FR2024!` | ADMIN |
 | `user@familyroots.app` | `User@FR2024!` | STANDARD |
 | `auditor@familyroots.app` | `Auditor@FR2024!` | AUDITOR |
 
-> After a full reset (`docker compose down -v`), re-run migrations then re-run the seed script to restore these accounts.
+> After a full reset (`docker compose down -v`), re-run migrations then re-run the seed script.
 
-### 4. Access the app
+#### Demo family tree (optional)
 
-| Service | URL | Credentials |
-|---------|-----|------------|
-| Frontend | http://localhost:7006 | Use a seed account above, or register a new account |
-| Backend API | http://localhost:7004 | — |
-| API docs (Swagger) | http://localhost:7004/docs | — |
-| API docs (ReDoc) | http://localhost:7004/redoc | — |
-| Flower (task monitor) | http://localhost:7005 | — |
-| MinIO Console | http://localhost:7003 | `minioadmin` / `minioadmin` |
+To load a ready-made family tree that demonstrates the full 8-generation ancestry fan chart,
+copy the seed file into the database container and run it:
+
+```bash
+# Copy seed file into the running container
+docker compose cp seed_dynasty_8gen.sql db:/seed_dynasty_8gen.sql
+
+# Run it (attaches the tree to the first registered user)
+docker compose exec db psql -U postgres familyroots -f /seed_dynasty_8gen.sql
+```
+
+This seeds **The Mitchell Dynasty** — 255 persons across 8 generations, from William James
+Mitchell (b. 1990) back to Georgian ancestors (b. ~1783). To view all 8 rings:
+
+1. Log in and open the tree.
+2. Switch to **Ancestry Fan Chart** view (◎ button in the toolbar).
+3. Click **Set as Focus** on William James Mitchell.
+
+A smaller 4-generation Smith family tree is also available:
+
+```bash
+docker compose cp seed_family.sql db:/seed_family.sql
+docker compose exec db psql -U postgres familyroots -f /seed_family.sql
+```
+
+### 5. Access the app
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| Frontend | <http://localhost:7006> | Use a seed account or register |
+| Backend API | <http://localhost:7004> | REST API |
+| Swagger UI | <http://localhost:7004/docs> | Interactive API docs |
+| ReDoc | <http://localhost:7004/redoc> | API reference |
+| Flower | <http://localhost:7005> | Celery task monitor |
+| MinIO Console | <http://localhost:7003> | `minioadmin` / `minioadmin` |
 
 #### Registration notes
 
-- There is no "Organisation ID" field. All new users automatically join the shared `familyroots-system` tenant.
+- There is no "Organisation ID" field — all new users join the shared `familyroots-system` tenant automatically.
 - `POST /auth/register` returns `204 No Content`. No JWT is issued at registration time.
-- A verification email is sent immediately after registration. The account cannot log in until the email link is clicked.
-- To resend the verification email, call `POST /api/v1/auth/resend-verification`.
+- A verification email is sent immediately. The account cannot log in until the email link is clicked.
+- To resend the verification email: `POST /api/v1/auth/resend-verification`.
 - Admins can manually verify an account via the Admin Dashboard or `POST /api/v1/admin/users/{id}/verify`.
-- Forgot password returns `403 account-not-verified` if the account email has not yet been verified.
+- Forgot password returns `403 account-not-verified` if the email has not been verified yet.
+
+#### Tree views
+
+The default view when opening any tree is the **Ancestor chart** (focus person at the bottom,
+ancestors climbing upward). Use the toolbar to switch between:
+
+| Button | Mode | Description |
+|--------|------|-------------|
+| ↕ | Vertical | Top-to-bottom generation layout |
+| ↔ | Horizontal | Left-to-right generation layout |
+| ↑ | Ancestor | Focus at bottom, ancestors above (default) |
+| ↓ | Descendant | Focus at top, descendants below |
+| ◑ | Fan chart | 180° semicircular fan |
+| ◎ | Ancestry fan chart | Full SVG fan chart — up to 8 rings with hover tooltips |
+| ⊢ | Pedigree | Horizontal binary ancestor tree |
+
+Hovering over any wedge in the fan chart shows a tooltip with the person's full name,
+relationship label (e.g. "3× Great-grandparent"), and birth–death years.
 
 #### Admin Dashboard
 
-The Admin Dashboard (accessible to ADMIN-role accounts) provides user management including:
+Accessible to ADMIN-role accounts:
 
-- Manually verify or unverify user accounts
-- Deactivate or reactivate users (email notifications are sent on each action)
-- All admin actions appear in the Activity feed as `ADMIN_CREATE`, `ADMIN_VERIFY`, `ADMIN_UNVERIFY`, `ADMIN_DEACTIVATE`, `ADMIN_ACTIVATE`, or `ADMIN_UPDATE` events
+- Manually verify / unverify user accounts
+- Deactivate / reactivate users (email notifications sent on each action)
+- All admin actions appear in the Activity feed
 
-### 5. Optional: monitoring stack
+### 6. Optional: monitoring stack
 
 Start Prometheus, Grafana, Loki, and log shipping alongside the core stack:
 
@@ -218,28 +266,29 @@ Start Prometheus, Grafana, Loki, and log shipping alongside the core stack:
 docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
-| Service | URL | Default credentials |
-|---------|-----|-------------------|
-| Grafana | http://localhost:7009 | `admin` / `admin` |
-| Prometheus | http://localhost:7007 | — |
-| Alertmanager | http://localhost:7008 | — |
-| Loki | http://localhost:7010 | — |
+| Service | URL | Credentials |
+| --- | --- | --- |
+| Grafana | <http://localhost:7009> | `admin` / `admin` |
+| Prometheus | <http://localhost:7007> | — |
+| Alertmanager | <http://localhost:7008> | — |
+| Loki | <http://localhost:7010> | — |
 
-Grafana dashboards are provisioned automatically on startup. Open Grafana and navigate to **Dashboards → API Overview**.
+Grafana dashboards are provisioned automatically. Navigate to **Dashboards → API Overview**.
 
 To set a custom Grafana password:
 
 ```bash
-GRAFANA_PASSWORD=yourpassword docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+GRAFANA_PASSWORD=yourpassword \
+  docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
 ### Stopping the stack
 
 ```bash
-# Stop without removing data volumes
+# Stop without removing data
 docker compose down
 
-# Stop and remove all local data (full reset)
+# Full reset — removes all volumes and data
 docker compose down -v
 ```
 
@@ -247,22 +296,20 @@ docker compose down -v
 
 ### Running tests
 
-**Backend**
+#### Backend
 
-Unit tests (no Docker required):
+Unit tests (no Docker or external services required):
 
 ```bash
 cd backend
 pip install -r requirements/test.txt
-pytest tests/unit -n auto --tb=short
+pytest tests/unit -n auto --tb=short -q
 ```
 
-Integration tests (requires PostgreSQL and Redis running):
+Integration tests (requires PostgreSQL and Redis — use `docker compose up -d db redis`):
 
 ```bash
-pytest tests/integration \
-  --tb=short \
-  -n 2
+pytest tests/integration -n 2 --tb=short -q
 ```
 
 Security tests:
@@ -274,10 +321,20 @@ pytest tests/security -v
 All backend tests with coverage:
 
 ```bash
-pytest --cov=src --cov-report=term-missing --cov-fail-under=90
+# Unit suite — must reach 90% on non-infrastructure code
+pytest tests/unit --cov=src --cov-report=term-missing --cov-fail-under=90
+
+# Integration suite — must reach 65% on non-infrastructure code
+pytest tests/integration --cov=src --cov-report=term-missing --cov-fail-under=65
 ```
 
-**Frontend**
+> Coverage is measured against the `src/` tree using `.coveragerc`, which omits
+> infrastructure adapters (DB session, S3, email, repositories) that require live
+> services. The unit suite enforces the high bar (≥ 90%); the integration suite
+> enforces a lower bar (≥ 65%) because it focuses on HTTP contract testing rather
+> than exhaustive domain coverage.
+
+#### Frontend
 
 Unit tests:
 
@@ -287,7 +344,7 @@ npm ci
 npm test
 ```
 
-E2E tests (requires the full stack running via `docker compose up -d`):
+E2E tests (requires the full stack via `docker compose up -d`):
 
 ```bash
 npx playwright install --with-deps chromium
@@ -296,21 +353,108 @@ npx playwright test --project=chromium
 
 ---
 
+## Staging Deployment
+
+Staging uses the same Helm chart as production but points to a separate namespace,
+separate secrets, and a dedicated S3 bucket. The `develop` branch deploys to staging
+automatically via CI.
+
+### 1. Configure staging secrets
+
+```bash
+kubectl create namespace familyroots-staging
+
+kubectl create secret generic familyroots-secrets \
+  --namespace familyroots-staging \
+  --from-literal=DB_PASSWORD='<staging-postgres-password>' \
+  --from-literal=REDIS_PASSWORD='<staging-redis-password>' \
+  --from-literal=JWT_SECRET='<64-char-hex-secret>' \
+  --from-literal=AWS_ACCESS_KEY_ID='<key-id>' \
+  --from-literal=AWS_SECRET_ACCESS_KEY='<secret-key>' \
+  --from-literal=SMTP_PASSWORD='<gmail-app-password>' \
+  --from-literal=SENTRY_DSN='<sentry-dsn>'
+```
+
+Add the corresponding **GitHub Actions secrets** (prefix with `STG_` to distinguish from production):
+
+| Secret | Description |
+|--------|-------------|
+| `STG_KUBE_CONFIG` | Base64-encoded kubeconfig for the staging cluster |
+| `STG_DB_PASSWORD` | PostgreSQL password |
+| `STG_REDIS_PASSWORD` | Redis password |
+| `STG_JWT_SECRET` | JWT signing key |
+| `STG_S3_BUCKET` | Staging S3 bucket name |
+| `STG_S3_REGION` | AWS region |
+| `STG_AWS_ACCESS_KEY_ID` | AWS access key |
+| `STG_AWS_SECRET_ACCESS_KEY` | AWS secret key |
+| `STG_SMTP_USER` | Gmail address for staging emails |
+| `STG_SMTP_PASSWORD` | Gmail App Password |
+| `STG_EMAIL_FROM` | From address for staging emails |
+| `STG_CORS_ORIGINS` | `["https://staging.familyroots.example.com"]` |
+
+### 2. Deploy to staging
+
+Staging can be deployed manually or by CI on push to `develop`:
+
+```bash
+export REGISTRY=ghcr.io
+export ORG=your-org
+export TAG=$(git rev-parse --short HEAD)
+
+helm upgrade --install familyroots-staging ./helm/familyroots \
+  --namespace familyroots-staging \
+  --set image.org=$ORG \
+  --set image.tag=$TAG \
+  --set ingress.host=staging.familyroots.example.com \
+  --set ingress.apiHost=api.staging.familyroots.example.com \
+  --set env.ENVIRONMENT=staging \
+  --set env.DEFAULT_TENANT_SLUG=familyroots-system \
+  --wait
+```
+
+### 3. Run staging migrations
+
+```bash
+kubectl run migrate \
+  --image=ghcr.io/$ORG/familyroots/api:$TAG \
+  --restart=Never \
+  --namespace=familyroots-staging \
+  --env="DATABASE_URL=<staging-database-url>" \
+  -- alembic upgrade head
+
+kubectl wait --for=condition=complete pod/migrate -n familyroots-staging --timeout=120s
+kubectl delete pod migrate -n familyroots-staging
+```
+
+### 4. Seed staging accounts
+
+```bash
+kubectl run seed \
+  --image=ghcr.io/$ORG/familyroots/api:$TAG \
+  --restart=Never \
+  --namespace=familyroots-staging \
+  --env="DATABASE_URL=<staging-database-url>" \
+  -- python scripts/seed_users.py
+
+kubectl wait --for=condition=complete pod/seed -n familyroots-staging --timeout=60s
+kubectl delete pod seed -n familyroots-staging
+```
+
+---
+
 ## Production Deployment
 
-Production runs on Kubernetes with blue/green deployments managed by GitHub Actions. Images are built by CI and pushed to GitHub Container Registry.
+Production runs on Kubernetes with blue/green deployments managed by GitHub Actions.
+Images are built by CI and pushed to GitHub Container Registry.
 
 ### Prerequisites
 
 - A Kubernetes cluster with an nginx ingress controller and `cert-manager` installed
-- `kubectl` pointing at your target cluster
+- `kubectl` pointing at your cluster
 - Helm 3.14+
-- A Kubernetes secret named `familyroots-secrets` in the `familyroots` namespace (see step 1)
-- DNS records pointing your domain at the ingress controller's external IP
+- DNS records pointing your domain to the ingress controller's external IP
 
 ### 1. Configure secrets
-
-Create the namespace and the secrets Kubernetes object. All values must be base64-encoded.
 
 ```bash
 kubectl create namespace familyroots
@@ -322,6 +466,7 @@ kubectl create secret generic familyroots-secrets \
   --from-literal=JWT_SECRET='<64-char-hex-secret>' \
   --from-literal=AWS_ACCESS_KEY_ID='<key-id>' \
   --from-literal=AWS_SECRET_ACCESS_KEY='<secret-key>' \
+  --from-literal=SMTP_PASSWORD='<gmail-app-password>' \
   --from-literal=SENTRY_DSN='<sentry-dsn>'
 ```
 
@@ -331,24 +476,24 @@ Generate a strong JWT secret:
 openssl rand -hex 64
 ```
 
-**GitHub Actions secrets** — add the following in your repository's Settings → Secrets → Actions:
+**GitHub Actions secrets** — add the following in Settings → Secrets → Actions:
 
 | Secret | Description |
 |--------|-------------|
 | `KUBE_CONFIG` | Base64-encoded kubeconfig for your cluster |
 | `DB_PASSWORD` | PostgreSQL password |
 | `REDIS_PASSWORD` | Redis password |
-| `JWT_SECRET` | JWT signing key |
-| `DEFAULT_TENANT_SLUG` | Slug for the single shared tenant (e.g. `familyroots-system`) |
+| `JWT_SECRET` | JWT signing key (≥ 32 characters) |
+| `DEFAULT_TENANT_SLUG` | Shared tenant slug (e.g. `familyroots-system`) |
 | `S3_BUCKET` | S3 bucket name |
 | `S3_REGION` | AWS region (e.g. `us-east-1`) |
 | `AWS_ACCESS_KEY_ID` | AWS access key |
 | `AWS_SECRET_ACCESS_KEY` | AWS secret key |
-| `SMTP_HOST` | SMTP server hostname |
-| `SMTP_USER` | SMTP authentication username |
-| `SMTP_PASSWORD` | SMTP authentication password |
-| `EMAIL_FROM` | From address for outbound email |
-| `CORS_ORIGINS` | JSON array of allowed origins, e.g. `["https://familyroots.example.com"]` |
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_USER` | Gmail address for transactional email |
+| `SMTP_PASSWORD` | Gmail App Password |
+| `EMAIL_FROM` | From address in outbound email |
+| `CORS_ORIGINS` | JSON array, e.g. `["https://familyroots.example.com"]` |
 | `SENTRY_DSN` | Sentry DSN (optional) |
 | `GRAFANA_PASSWORD` | Grafana admin password (optional) |
 
@@ -357,26 +502,20 @@ openssl rand -hex 64
 CI does this automatically on every push to `main`. To build manually:
 
 ```bash
-# Set your registry and org
 export REGISTRY=ghcr.io
 export ORG=your-org
 export TAG=$(git rev-parse --short HEAD)
 
-# Log in to the registry
 echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
 
-# Build and push API image
 docker build --target runtime -t $REGISTRY/$ORG/familyroots/api:$TAG ./backend
 docker push $REGISTRY/$ORG/familyroots/api:$TAG
 
-# Build and push frontend image
 docker build -t $REGISTRY/$ORG/familyroots/frontend:$TAG ./frontend
 docker push $REGISTRY/$ORG/familyroots/frontend:$TAG
 ```
 
 ### 3. Deploy with Helm
-
-Update `helm/familyroots/values.yaml` with your domain and image org, then install:
 
 ```bash
 helm upgrade --install familyroots ./helm/familyroots \
@@ -388,7 +527,7 @@ helm upgrade --install familyroots ./helm/familyroots \
   --wait
 ```
 
-On first install, run database migrations as a one-off Job:
+Run migrations on first install:
 
 ```bash
 kubectl run migrate \
@@ -398,44 +537,46 @@ kubectl run migrate \
   --env="DATABASE_URL=<your-database-url>" \
   -- alembic upgrade head
 
-# Wait for it to complete
-kubectl wait --for=condition=complete job/migrate -n familyroots --timeout=120s
+kubectl wait --for=condition=complete pod/migrate -n familyroots --timeout=120s
 kubectl delete pod migrate -n familyroots
+```
+
+Seed system accounts on first install:
+
+```bash
+kubectl run seed \
+  --image=ghcr.io/your-org/familyroots/api:$TAG \
+  --restart=Never \
+  --namespace=familyroots \
+  --env="DATABASE_URL=<your-database-url>" \
+  -- python scripts/seed_users.py
+
+kubectl wait --for=condition=complete pod/seed -n familyroots --timeout=60s
+kubectl delete pod seed -n familyroots
 ```
 
 ### 4. Verify the deployment
 
-Check that all pods are running:
-
 ```bash
+# Check pod health
 kubectl get pods -n familyroots
-```
 
-Check the API health endpoint:
-
-```bash
+# Check API health endpoint
 curl https://api.familyroots.example.com/health
 # Expected: {"status": "ok"}
-```
 
-Check rollout status:
-
-```bash
+# Check rollout status
 kubectl rollout status deployment/api-blue -n familyroots
 kubectl rollout status deployment/frontend-blue -n familyroots
 ```
 
 ### Rolling back
 
-If a deployment goes wrong, roll back the Helm release:
-
 ```bash
+# Roll back the Helm release
 helm rollback familyroots -n familyroots
-```
 
-Or roll back the Kubernetes deployment directly:
-
-```bash
+# Or roll back the Kubernetes deployment directly
 kubectl rollout undo deployment/api-blue -n familyroots
 ```
 
@@ -443,18 +584,26 @@ kubectl rollout undo deployment/api-blue -n familyroots
 
 ### CI/CD pipeline
 
-Pushing to `main` triggers the full pipeline automatically:
+| Branch | Trigger | Jobs run |
+|--------|---------|----------|
+| Any PR | Push | Tests + coverage gate (no deploy) |
+| `develop` | Push | Tests + coverage gate + build + staging deploy |
+| `main` | Push | Tests + coverage gate + build + production deploy |
 
-1. **Backend unit tests** — pytest, no Docker needed
-2. **Backend integration tests** — pytest with live PostgreSQL and Redis
-3. **Backend security tests** — pytest + Bandit static analysis
-4. **Frontend unit tests** — Vitest with coverage
-5. **E2E tests** — Playwright (Chromium) against a live stack
-6. **Coverage gate** — fails if backend < 90% or frontend < 85%
-7. **Build & push** — Docker images tagged with the commit SHA
-8. **Blue/green deploy** — deploys to the inactive slot, runs a smoke test, then switches traffic
+**Pipeline steps:**
 
-Pull requests run steps 1–6 only (no deploy).
+1. **Backend unit tests** — pytest, no external services needed. Coverage must be **≥ 90%**.
+2. **Backend integration tests** — pytest with live PostgreSQL + Redis. Coverage must be **≥ 65%**.
+3. **Backend security tests** — pytest + Bandit static analysis.
+4. **Frontend unit tests** — Vitest with coverage.
+5. **E2E tests** — Playwright (Chromium) against a live stack.
+6. **Coverage gate** — blocks merge if unit backend < 90% or frontend unit tests fail.
+7. **Build & push** — Docker images tagged with the commit SHA.
+8. **Blue/green deploy** — deploys to the inactive slot, runs a smoke test, then switches traffic.
+
+> The integration test coverage threshold (65%) is intentionally lower than the unit
+> threshold (90%) because integration tests verify HTTP contracts, not domain logic.
+> The `.coveragerc` omits infrastructure adapters from measurement in both suites.
 
 ---
 
@@ -462,11 +611,11 @@ Pull requests run steps 1–6 only (no deploy).
 
 | Port | Service | Notes |
 |------|---------|-------|
-| 7000 | PostgreSQL | |
-| 7001 | Redis | |
-| 7002 | MinIO S3 API | `http://localhost:7002` — also used as `S3_PUBLIC_URL` for presigned links |
-| 7003 | MinIO Console | Web UI for browsing buckets |
-| 7004 | Backend API | REST API + `/docs` |
+| 7000 | PostgreSQL | Primary database |
+| 7001 | Redis | Cache and Celery broker |
+| 7002 | MinIO S3 API | Also used as `S3_PUBLIC_URL` for presigned download links |
+| 7003 | MinIO Console | Web UI — `minioadmin` / `minioadmin` |
+| 7004 | Backend API | REST API + `/docs` (Swagger) |
 | 7005 | Flower | Celery task monitor |
 | 7006 | Frontend | Vite dev server |
 | 7007 | Prometheus | Monitoring stack only |
@@ -475,4 +624,3 @@ Pull requests run steps 1–6 only (no deploy).
 | 7010 | Loki | Monitoring stack only |
 | 7011 | Postgres Exporter | Monitoring stack only |
 | 7012 | Redis Exporter | Monitoring stack only |
-| 7013 | — | Previously MailHog (removed); not used in local dev |
