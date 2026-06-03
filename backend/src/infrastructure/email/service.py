@@ -22,6 +22,7 @@ async def send_email(
     subject: str,
     html_body: str,
     text_body: str,
+    reply_to: str | None = None,
 ) -> None:
     """Send an email asynchronously. Silently logs errors rather than crashing."""
     settings = get_settings()
@@ -31,6 +32,8 @@ async def send_email(
         msg["Subject"] = subject
         msg["From"]    = settings.email_from
         msg["To"]      = to
+        if reply_to:
+            msg["Reply-To"] = reply_to
         msg.attach(MIMEText(text_body, "plain"))
         msg.attach(MIMEText(html_body, "html"))
 
@@ -299,5 +302,83 @@ def verification_email(display_name: str, verify_url: str) -> tuple[str, str]:
         f"Hi {display_name}, please verify your email address by visiting:\n\n"
         f"{verify_url}\n\n"
         f"This link expires in 1 hour."
+    )
+    return html, text
+
+
+def contact_form_email(
+    sender_name: str,
+    sender_email: str,
+    sender_phone: str | None,
+    subject: str,
+    message: str,
+) -> tuple[str, str]:
+    """Notification email sent to the site owner when a visitor submits the contact form."""
+    phone_row = (
+        f'<tr><td style="padding:6px 0;color:#64748b;font-size:13px;width:110px">Phone</td>'
+        f'<td style="padding:6px 0;color:#1e293b;font-size:13px">{sender_phone}</td></tr>'
+    ) if sender_phone else ""
+    phone_text = f"Phone:    {sender_phone}\n" if sender_phone else ""
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:sans-serif;background:#f8fafc;margin:0;padding:32px 16px;">
+  <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:12px;
+              padding:32px;border:1px solid #e2e8f0;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
+      <span style="font-size:28px">&#127795;</span>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#6366f1;letter-spacing:1px;
+                    text-transform:uppercase;">FamilyRoots</div>
+        <div style="font-size:18px;font-weight:700;color:#1e293b;">New Contact Form Submission</div>
+      </div>
+    </div>
+
+    <div style="background:#f8fafc;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+      <table style="border-collapse:collapse;width:100%">
+        <tr>
+          <td style="padding:6px 0;color:#64748b;font-size:13px;width:110px">From</td>
+          <td style="padding:6px 0;color:#1e293b;font-size:13px;font-weight:600">{sender_name}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:#64748b;font-size:13px">Email</td>
+          <td style="padding:6px 0;font-size:13px">
+            <a href="mailto:{sender_email}" style="color:#6366f1">{sender_email}</a>
+          </td>
+        </tr>
+        {phone_row}
+        <tr>
+          <td style="padding:6px 0;color:#64748b;font-size:13px">Subject</td>
+          <td style="padding:6px 0;color:#1e293b;font-size:13px">{subject}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;
+                  letter-spacing:1px;margin-bottom:10px;">Message</div>
+      <div style="color:#1e293b;font-size:14px;line-height:1.7;white-space:pre-wrap;">{message}</div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="color:#94a3b8;font-size:11px;margin:0;">
+      Sent via the FamilyRoots contact form &#183;
+      Reply directly to this email to respond to {sender_name}.
+    </p>
+  </div>
+</body>
+</html>"""
+
+    text = (
+        f"New FamilyRoots contact form submission\n"
+        f"{'=' * 40}\n\n"
+        f"From:     {sender_name}\n"
+        f"Email:    {sender_email}\n"
+        f"{phone_text}"
+        f"Subject:  {subject}\n\n"
+        f"Message:\n{message}\n\n"
+        f"{'=' * 40}\n"
+        f"Reply to this email to respond to {sender_name}."
     )
     return html, text

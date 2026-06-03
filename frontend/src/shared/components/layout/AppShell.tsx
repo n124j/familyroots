@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { usePortalThemeStore } from '@store/portalTheme.store';
+import { Footer } from './Footer';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -163,8 +164,11 @@ export default function AppShell() {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto" style={{ background: 'var(--portal-main-bg)' }}>
-          <Outlet />
+        <main className="flex-1 flex flex-col overflow-auto" style={{ background: 'var(--portal-main-bg)' }}>
+          <div className="flex-1">
+            <Outlet />
+          </div>
+          <Footer />
         </main>
       </div>
     </div>

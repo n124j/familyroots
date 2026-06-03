@@ -4,48 +4,34 @@
       <stop stop-color="#818cf8"/>
       <stop offset="1" stop-color="#4338ca"/>
     </linearGradient>
-    <!-- Subtle inner glow on root node -->
-    <radialGradient id="rg" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="white" stop-opacity="1"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0.85"/>
-    </radialGradient>
+    <linearGradient id="canopy-top" x1="32" y1="4" x2="32" y2="38" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#86efac"/>
+      <stop offset="0.5" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="trunk-g" x1="28" y1="0" x2="36" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#d97706"/>
+      <stop offset="1" stop-color="#92400e"/>
+    </linearGradient>
   </defs>
 
-  <!-- Background rounded square -->
+  <!-- Background -->
   <rect width="64" height="64" rx="14" fill="url(#bg)"/>
 
-  <!-- ── Connector lines (drawn behind nodes) ── -->
+  <!-- Canopy — overlapping circles create organic leafy silhouette -->
+  <circle cx="32" cy="24" r="16" fill="#16a34a"/>
+  <circle cx="20" cy="27" r="11" fill="#22c55e"/>
+  <circle cx="44" cy="27" r="11" fill="#15803d"/>
+  <circle cx="25" cy="14" r="11" fill="#4ade80"/>
+  <circle cx="39" cy="14" r="11" fill="#22c55e"/>
+  <circle cx="32" cy="9"  r="10" fill="#86efac"/>
 
-  <!-- You → parent horizontal bar -->
-  <line x1="32" y1="46" x2="32" y2="42" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
-  <line x1="18" y1="42" x2="46" y2="42" stroke="white" stroke-width="1.8" opacity="0.55"/>
-  <line x1="18" y1="42" x2="18" y2="35" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
-  <line x1="46" y1="42" x2="46" y2="35" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+  <!-- Fill the gap between canopy and trunk -->
+  <rect x="22" y="28" width="20" height="10" fill="#16a34a"/>
 
-  <!-- Left parent → grandparent horizontal bar -->
-  <line x1="18" y1="30" x2="18" y2="26" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.42"/>
-  <line x1="11" y1="26" x2="25" y2="26" stroke="white" stroke-width="1.4" opacity="0.42"/>
-  <line x1="11" y1="26" x2="11" y2="20" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.42"/>
-  <line x1="25" y1="26" x2="25" y2="20" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.42"/>
+  <!-- Trunk -->
+  <rect x="27" y="36" width="10" height="16" rx="4" fill="url(#trunk-g)"/>
 
-  <!-- Right parent → grandparent horizontal bar -->
-  <line x1="46" y1="30" x2="46" y2="26" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.42"/>
-  <line x1="39" y1="26" x2="53" y2="26" stroke="white" stroke-width="1.4" opacity="0.42"/>
-  <line x1="39" y1="26" x2="39" y2="20" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.42"/>
-  <line x1="53" y1="26" x2="53" y2="20" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.42"/>
-
-  <!-- ── Nodes ── -->
-
-  <!-- Grandparent tier (4 nodes, top) -->
-  <circle cx="11" cy="17" r="3.5" fill="white" opacity="0.68"/>
-  <circle cx="25" cy="17" r="3.5" fill="white" opacity="0.68"/>
-  <circle cx="39" cy="17" r="3.5" fill="white" opacity="0.68"/>
-  <circle cx="53" cy="17" r="3.5" fill="white" opacity="0.68"/>
-
-  <!-- Parent tier (2 nodes, mid) -->
-  <circle cx="18" cy="35" r="5" fill="white" opacity="0.86"/>
-  <circle cx="46" cy="35" r="5" fill="white" opacity="0.86"/>
-
-  <!-- Root node — "you" (largest, bottom centre) -->
-  <circle cx="32" cy="52" r="6.5" fill="url(#rg)"/>
+  <!-- Canopy highlight (top-left catch-light) -->
+  <circle cx="26" cy="14" r="6" fill="white" opacity="0.18"/>
 </svg>

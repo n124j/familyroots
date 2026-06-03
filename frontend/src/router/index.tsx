@@ -35,6 +35,10 @@ const SettingsPage       = lazy(() => import('@pages/SettingsPage'));
 const ActivityPage       = lazy(() => import('@pages/ActivityPage'));
 const AdminPage          = lazy(() => import('@pages/AdminPage'));
 const NotFoundPage       = lazy(() => import('@pages/NotFoundPage'));
+const ContactPage        = lazy(() => import('@pages/ContactPage'));
+const TermsPage          = lazy(() => import('@pages/TermsPage'));
+const PrivacyPage        = lazy(() => import('@pages/PrivacyPage'));
+const HelpPage           = lazy(() => import('@pages/HelpPage'));
 
 // AppShell wraps all authenticated routes (sidebar + topbar)
 const AppShell           = lazy(() => import('@shared/components/layout/AppShell'));
@@ -66,6 +70,24 @@ const router = createBrowserRouter([
       { path: '/reset-password',   element: <Lazy><ResetPasswordPage /></Lazy> },
       { path: '/verify-email',     element: <Lazy><VerifyEmailPage /></Lazy> },
     ],
+  },
+
+  // ── Public informational pages (no auth required) ────────────────────
+  {
+    path: '/help',
+    element: <Lazy><HelpPage /></Lazy>,
+  },
+  {
+    path: '/contact',
+    element: <Lazy><ContactPage /></Lazy>,
+  },
+  {
+    path: '/terms',
+    element: <Lazy><TermsPage /></Lazy>,
+  },
+  {
+    path: '/privacy',
+    element: <Lazy><PrivacyPage /></Lazy>,
   },
 
   // ── OAuth callback (public — token arrives here) ───────────────────────

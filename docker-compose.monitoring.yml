@@ -31,9 +31,9 @@ services:
     image: grafana/grafana:10.4.2
     restart: unless-stopped
     environment:
-      GF_SECURITY_ADMIN_USER:     admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-      GF_SERVER_ROOT_URL:         http://localhost:7009
+      GF_SECURITY_ADMIN_USER:     ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set in .env}
+      GF_SERVER_ROOT_URL:         ${GRAFANA_ROOT_URL:-http://localhost:7009}
       GF_FEATURE_TOGGLES_ENABLE: publicDashboards
       GF_INSTALL_PLUGINS:         grafana-piechart-panel
     ports:
@@ -67,7 +67,7 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     restart: unless-stopped
     environment:
-      DATA_SOURCE_NAME: "postgresql://postgres:postgres@db:5432/familyroots?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@db:5432/${POSTGRES_DB:-familyroots}?sslmode=disable"
     ports:
       - "7011:9187"
 
@@ -76,7 +76,7 @@ services:
     image: oliver006/redis_exporter:v1.60.0
     restart: unless-stopped
     environment:
-      REDIS_ADDR: redis://redis:6379
+      REDIS_ADDR: ${REDIS_ADDR:-redis://redis:6379}
     ports:
       - "7012:9121"
 
