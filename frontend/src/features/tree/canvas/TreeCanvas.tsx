@@ -80,15 +80,15 @@ function getDescendantNodeIds(
 // ── Chart legend ──────────────────────────────────────────────────────────
 
 function LegendRow({
-  icon, label, count, color,
-}: { icon: string; label: string; count: number; color: string }) {
+  icon, label, count, color, textColor,
+}: { icon: string; label: string; count: number; color: string; textColor: string }) {
   return (
     <div className="flex items-center gap-2">
       <span style={{ color, width: 14, textAlign: 'center', fontSize: 13, fontWeight: 700, lineHeight: 1 }}>
         {icon}
       </span>
-      <span className="text-xs text-slate-600 flex-1">{label}</span>
-      <span className="text-xs font-bold text-slate-800 tabular-nums">{count}</span>
+      <span className="text-xs flex-1" style={{ color: textColor }}>{label}</span>
+      <span className="text-xs font-bold tabular-nums" style={{ color: textColor }}>{count}</span>
     </div>
   );
 }
@@ -153,16 +153,24 @@ function ChartLegend({
     };
   }, [graph, focusPersonId, mode, visiblePersonIds]);
 
+  const theme = useThemeStore((s) => s.theme);
+
   if (stats.total === 0) return null;
 
   return (
-    <div className="bg-white/90 backdrop-blur rounded-xl border border-slate-200 shadow-lg p-3 min-w-[160px]">
+    <div
+      className="backdrop-blur rounded-xl shadow-lg p-3 min-w-[160px]"
+      style={{ background: theme.nodeBg, border: `1px solid ${theme.nodeBorder}` }}
+    >
       <div className="flex items-center justify-between mb-2.5">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+        <p
+          className="text-[10px] font-semibold uppercase tracking-widest"
+          style={{ color: theme.nodeSubtext }}
+        >
           {LEGEND_TITLES[mode]}
         </p>
         {/* Drag handle hint */}
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-slate-300 ml-2 shrink-0">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="ml-2 shrink-0" style={{ color: theme.nodeSubtext }}>
           <circle cx="4" cy="3" r="1" fill="currentColor"/>
           <circle cx="8" cy="3" r="1" fill="currentColor"/>
           <circle cx="4" cy="6" r="1" fill="currentColor"/>
@@ -172,13 +180,13 @@ function ChartLegend({
         </svg>
       </div>
       <div className="space-y-1.5">
-        <LegendRow icon="#" label="People"   count={stats.total}  color="#64748b" />
-        <div className="h-px bg-slate-100 my-1.5" />
-        <LegendRow icon="♂" label="Male"     count={stats.male}   color="#3b82f6" />
-        <LegendRow icon="♀" label="Female"   count={stats.female} color="#ec4899" />
-        <div className="h-px bg-slate-100 my-1.5" />
-        <LegendRow icon="●" label="Living"   count={stats.living} color="#22c55e" />
-        <LegendRow icon="✝" label="Deceased" count={stats.dead}   color="#94a3b8" />
+        <LegendRow icon="#" label="People"   count={stats.total}  color={theme.nodeSubtext} textColor={theme.nodeText} />
+        <div className="h-px my-1.5" style={{ background: theme.nodeBorder }} />
+        <LegendRow icon="♂" label="Male"     count={stats.male}   color="#3b82f6"            textColor={theme.nodeText} />
+        <LegendRow icon="♀" label="Female"   count={stats.female} color="#ec4899"            textColor={theme.nodeText} />
+        <div className="h-px my-1.5" style={{ background: theme.nodeBorder }} />
+        <LegendRow icon="●" label="Living"   count={stats.living} color="#22c55e"            textColor={theme.nodeText} />
+        <LegendRow icon="✝" label="Deceased" count={stats.dead}   color={theme.nodeSubtext}  textColor={theme.nodeText} />
       </div>
     </div>
   );

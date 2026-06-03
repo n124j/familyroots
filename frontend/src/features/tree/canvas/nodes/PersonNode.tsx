@@ -154,6 +154,7 @@ function PersonNodeComponent({ data, selected, dragging }: NodeProps<PersonNodeD
         onClick={handleClick}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        title={fullName}
         style={{
           width: PERSON_NODE_WIDTH,
           height: PERSON_NODE_HEIGHT,
