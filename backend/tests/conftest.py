@@ -17,6 +17,11 @@ os.environ.setdefault(
     "JWT_SECRET_KEY",
     "test-secret-key-that-is-long-enough-for-hs256",
 )
+# Botocore needs non-None credentials to generate presigned URLs (pure local
+# HMAC computation — no network).  setdefault is a no-op in environments that
+# already have real or localstack credentials configured.
+os.environ.setdefault("AWS_ACCESS_KEY_ID", "test-access-key-id")
+os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "test-secret-access-key")
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 from typing import Any

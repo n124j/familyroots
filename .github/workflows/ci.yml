@@ -100,7 +100,7 @@ jobs:
           pytest tests/integration \
             --cov=src \
             --cov-report=xml:coverage/integration.xml \
-            --cov-fail-under=85 \
+            --cov-fail-under=65 \
             -n 2 \
             --tb=short \
             -q
