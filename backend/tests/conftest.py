@@ -125,6 +125,21 @@ class FakeUnitOfWork(AbstractUnitOfWork):
         _default_tenant.is_active = True
         self._tenants._tenants = [_default_tenant]
 
+        # Pre-seed a default authenticated user so get_current_user() resolves
+        # TEST_USER_ID to a valid active user in integration tests.
+        # Only added when the repo is empty (i.e. not the verified_user fixture path).
+        if not self._users._users:
+            _default_user = UserModel()
+            _default_user.id = TEST_USER_ID
+            _default_user.tenant_id = TEST_TENANT_ID
+            _default_user.email = "alice@example.com"
+            _default_user.email_verified = True
+            _default_user.is_active = True
+            _default_user.app_role = "ADMIN"
+            _default_user.failed_login_attempts = 0
+            _default_user.locked_until = None
+            self._users._users.append(_default_user)
+
     @property
     def users(self) -> FakeUserRepository:
         return self._users
@@ -144,31 +159,58 @@ class FakeUnitOfWork(AbstractUnitOfWork):
         def __init__(self, users: list[UserModel]) -> None:
             self._users = users
 
-        async def execute(self, stmt: Any) -> Any:
-            # Honour simple equality filters (email == ?, id == ?) from WHERE clause
-            users = list(self._users)
+        async def execute(self, stmt: Any, params: Any = None) -> Any:
+            from src.infrastructure.database.models.user import UserModel as _UM
+
+            # Only return user rows for ORM selects targeting UserModel.
+            # Text queries and selects on other models (TreeMemberModel, etc.)
+            # return empty so endpoints gracefully get None / [] and raise 403/404
+            # rather than crashing with AttributeError on unexpected model fields.
+            items: list = []
             try:
-                wc = getattr(stmt, 'whereclause', None)
-                if wc is not None:
-                    clauses = list(getattr(wc, 'clauses', None) or [wc])
-                    for clause in clauses:
-                        key = getattr(getattr(clause, 'left', None), 'key', None)
-                        val = getattr(getattr(clause, 'right', None), 'value', None)
-                        if key == 'email' and val is not None:
-                            users = [u for u in users if u.email == val.lower()]
-                        elif key == 'id' and val is not None:
-                            users = [u for u in users if str(u.id) == str(val)]
+                col_descs = getattr(stmt, 'column_descriptions', None)
+                is_user_query = bool(col_descs and col_descs[0].get('entity') is _UM)
             except Exception:
-                pass
+                is_user_query = False
+
+            if is_user_query:
+                items = list(self._users)
+                try:
+                    wc = getattr(stmt, 'whereclause', None)
+                    if wc is not None:
+                        clauses = list(getattr(wc, 'clauses', None) or [wc])
+                        for clause in clauses:
+                            key = getattr(getattr(clause, 'left', None), 'key', None)
+                            val = getattr(getattr(clause, 'right', None), 'value', None)
+                            if key == 'email' and val is not None:
+                                items = [u for u in items if u.email == val.lower()]
+                            elif key == 'id' and val is not None:
+                                items = [u for u in items if str(u.id) == str(val)]
+                except Exception:
+                    pass
 
             class _Result:
-                def __init__(self, items: list) -> None:
-                    self._items = items
+                def __init__(self, data: list) -> None:
+                    self._items = data
                 def scalars(self) -> "_Result":
                     return self
                 def first(self) -> Any:
                     return self._items[0] if self._items else None
-            return _Result(users)
+                def all(self) -> list:
+                    return self._items
+                def fetchall(self) -> list:
+                    return self._items
+                def scalar(self) -> Any:
+                    return self._items[0] if self._items else None
+                def scalar_one(self) -> Any:
+                    return self._items[0] if self._items else None
+                def scalar_one_or_none(self) -> Any:
+                    return self._items[0] if self._items else None
+            return _Result(items)
+
+        async def get(self, model: Any, pk: Any) -> Any:
+            """Simulate session.get(Model, primary_key) — lookup by id."""
+            return next((u for u in self._users if str(u.id) == str(pk)), None)
 
         def add(self, entity: Any) -> None:
             """No-op — login-event recording doesn't need persistence in unit tests."""
@@ -253,14 +295,44 @@ async def test_client() -> AsyncGenerator[AsyncClient, None]:
     """
     from src.main import create_app
     from src.api.deps import get_uow, get_token_store
+    from src.infrastructure.database.session import get_db_session
 
     app = create_app()
 
     fake_uow = FakeUnitOfWork()
     fake_store = FakeTokenStore()
 
+    # Override UoW and Redis store as before
     app.dependency_overrides[get_uow] = lambda: fake_uow
     app.dependency_overrides[get_token_store] = lambda: fake_store
 
+    # Also override the raw DB session so get_current_user (SessionDep) doesn't
+    # attempt a real PostgreSQL connection in unit/integration tests.
+    async def _fake_db_session():
+        yield fake_uow._session
+
+    app.dependency_overrides[get_db_session] = _fake_db_session
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
+
+
+@pytest.fixture
+def auth_headers() -> dict:
+    """
+    Authorization header with a valid Bearer token for integration tests.
+
+    The token is signed with settings.jwt_secret_key (the same secret the
+    TenantMiddleware uses) and carries TEST_USER_ID / TEST_TENANT_ID claims
+    so that get_current_user resolves to the pre-seeded verified_user.
+    """
+    from src.config import get_settings
+    settings = get_settings()
+    svc = JWTService(
+        secret_key=settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+        access_token_expire_minutes=60,
+        refresh_token_expire_days=1,
+    )
+    access_token, _ = svc.create_access_token(TEST_USER_ID, TEST_TENANT_ID)
+    return {"Authorization": f"Bearer {access_token}"}

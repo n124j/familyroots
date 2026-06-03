@@ -470,7 +470,7 @@ async def add_sibling(
 # ── Relationship queries ──────────────────────────────────────────
 
 @router.get(
-    "/{person_id}/ancestors",
+    "/{person_id}/ancestor-generations",
     response_model=AncestorsByGenerationResponse,
     summary="Get all ancestors grouped by generation",
 )
@@ -486,7 +486,7 @@ async def get_ancestors(
 
 
 @router.get(
-    "/{person_id}/descendants",
+    "/{person_id}/descendant-generations",
     response_model=AncestorsByGenerationResponse,
     summary="Get all descendants grouped by generation",
 )
