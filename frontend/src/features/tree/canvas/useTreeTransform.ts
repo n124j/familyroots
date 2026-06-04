@@ -57,6 +57,8 @@ export function transformGraphToFlow(
       displayGivenName: person.displayGivenName,
       displaySurname: person.displaySurname,
       sex: person.sex,
+      birthDate: person.birthDate,
+      deathDate: person.deathDate,
       birthYear: person.birthYear,
       deathYear: person.deathYear,
       isLiving: person.isLiving,
@@ -67,6 +69,9 @@ export function transformGraphToFlow(
       hasHiddenChildren: personHasChildren.has(person.id) && !isExpanded,
       hasHiddenParents: personHasParents.has(person.id) && !isExpanded,
       generation: 0, // patched by layout
+      facebookHandle: person.facebookHandle,
+      xHandle: person.xHandle,
+      linkedinHandle: person.linkedinHandle,
     };
 
     return {

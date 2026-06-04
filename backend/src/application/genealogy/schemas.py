@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -21,19 +22,31 @@ class CreatePersonRequest(BaseModel):
     given_name: str = Field(default="", max_length=200)
     surname: str = Field(default="", max_length=200)
     sex: Sex = Sex.UNKNOWN
+    birth_date: Optional[date] = None
+    death_date: Optional[date] = None
     birth_year: Optional[int] = Field(default=None, ge=1, le=9999)
     death_year: Optional[int] = Field(default=None, ge=1, le=9999)
     is_living: bool = True
     is_deceased: bool = False
+    facebook_handle: Optional[str] = Field(default=None, max_length=200)
+    x_handle: Optional[str] = Field(default=None, max_length=200)
+    linkedin_handle: Optional[str] = Field(default=None, max_length=200)
 
 
 class UpdatePersonRequest(BaseModel):
     given_name: str = Field(default="", max_length=200)
     surname: str = Field(default="", max_length=200)
     sex: Sex = Sex.UNKNOWN
+    birth_date: Optional[date] = None
+    death_date: Optional[date] = None
+    birth_year: Optional[int] = Field(default=None, ge=1, le=9999)
+    death_year: Optional[int] = Field(default=None, ge=1, le=9999)
     is_living: bool = True
     is_deceased: bool = False
     photo_url: Optional[str] = Field(default=None, max_length=2048)
+    facebook_handle: Optional[str] = Field(default=None, max_length=200)
+    x_handle: Optional[str] = Field(default=None, max_length=200)
+    linkedin_handle: Optional[str] = Field(default=None, max_length=200)
 
 
 class PersonResponse(BaseModel):
@@ -45,6 +58,13 @@ class PersonResponse(BaseModel):
     is_living: bool
     is_deceased: bool
     photo_url: Optional[str] = None
+    birth_date: Optional[date] = None
+    death_date: Optional[date] = None
+    birth_year: Optional[int] = None
+    death_year: Optional[int] = None
+    facebook_handle: Optional[str] = None
+    x_handle: Optional[str] = None
+    linkedin_handle: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

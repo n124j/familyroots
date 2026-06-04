@@ -68,10 +68,17 @@ class GraphLoader:
                 display_given_name=row.display_given_name,
                 display_surname=row.display_surname,
                 sex=Sex(row.sex) if row.sex else Sex.UNKNOWN,
+                birth_date=row.birth_date,
+                death_date=row.death_date,
+                birth_year=row.birth_year,
+                death_year=row.death_year,
                 is_living=row.is_living,
                 is_deceased=row.is_deceased,
                 is_deleted=row.is_deleted,
                 photo_url=row.photo_url,
+                facebook_handle=row.facebook_handle,
+                x_handle=row.x_handle,
+                linkedin_handle=row.linkedin_handle,
             )
             graph.add_person(node)
 

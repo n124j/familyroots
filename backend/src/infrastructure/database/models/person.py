@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
-    Boolean, DateTime, Enum as SAEnum, ForeignKey, Integer,
+    Boolean, Date, DateTime, Enum as SAEnum, ForeignKey, Integer,
     String, Text, UniqueConstraint, text,
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
@@ -48,6 +48,17 @@ class PersonModel(Base, TenantMixin, TimestampMixin):
 
     # Profile photo URL (thumbnail from media system, set after upload)
     photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Life dates — full date takes priority; year-only is the fallback
+    birth_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    death_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
+    birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    death_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Social profile handles (stored without @ or URL prefix)
+    facebook_handle: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    x_handle:        Mapped[str | None] = mapped_column(String(200), nullable=True)
+    linkedin_handle: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     # Denormalised search vector (populated by DB trigger)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)

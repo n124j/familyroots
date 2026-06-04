@@ -624,7 +624,9 @@ async def get_tree_graph(
     # Persons
     persons_q = text("""
         SELECT id, tree_id, display_given_name, display_surname,
-               sex, is_living, is_deceased, photo_url
+               sex, is_living, is_deceased, photo_url,
+               birth_date, death_date, birth_year, death_year,
+               facebook_handle, x_handle, linkedin_handle
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -641,6 +643,13 @@ async def get_tree_graph(
             "isLiving": r.is_living,
             "isDeceased": r.is_deceased,
             **({"photoUrl": r.photo_url} if r.photo_url else {}),
+            **({"birthDate": r.birth_date.isoformat()} if r.birth_date else {}),
+            **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
+            **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
+            **({"deathYear": r.death_year} if r.death_year is not None else {}),
+            **({"facebookHandle": r.facebook_handle} if r.facebook_handle else {}),
+            **({"xHandle": r.x_handle} if r.x_handle else {}),
+            **({"linkedinHandle": r.linkedin_handle} if r.linkedin_handle else {}),
         }
         for r in person_rows
     ]

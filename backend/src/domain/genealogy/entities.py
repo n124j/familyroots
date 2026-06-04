@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import date
 from enum import Enum
 from typing import Optional
 
@@ -83,12 +84,17 @@ class PersonNode:
     display_given_name: str = ""
     display_surname: str = ""
     sex: Sex = Sex.UNKNOWN
+    birth_date: Optional[date] = None
+    death_date: Optional[date] = None
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
     is_living: bool = True
     is_deceased: bool = False
     is_deleted: bool = False
     photo_url: Optional[str] = None
+    facebook_handle: Optional[str] = None
+    x_handle: Optional[str] = None
+    linkedin_handle: Optional[str] = None
 
     @property
     def display_name(self) -> str:

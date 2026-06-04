@@ -31,8 +31,22 @@ async function fetchTreeGraph(treeId: string, token: string | null): Promise<Api
 async function createPerson(
   treeId: string,
   token: string | null,
-  fields: { givenName: string; surname: string; sex: string; isLiving: boolean },
+  fields: PersonFields,
 ): Promise<string> {
+  const body: Record<string, unknown> = {
+    given_name:  fields.givenName,
+    surname:     fields.surname,
+    sex:         fields.sex,
+    is_living:   fields.isLiving,
+    is_deceased: !fields.isLiving,
+  };
+  if (fields.birthDate)      body.birth_date       = fields.birthDate;
+  if (fields.deathDate)      body.death_date       = fields.deathDate;
+  if (fields.birthYear)      body.birth_year       = parseInt(fields.birthYear, 10);
+  if (fields.deathYear)      body.death_year       = parseInt(fields.deathYear, 10);
+  if (fields.facebookHandle) body.facebook_handle  = fields.facebookHandle.trim();
+  if (fields.xHandle)        body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
+  if (fields.linkedinHandle) body.linkedin_handle  = fields.linkedinHandle.trim();
   const res = await fetch(`${API_BASE}/trees/${treeId}/persons`, {
     method: 'POST',
     headers: {
@@ -40,13 +54,7 @@ async function createPerson(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     credentials: 'include',
-    body: JSON.stringify({
-      given_name: fields.givenName,
-      surname: fields.surname,
-      sex: fields.sex,
-      is_living:   fields.isLiving,
-      is_deceased: !fields.isLiving,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -63,9 +71,47 @@ interface PersonFields {
   surname: string;
   sex: string;
   isLiving: boolean;
+  // Optional extra details
+  birthDate: string;
+  deathDate: string;
+  birthYear: string;
+  deathYear: string;
+  facebookHandle: string;
+  xHandle: string;
+  linkedinHandle: string;
 }
 
-const EMPTY_FIELDS: PersonFields = { givenName: '', surname: '', sex: 'UNKNOWN', isLiving: true };
+const EMPTY_FIELDS: PersonFields = {
+  givenName: '', surname: '', sex: 'UNKNOWN', isLiving: true,
+  birthDate: '', deathDate: '', birthYear: '', deathYear: '',
+  facebookHandle: '', xHandle: '', linkedinHandle: '',
+};
+
+/** Returns an error message if birth or death date/year are both set but disagree, else null. */
+function validateDates(fields: {
+  birthDate?: string; birthYear?: string;
+  deathDate?: string; deathYear?: string;
+}): string | null {
+  const bd = fields.birthDate?.trim();
+  const by = fields.birthYear?.trim();
+  if (bd && by) {
+    const yearFromDate = new Date(bd + 'T00:00:00').getFullYear();
+    const yearOnly     = parseInt(by, 10);
+    if (!isNaN(yearOnly) && yearFromDate !== yearOnly) {
+      return `Birth date year (${yearFromDate}) doesn't match "Birth year only" (${yearOnly}). Make them consistent or clear one field.`;
+    }
+  }
+  const dd = fields.deathDate?.trim();
+  const dy = fields.deathYear?.trim();
+  if (dd && dy) {
+    const yearFromDate = new Date(dd + 'T00:00:00').getFullYear();
+    const yearOnly     = parseInt(dy, 10);
+    if (!isNaN(yearOnly) && yearFromDate !== yearOnly) {
+      return `Death date year (${yearFromDate}) doesn't match "Death year only" (${yearOnly}). Make them consistent or clear one field.`;
+    }
+  }
+  return null;
+}
 
 function PersonFormFields({
   values,
@@ -74,8 +120,11 @@ function PersonFormFields({
   values: PersonFields;
   onChange: (v: PersonFields) => void;
 }) {
+  const [showExtra, setShowExtra] = React.useState(false);
+
   return (
     <>
+      {/* ── Core fields (always visible) ── */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-medium text-slate-600 mb-1 block">First name</label>
@@ -118,6 +167,115 @@ function PersonFormFields({
         />
         Currently living
       </label>
+
+      {/* ── More details (collapsed by default) ── */}
+      <div className="border border-slate-200 rounded-lg overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowExtra((v) => !v)}
+          className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+        >
+          <span>More details <span className="text-slate-400 font-normal">(optional)</span></span>
+          <span className="text-slate-400 text-[10px]">{showExtra ? '▲ less' : '▼ more'}</span>
+        </button>
+
+        {showExtra && (
+          <div className="px-3 pb-3 space-y-3 border-t border-slate-100 pt-3">
+            {/* Life dates */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Life dates</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Birth date</label>
+                <input
+                  type="date"
+                  value={values.birthDate}
+                  onChange={(e) => onChange({ ...values, birthDate: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Birth year only</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={9999}
+                  placeholder="e.g. 1950"
+                  value={values.birthYear}
+                  onChange={(e) => onChange({ ...values, birthYear: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Death date</label>
+                <input
+                  type="date"
+                  value={values.deathDate}
+                  onChange={(e) => onChange({ ...values, deathDate: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Death year only</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={9999}
+                  placeholder="e.g. 2005"
+                  value={values.deathYear}
+                  onChange={(e) => onChange({ ...values, deathYear: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+
+            {/* Date consistency error */}
+            {(() => {
+              const msg = validateDates(values);
+              if (!msg) return null;
+              return (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {msg}
+                </p>
+              );
+            })()}
+
+            {/* Social profiles */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Social profiles</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="w-16 text-[10px] font-medium text-slate-500 shrink-0">Facebook</span>
+                <input
+                  type="text"
+                  placeholder="username"
+                  value={values.facebookHandle}
+                  onChange={(e) => onChange({ ...values, facebookHandle: e.target.value })}
+                  className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-16 text-[10px] font-medium text-slate-500 shrink-0">X / Twitter</span>
+                <input
+                  type="text"
+                  placeholder="@handle"
+                  value={values.xHandle}
+                  onChange={(e) => onChange({ ...values, xHandle: e.target.value })}
+                  className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-16 text-[10px] font-medium text-slate-500 shrink-0">LinkedIn</span>
+                <input
+                  type="text"
+                  placeholder="in/username"
+                  value={values.linkedinHandle}
+                  onChange={(e) => onChange({ ...values, linkedinHandle: e.target.value })}
+                  className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -138,6 +296,8 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const dateErr = validateDates(fields);
+    if (dateErr) { setError(dateErr); return; }
     setLoading(true);
     setError('');
     try {
@@ -248,6 +408,8 @@ function AddRelationModal({
 
   async function handleNewSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const dateErr = validateDates(fields);
+    if (dateErr) { setError(dateErr); return; }
     setLoading(true); setError('');
     try {
       const newId = await createPerson(treeId, token, fields);
@@ -469,6 +631,8 @@ function AddChildToUnionModal({
 
   async function handleNewSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const dateErr = validateDates(fields);
+    if (dateErr) { setError(dateErr); return; }
     setLoading(true);
     setError('');
     try {
@@ -689,6 +853,13 @@ interface EditPersonFields {
   surname: string;
   sex: string;
   status: 'living' | 'deceased' | 'unknown';
+  birthDate: string;
+  deathDate: string;
+  birthYear: string;
+  deathYear: string;
+  facebookHandle: string;
+  xHandle: string;
+  linkedinHandle: string;
 }
 
 interface EditPersonModalProps {
@@ -710,6 +881,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError,   setPhotoError]   = useState('');
   const [showPresets,  setShowPresets]  = useState(false);
+  const [showExtra,    setShowExtra]    = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -774,20 +946,30 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const dateErr = validateDates(fields);
+    if (dateErr) { setError(dateErr); return; }
     setLoading(true);
     setError('');
     try {
+      const body: Record<string, unknown> = {
+        given_name:  fields.givenName,
+        surname:     fields.surname,
+        sex:         fields.sex,
+        is_living:   fields.status === 'living',
+        is_deceased: fields.status === 'deceased',
+      };
+      if (fields.birthDate)       body.birth_date       = fields.birthDate;
+      if (fields.deathDate)       body.death_date       = fields.deathDate;
+      if (fields.birthYear)       body.birth_year       = parseInt(fields.birthYear, 10);
+      if (fields.deathYear)       body.death_year       = parseInt(fields.deathYear, 10);
+      if (fields.facebookHandle)  body.facebook_handle  = fields.facebookHandle.trim();
+      if (fields.xHandle)         body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
+      if (fields.linkedinHandle)  body.linkedin_handle  = fields.linkedinHandle.trim();
       const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
-        body: JSON.stringify({
-          given_name:  fields.givenName,
-          surname:     fields.surname,
-          sex:         fields.sex,
-          is_living:   fields.status === 'living',
-          is_deceased: fields.status === 'deceased',
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -946,6 +1128,115 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
               ))}
             </div>
           </div>
+          {/* ── Extra details collapsible ── */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowExtra((v) => !v)}
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <span>More details</span>
+              <span className="text-slate-400">{showExtra ? '▲' : '▼'}</span>
+            </button>
+
+            {showExtra && (
+              <div className="px-3 pb-3 space-y-3 border-t border-slate-100 pt-3">
+                {/* Dates */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Life dates</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Birth date</label>
+                    <input
+                      type="date"
+                      value={fields.birthDate}
+                      onChange={(e) => setFields((f) => ({ ...f, birthDate: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Birth year only</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={9999}
+                      placeholder="e.g. 1950"
+                      value={fields.birthYear}
+                      onChange={(e) => setFields((f) => ({ ...f, birthYear: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Death date</label>
+                    <input
+                      type="date"
+                      value={fields.deathDate}
+                      onChange={(e) => setFields((f) => ({ ...f, deathDate: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Death year only</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={9999}
+                      placeholder="e.g. 2005"
+                      value={fields.deathYear}
+                      onChange={(e) => setFields((f) => ({ ...f, deathYear: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Date consistency error */}
+                {(() => {
+                  const msg = validateDates(fields);
+                  if (!msg) return null;
+                  return (
+                    <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      {msg}
+                    </p>
+                  );
+                })()}
+
+                {/* Social */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Social profiles</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-[10px] font-medium text-slate-500 shrink-0">Facebook</span>
+                    <input
+                      type="text"
+                      placeholder="username"
+                      value={fields.facebookHandle}
+                      onChange={(e) => setFields((f) => ({ ...f, facebookHandle: e.target.value }))}
+                      className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-[10px] font-medium text-slate-500 shrink-0">X / Twitter</span>
+                    <input
+                      type="text"
+                      placeholder="@handle"
+                      value={fields.xHandle}
+                      onChange={(e) => setFields((f) => ({ ...f, xHandle: e.target.value }))}
+                      className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-14 text-[10px] font-medium text-slate-500 shrink-0">LinkedIn</span>
+                    <input
+                      type="text"
+                      placeholder="in/username"
+                      value={fields.linkedinHandle}
+                      onChange={(e) => setFields((f) => ({ ...f, linkedinHandle: e.target.value }))}
+                      className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
@@ -963,6 +1254,290 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
   );
 }
 
+// ── Person Profile Modal ───────────────────────────────────────────────────
+
+interface PersonDetailFull {
+  id: string;
+  display_given_name: string;
+  display_surname: string;
+  sex: string;
+  is_living: boolean;
+  is_deceased: boolean;
+  photo_url?: string | null;
+  birth_date?: string | null;
+  death_date?: string | null;
+  birth_year?: number | null;
+  death_year?: number | null;
+  facebook_handle?: string | null;
+  x_handle?: string | null;
+  linkedin_handle?: string | null;
+  parents: string[];
+  children: string[];
+  spouses: string[];
+  siblings: string[];
+}
+
+const PROFILE_SEX_LABEL: Record<string, string> = {
+  MALE: 'Male', FEMALE: 'Female', OTHER: 'Other', UNKNOWN: 'Unknown',
+};
+const PROFILE_SEX_BADGE: Record<string, string> = {
+  MALE: 'bg-blue-100 text-blue-700', FEMALE: 'bg-pink-100 text-pink-700',
+  OTHER: 'bg-purple-100 text-purple-700', UNKNOWN: 'bg-gray-100 text-gray-600',
+};
+const PROFILE_SEX_AVATAR: Record<string, string> = {
+  MALE: 'bg-blue-100 text-blue-600', FEMALE: 'bg-pink-100 text-pink-600',
+  OTHER: 'bg-purple-100 text-purple-600', UNKNOWN: 'bg-gray-100 text-gray-500',
+};
+
+function fmtDate(iso?: string | null): string {
+  if (!iso) return '';
+  try {
+    return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+  } catch { return iso; }
+}
+
+interface PersonProfileModalProps {
+  initialPersonId: string;
+  treeId: string;
+  token: string | null;
+  graph: import('@features/tree/types').ApiTreeGraph | null;
+  onClose: () => void;
+}
+
+function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: PersonProfileModalProps) {
+  // Navigation history within the modal — allows clicking relatives to browse
+  const [history, setHistory] = useState<string[]>([initialPersonId]);
+  const personId = history[history.length - 1];
+
+  const [detail,  setDetail]  = useState<PersonDetailFull | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchErr, setFetchErr] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    setFetchErr('');
+    setDetail(null);
+    fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    })
+      .then((r) => { if (!r.ok) throw new Error('Not found'); return r.json(); })
+      .then(setDetail)
+      .catch(() => setFetchErr('Failed to load profile'))
+      .finally(() => setLoading(false));
+  }, [personId, treeId, token]);
+
+  // Build name + photo maps from the already-loaded graph (zero extra requests)
+  const nameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    graph?.persons.forEach((p) => { m[p.id] = `${p.displayGivenName} ${p.displaySurname}`.trim() || 'Unknown'; });
+    return m;
+  }, [graph]);
+
+  const graphPersonMap = useMemo(() => {
+    const m: Record<string, import('@features/tree/types').ApiPerson> = {};
+    graph?.persons.forEach((p) => { m[p.id] = p; });
+    return m;
+  }, [graph]);
+
+  const navigateTo  = (id: string) => setHistory((h) => [...h, id]);
+  const navigateBack = () => setHistory((h) => h.length > 1 ? h.slice(0, -1) : h);
+
+  const fullName  = detail
+    ? `${detail.display_given_name} ${detail.display_surname}`.trim() || 'Unknown'
+    : (nameMap[personId] ?? '…');
+  const initial   = (fullName[0] ?? '?').toUpperCase();
+  const sex       = detail?.sex ?? 'UNKNOWN';
+  const avatarCls = PROFILE_SEX_AVATAR[sex] ?? PROFILE_SEX_AVATAR.UNKNOWN;
+  const badgeCls  = PROFILE_SEX_BADGE[sex]  ?? PROFILE_SEX_BADGE.UNKNOWN;
+
+  const hasRelatives = detail && (
+    detail.parents.length + detail.spouses.length + detail.children.length + detail.siblings.length > 0
+  );
+
+  function RelGroup({ ids, label }: { ids: string[]; label: string }) {
+    if (!ids.length) return null;
+    return (
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 px-3 pb-1">{label}</p>
+        {ids.map((id) => {
+          const gp   = graphPersonMap[id];
+          const name = nameMap[id] ?? 'Unknown';
+          const photo = gp?.photoUrl;
+          const aCls = PROFILE_SEX_AVATAR[gp?.sex ?? 'UNKNOWN'] ?? PROFILE_SEX_AVATAR.UNKNOWN;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => navigateTo(id)}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-gray-50 group transition-colors text-left"
+            >
+              {photo ? (
+                <img
+                  src={isPreset(photo) ? presetDataUri(photo)! : photo}
+                  alt={name}
+                  className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                />
+              ) : (
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${aCls}`}>
+                  {name[0]?.toUpperCase() ?? '?'}
+                </span>
+              )}
+              <span className="text-sm text-gray-800 group-hover:text-brand-600 transition-colors flex-1 truncate">{name}</span>
+              <span className="text-gray-300 group-hover:text-brand-400 text-xs">›</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[85vh]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            {history.length > 1 && (
+              <button
+                onClick={navigateBack}
+                className="text-sm text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+              >
+                ←
+              </button>
+            )}
+            <span className="text-sm font-semibold text-gray-900 truncate">{fullName}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-3 w-7 h-7 shrink-0 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
+
+          {loading && (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {fetchErr && <p className="p-6 text-sm text-red-600">{fetchErr}</p>}
+
+          {!loading && detail && (
+            <div className="p-5 space-y-4">
+
+              {/* Person header */}
+              <div className="flex items-start gap-4">
+                {detail.photo_url ? (
+                  <img
+                    src={isPreset(detail.photo_url) ? presetDataUri(detail.photo_url)! : detail.photo_url}
+                    alt={fullName}
+                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold flex-shrink-0 ${avatarCls}`}>
+                    {initial}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-bold text-gray-900 leading-tight break-words">{fullName}</h2>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}>
+                      {PROFILE_SEX_LABEL[detail.sex] ?? detail.sex}
+                    </span>
+                    {detail.is_deceased ? (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Deceased</span>
+                    ) : detail.is_living ? (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Living</span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Extra details */}
+              {(detail.birth_date || detail.birth_year || detail.death_date || detail.death_year ||
+                detail.facebook_handle || detail.x_handle || detail.linkedin_handle) && (
+                <div className="rounded-xl border border-gray-100 divide-y divide-gray-50 overflow-hidden text-sm">
+                  {(detail.birth_date || detail.birth_year) && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-green-500 shrink-0">●</span>
+                      <span className="text-xs text-gray-400 w-9 shrink-0">Born</span>
+                      <span className="text-gray-800">
+                        {detail.birth_date ? fmtDate(detail.birth_date) : detail.birth_year}
+                      </span>
+                    </div>
+                  )}
+                  {(detail.is_deceased || detail.death_date || detail.death_year) && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-gray-400 text-xs shrink-0">✝</span>
+                      <span className="text-xs text-gray-400 w-9 shrink-0">Died</span>
+                      <span className="text-gray-800">
+                        {detail.death_date ? fmtDate(detail.death_date) : detail.death_year ?? 'Unknown'}
+                      </span>
+                    </div>
+                  )}
+                  {detail.facebook_handle && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-[#1877f2] font-bold text-xs shrink-0">f</span>
+                      <span className="text-xs text-gray-400 w-9 shrink-0">FB</span>
+                      <a href={`https://facebook.com/${detail.facebook_handle}`} target="_blank" rel="noopener noreferrer"
+                        className="text-brand-600 hover:underline truncate">{detail.facebook_handle}</a>
+                    </div>
+                  )}
+                  {detail.x_handle && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="font-bold text-xs shrink-0">𝕏</span>
+                      <span className="text-xs text-gray-400 w-9 shrink-0">X</span>
+                      <a href={`https://x.com/${detail.x_handle}`} target="_blank" rel="noopener noreferrer"
+                        className="text-brand-600 hover:underline truncate">@{detail.x_handle}</a>
+                    </div>
+                  )}
+                  {detail.linkedin_handle && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-[#0a66c2] font-bold text-xs shrink-0">in</span>
+                      <span className="text-xs text-gray-400 w-9 shrink-0">LinkedIn</span>
+                      <a href={`https://linkedin.com/in/${detail.linkedin_handle}`} target="_blank" rel="noopener noreferrer"
+                        className="text-brand-600 hover:underline truncate">{detail.linkedin_handle}</a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Relationships */}
+              <div className="rounded-xl border border-gray-100 overflow-hidden">
+                <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Relationships</span>
+                </div>
+                {hasRelatives ? (
+                  <div className="divide-y divide-gray-50 p-1 space-y-1">
+                    <RelGroup ids={detail.parents}  label="Parents" />
+                    <RelGroup ids={detail.spouses}  label="Spouses / Partners" />
+                    <RelGroup ids={detail.children} label="Children" />
+                    <RelGroup ids={detail.siblings} label="Siblings" />
+                  </div>
+                ) : (
+                  <p className="px-4 py-6 text-center text-sm text-gray-400">No relationships recorded yet.</p>
+                )}
+              </div>
+
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Selection panel (right drawer) ────────────────────────────────────────
 
 interface SelectionPanelProps {
@@ -972,6 +1547,7 @@ interface SelectionPanelProps {
   token: string | null;
   canWrite: boolean;
   onClose: () => void;
+  onOpenProfile: () => void;
   onAddParent: () => void;
   onAddChild: () => void;
   onAddSpouse: () => void;
@@ -982,7 +1558,7 @@ interface SelectionPanelProps {
 
 function SelectionPanel({
   personId, personName, treeId, token, canWrite,
-  onClose, onAddParent, onAddChild, onAddSpouse, onSetFocus, onDeleted, onEdit,
+  onClose, onOpenProfile, onAddParent, onAddChild, onAddSpouse, onSetFocus, onDeleted, onEdit,
 }: SelectionPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting,      setDeleting]      = useState(false);
@@ -1029,12 +1605,12 @@ function SelectionPanel({
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
-          <Link
-            to={`/trees/${treeId}/persons/${personId}`}
+          <button
+            onClick={onOpenProfile}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200"
           >
             👤 Open Profile
-          </Link>
+          </button>
           {canWrite && (
             <button onClick={onEdit}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
@@ -1629,6 +2205,7 @@ export default function FamilyTreePage() {
   const [showMembers,       setShowMembers]       = useState(false);
   const [unionChildFgId,    setUnionChildFgId]    = useState<string | null>(null);
   const [showEdit,          setShowEdit]          = useState(false);
+  const [showProfile,       setShowProfile]       = useState(false);
   const [showActivity,      setShowActivity]      = useState(false);
   const [searchOpen,        setSearchOpen]        = useState(false);
   const [searchQuery,       setSearchQuery]       = useState('');
@@ -1833,6 +2410,7 @@ export default function FamilyTreePage() {
           onAddSpouse={() => setRelationMode('spouse')}
           onSetFocus={handleSetFocus}
           onDeleted={() => { handlePanelClose(); handleAdded(); }}
+          onOpenProfile={() => setShowProfile(true)}
           onEdit={() => setShowEdit(true)}
         />
       </div>
@@ -1888,10 +2466,17 @@ export default function FamilyTreePage() {
         const p = graph?.persons.find((x) => x.id === panelPersonId);
         if (!p) return null;
         const initial: EditPersonFields = {
-          givenName: p.displayGivenName,
-          surname:   p.displaySurname,
-          sex:       p.sex,
-          status:    p.isLiving ? 'living' : p.isDeceased ? 'deceased' : 'unknown',
+          givenName:       p.displayGivenName,
+          surname:         p.displaySurname,
+          sex:             p.sex,
+          status:          p.isLiving ? 'living' : p.isDeceased ? 'deceased' : 'unknown',
+          birthDate:       p.birthDate ?? '',
+          deathDate:       p.deathDate ?? '',
+          birthYear:       p.birthYear != null ? String(p.birthYear) : '',
+          deathYear:       p.deathYear != null ? String(p.deathYear) : '',
+          facebookHandle:  p.facebookHandle ?? '',
+          xHandle:         p.xHandle ?? '',
+          linkedinHandle:  p.linkedinHandle ?? '',
         };
         return (
           <EditPersonModal
@@ -1906,6 +2491,16 @@ export default function FamilyTreePage() {
           />
         );
       })()}
+
+      {showProfile && panelPersonId && (
+        <PersonProfileModal
+          initialPersonId={panelPersonId}
+          treeId={treeId ?? ''}
+          token={accessToken}
+          graph={graph ?? null}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
 
       {showMembers && (
         <MembersModal

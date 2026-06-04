@@ -66,6 +66,12 @@ export interface PersonNodeData {
 
   /** Generation index relative to focus (0 = focus, -1 = parent, +1 = child) */
   generation: number;
+
+  birthDate?: string;
+  deathDate?: string;
+  facebookHandle?: string;
+  xHandle?: string;
+  linkedinHandle?: string;
 }
 
 export interface FamilyGroupNodeData {
@@ -117,11 +123,18 @@ export interface ApiPerson {
   displayGivenName: string;
   displaySurname: string;
   sex: Sex;
+  /** Full ISO date string "YYYY-MM-DD" */
+  birthDate?: string;
+  deathDate?: string;
+  /** Year only — used when full date is unknown */
   birthYear?: number;
   deathYear?: number;
   isLiving: boolean;
   isDeceased: boolean;
   photoUrl?: string;
+  facebookHandle?: string;
+  xHandle?: string;
+  linkedinHandle?: string;
 }
 
 export interface ApiMembership {

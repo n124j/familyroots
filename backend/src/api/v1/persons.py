@@ -83,8 +83,17 @@ async def create_person(
     person_id = _uuid.uuid4()
     await session.execute(
         sa_text("""
-            INSERT INTO persons (id, tenant_id, tree_id, sex, display_given_name, display_surname, is_living, is_deceased)
-            VALUES (:id, :tenant_id, :tree_id, :sex, :given, :surname, :living, :deceased)
+            INSERT INTO persons (
+                id, tenant_id, tree_id, sex, display_given_name, display_surname,
+                is_living, is_deceased,
+                birth_date, death_date, birth_year, death_year,
+                facebook_handle, x_handle, linkedin_handle
+            ) VALUES (
+                :id, :tenant_id, :tree_id, :sex, :given, :surname,
+                :living, :deceased,
+                :birth_date, :death_date, :birth_year, :death_year,
+                :facebook_handle, :x_handle, :linkedin_handle
+            )
         """),
         {
             "id": person_id,
@@ -95,6 +104,13 @@ async def create_person(
             "surname": req.surname,
             "living": req.is_living,
             "deceased": req.is_deceased,
+            "birth_date": req.birth_date,
+            "death_date": req.death_date,
+            "birth_year": req.birth_year,
+            "death_year": req.death_year,
+            "facebook_handle": req.facebook_handle,
+            "x_handle": req.x_handle,
+            "linkedin_handle": req.linkedin_handle,
         },
     )
     from src.domain.collaboration.entities import Action, AuditEntityType
@@ -110,7 +126,14 @@ async def create_person(
         display_surname=req.surname,
         sex=req.sex.value,
         is_living=req.is_living,
-        is_deceased=False,
+        is_deceased=req.is_deceased,
+        birth_date=req.birth_date,
+        death_date=req.death_date,
+        birth_year=req.birth_year,
+        death_year=req.death_year,
+        facebook_handle=req.facebook_handle,
+        x_handle=req.x_handle,
+        linkedin_handle=req.linkedin_handle,
     )
 
 
@@ -165,20 +188,37 @@ async def update_person(
                 sex                = :sex,
                 is_living          = :living,
                 is_deceased        = :deceased,
-                photo_url          = COALESCE(:photo_url, photo_url)
+                photo_url          = COALESCE(:photo_url, photo_url),
+                birth_date         = :birth_date,
+                death_date         = :death_date,
+                birth_year         = :birth_year,
+                death_year         = :death_year,
+                facebook_handle    = :facebook_handle,
+                x_handle           = :x_handle,
+                linkedin_handle    = :linkedin_handle
             WHERE id = :pid AND tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
-            RETURNING id, tree_id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url
+            RETURNING id, tree_id, display_given_name, display_surname, sex,
+                      is_living, is_deceased, photo_url,
+                      birth_date, death_date, birth_year, death_year,
+                      facebook_handle, x_handle, linkedin_handle
         """),
         {
-            "given":     req.given_name,
-            "surname":   req.surname,
-            "sex":       req.sex.value,
-            "living":    req.is_living,
-            "deceased":  req.is_deceased,
-            "photo_url": req.photo_url,
-            "pid":       person_id,
-            "tid":       tree_id,
-            "tenant":    user.tenant_id,
+            "given":           req.given_name,
+            "surname":         req.surname,
+            "sex":             req.sex.value,
+            "living":          req.is_living,
+            "deceased":        req.is_deceased,
+            "photo_url":       req.photo_url,
+            "birth_date":      req.birth_date,
+            "death_date":      req.death_date,
+            "birth_year":      req.birth_year,
+            "death_year":      req.death_year,
+            "facebook_handle": req.facebook_handle,
+            "x_handle":        req.x_handle,
+            "linkedin_handle": req.linkedin_handle,
+            "pid":             person_id,
+            "tid":             tree_id,
+            "tenant":          user.tenant_id,
         },
     )
     row = result.first()
@@ -199,6 +239,13 @@ async def update_person(
         is_living=row.is_living,
         is_deceased=row.is_deceased,
         photo_url=row.photo_url,
+        birth_date=row.birth_date,
+        death_date=row.death_date,
+        birth_year=row.birth_year,
+        death_year=row.death_year,
+        facebook_handle=row.facebook_handle,
+        x_handle=row.x_handle,
+        linkedin_handle=row.linkedin_handle,
     )
 
 
