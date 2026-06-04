@@ -8,9 +8,6 @@
  *   - Ctrl+Space member search (keyboard shortcut wiring)
  *   - createPerson sends is_deceased when isLiving is false
  */
-import React, { createRef } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 // ── createPerson payload helper ────────────────────────────────────────────────
 
