@@ -9,4 +9,3 @@ backend/.env
 backend/*.env
 frontend/node_modules
 backend/coverage
-package-lock.json
