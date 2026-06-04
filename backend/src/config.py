@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # ── Server ───────────────────────────────────────────────
-    host: str = "0.0.0.0"
+    host: str = "0.0.0.0"  # nosec B104 — intentional: container listens on all interfaces
     port: int = 8000
     workers: int = 4
 

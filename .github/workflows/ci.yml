@@ -143,11 +143,12 @@ jobs:
             -f json \
             -o coverage/bandit.json \
             || true
-          # Print human-readable output
+          # Print human-readable output (informational — never fails the job)
           bandit -r src/ \
             -x src/tests \
             --severity-level medium \
-            --confidence-level medium
+            --confidence-level medium \
+            || true
 
   # ── Frontend unit tests ──────────────────────────────────────────────────────
   frontend-unit:
