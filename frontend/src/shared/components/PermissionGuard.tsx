@@ -21,11 +21,11 @@ import { useAuthStore } from '@store/auth.store';
 
 type TreeRole = 'OWNER' | 'ADMIN' | 'EDITOR' | 'VIEWER';
 
-const ROLE_HIERARCHY: Record<TreeRole, number> = {
+export const ROLE_HIERARCHY: Record<TreeRole, number> = {
   OWNER: 4, ADMIN: 3, EDITOR: 2, VIEWER: 1,
 };
 
-const ACTION_MIN_ROLE: Record<string, TreeRole> = {
+export const ACTION_MIN_ROLE: Record<string, TreeRole> = {
   // Owner
   DELETE_TREE:         'OWNER',
   TRANSFER_OWNERSHIP:  'OWNER',

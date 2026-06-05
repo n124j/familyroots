@@ -2,9 +2,11 @@
  * Unit tests for PermissionGuard and isPermitted() helper.
  */
 import React from 'react';
-import { vi, type MockedFunction } from 'vitest';
+import { vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PermissionGuard, isPermitted, ROLE_HIERARCHY, ACTION_MIN_ROLE } from '@shared/components/PermissionGuard';
+import { queryKeys } from '@queries/keys';
 
 // ── isPermitted() pure function ────────────────────────────────────────────────
 
@@ -47,24 +49,36 @@ describe('ROLE_HIERARCHY', () => {
 
 // ── PermissionGuard component ──────────────────────────────────────────────────
 
-// vi.mock is hoisted automatically by Vitest; vi.importActual retrieves the real module.
-vi.mock('@shared/components/PermissionGuard', async () => {
-  const actual = await vi.importActual('@shared/components/PermissionGuard');
-  return {
-    ...(actual as object),
-    useTreeRole: vi.fn(),
-  };
+// useTreeRole reads userId from useAuthStore; mock it to return a known user.
+const TEST_USER_ID = 'test-user-123';
+
+vi.mock('@store/auth.store', () => {
+  const mockFn: any = vi.fn((selector: any) =>
+    selector({ user: { id: TEST_USER_ID }, accessToken: 'fake-token' })
+  );
+  mockFn.getState = vi.fn(() => ({ accessToken: 'fake-token' }));
+  return { useAuthStore: mockFn };
 });
 
-import { useTreeRole } from '@shared/components/PermissionGuard';
-const mockUseTreeRole = useTreeRole as MockedFunction<typeof useTreeRole>;
+/**
+ * Renders `ui` inside a QueryClientProvider pre-seeded so that
+ * useTreeRole returns the given role for treeId='tree-1'.
+ * Passing role=null seeds an empty members list → user not found → role null.
+ */
+function renderWithRole(role: string | null, ui: React.ReactElement, treeId = 'tree-1') {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  const members = role !== null ? [{ userId: TEST_USER_ID, role }] : [];
+  qc.setQueryData(queryKeys.trees.members(treeId), members);
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 describe('PermissionGuard', () => {
   afterEach(() => vi.clearAllMocks());
 
   it('renders children when user has sufficient role', () => {
-    mockUseTreeRole.mockReturnValue('EDITOR');
-    render(
+    renderWithRole('EDITOR',
       <PermissionGuard action="CREATE_PERSON" treeId="tree-1">
         <button>Add Person</button>
       </PermissionGuard>
@@ -73,8 +87,7 @@ describe('PermissionGuard', () => {
   });
 
   it('does not render children when role is insufficient', () => {
-    mockUseTreeRole.mockReturnValue('VIEWER');
-    render(
+    renderWithRole('VIEWER',
       <PermissionGuard action="DELETE_TREE" treeId="tree-1">
         <button>Delete Tree</button>
       </PermissionGuard>
@@ -83,8 +96,7 @@ describe('PermissionGuard', () => {
   });
 
   it('renders fallback when role is insufficient', () => {
-    mockUseTreeRole.mockReturnValue('VIEWER');
-    render(
+    renderWithRole('VIEWER',
       <PermissionGuard
         action="CREATE_PERSON"
         treeId="tree-1"
@@ -98,8 +110,7 @@ describe('PermissionGuard', () => {
   });
 
   it('renders nothing (not fallback) when no role available', () => {
-    mockUseTreeRole.mockReturnValue(null);
-    render(
+    renderWithRole(null,
       <PermissionGuard action="VIEW_PERSON" treeId="tree-1">
         <span>Content</span>
       </PermissionGuard>
@@ -108,8 +119,7 @@ describe('PermissionGuard', () => {
   });
 
   it('renders children for owner on destructive actions', () => {
-    mockUseTreeRole.mockReturnValue('OWNER');
-    render(
+    renderWithRole('OWNER',
       <PermissionGuard action="DELETE_TREE" treeId="tree-1">
         <button>Delete</button>
       </PermissionGuard>
