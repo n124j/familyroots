@@ -320,7 +320,7 @@ function EditUserModal({
 interface MergePersonOption { id: string; display_given_name: string; display_surname: string; photo_url: string | null; }
 
 function MergeTreesPanel({ token }: { token: string | null }) {
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   // All trees in tenant
   const [allTrees, setAllTrees] = useState<TenantTree[]>([]);
@@ -923,7 +923,7 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
   const [deleteTarget, setDeleteTarget] = useState<PermissionGroup | null>(null);
   const [error, setError]             = useState('');
 
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   const fetchGroups = React.useCallback(async () => {
     if (!token) return;
@@ -1087,7 +1087,7 @@ function GroupFormModal({
   const [level, setLevel] = useState<'VISIBLE'|'READ'|'READ_WRITE'>(initial?.permission_level ?? 'READ');
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1188,7 +1188,7 @@ function GroupMembersModal({
   const [selTree, setSelTree] = useState('');
   const [adding,  setAdding]  = useState(false);
   const [error,   setError]   = useState('');
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   async function fetchAll() {
     setLoading(true);

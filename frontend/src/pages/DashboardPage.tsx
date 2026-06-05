@@ -645,7 +645,7 @@ function ShareTreeModal({
   const [inviting,     setInviting]     = useState(false);
   const [inviteError,  setInviteError]  = useState('');
 
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   async function fetchAll() {
     setLoading(true);

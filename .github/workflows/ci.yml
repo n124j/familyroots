@@ -236,7 +236,7 @@ jobs:
               env:
                   DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/familyroots
                   REDIS_URL: redis://localhost:6379/0
-                  JWT_SECRET: ci-test-secret-key-for-e2e-tests-only
+                  JWT_SECRET_KEY: c871c8ac24249675f12a1e67d2b88675f56a9f9ee74205a9d1b59bb4341a6791d44111efb81063d60fede6aed3b163caacd708bd7c8d86bdd99787fcf5befab4
                   ENVIRONMENT: test
 
             - name: Install frontend dependencies

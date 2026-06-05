@@ -57,6 +57,7 @@ export default function OAuthCallbackPage() {
             user.email,
           avatarUrl: user.avatar_url,
           isEmailVerified: user.email_verified,
+          appRole: user.app_role ?? 'STANDARD',
         });
         // Drop token from URL, go to dashboard
         navigate('/dashboard', { replace: true });

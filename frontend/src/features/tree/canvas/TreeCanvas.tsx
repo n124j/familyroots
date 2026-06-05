@@ -472,7 +472,7 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
         curr.map((dn) => {
           const newData = dataMap.get(dn.id);
           return newData ? { ...dn, data: newData } : dn;
-        }),
+        }) as TreeNode[],
       );
     }
   }, [layoutNodes]);

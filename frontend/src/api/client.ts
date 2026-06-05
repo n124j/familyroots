@@ -101,6 +101,7 @@ apiClient.interceptors.response.use(
           user.email,
         avatarUrl: user.avatar_url,
         isEmailVerified: user.is_email_verified,
+        appRole: user.app_role ?? 'STANDARD',
       });
 
       onTokenRefreshed(newToken);

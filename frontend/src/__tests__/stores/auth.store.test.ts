@@ -30,8 +30,9 @@ describe('useAuthStore', () => {
           tenantId: 'tenant-1',
           email: 'alice@test.com',
           displayName: 'Alice Smith',
-          avatarUrl: null,
+          avatarUrl: undefined,
           isEmailVerified: true,
+          appRole: 'STANDARD',
         });
       });
 
@@ -52,6 +53,7 @@ describe('useAuthStore', () => {
           displayName: 'Bob Jones',
           avatarUrl: 'https://example.com/avatar.png',
           isEmailVerified: false,
+          appRole: 'STANDARD',
         });
       });
 
@@ -68,7 +70,7 @@ describe('useAuthStore', () => {
       act(() => {
         result.current.login('some-token', {
           id: 'u1', tenantId: 't1', email: 'test@test.com',
-          displayName: 'Test', avatarUrl: null, isEmailVerified: true,
+          displayName: 'Test', avatarUrl: undefined, isEmailVerified: true, appRole: 'STANDARD',
         });
       });
 
@@ -145,7 +147,7 @@ describe('useAuthStore', () => {
       act(() => {
         useAuthStore.getState().login('tok', {
           id: 'u', tenantId: 't', email: 'e@e.com',
-          displayName: 'E', avatarUrl: null, isEmailVerified: true,
+          displayName: 'E', avatarUrl: undefined, isEmailVerified: true, appRole: 'STANDARD',
         });
       });
       expect(!!useAuthStore.getState().accessToken).toBe(true);
