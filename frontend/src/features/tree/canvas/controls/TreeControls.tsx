@@ -93,6 +93,26 @@ const FitIcon = () => (
   </svg>
 );
 
+// ── Generation sort icon (pyramid: 1 node → 2 nodes → 3 nodes) ───────────
+const GenerationSortIcon = () => (
+  <svg width="14" height="13" viewBox="0 0 14 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
+    {/* Generation 0: 1 node centred */}
+    <rect x="4.5" y="0.5" width="5" height="2.5" rx="0.5" />
+    {/* Branches down */}
+    <line x1="5.5"  y1="3"   x2="3"    y2="5.5" />
+    <line x1="8.5"  y1="3"   x2="11"   y2="5.5" />
+    {/* Generation 1: 2 nodes */}
+    <rect x="0.5"  y="5.5" width="5" height="2.5" rx="0.5" />
+    <rect x="8.5"  y="5.5" width="5" height="2.5" rx="0.5" />
+    {/* Branches down */}
+    <line x1="3"    y1="8"   x2="2.5"  y2="10.5" />
+    <line x1="11"   y1="8"   x2="11.5" y2="10.5" />
+    {/* Generation 2: 2 nodes (one per branch) */}
+    <rect x="0.5"  y="10.5" width="4" height="2" rx="0.5" />
+    <rect x="9.5"  y="10.5" width="4" height="2" rx="0.5" />
+  </svg>
+);
+
 // ── Layout mode buttons ────────────────────────────────────────────────────
 
 type LayoutModeEntry =
@@ -100,6 +120,7 @@ type LayoutModeEntry =
   | { mode: LayoutMode; icon: React.ReactNode; title: string; label?: never };
 
 const LAYOUT_MODES: LayoutModeEntry[] = [
+  { mode: 'generation',         icon: <GenerationSortIcon />, title: 'Generation sort — oldest generation at top, each level below' },
   { mode: 'vertical',           label: '↕',  title: 'Vertical (multi-marriage aware)' },
   { mode: 'horizontal',         label: '↔',  title: 'Horizontal (left → right)' },
   { mode: 'ancestor',           label: '↑',  title: 'Ancestor chart (roots above)' },
@@ -159,10 +180,16 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeCon
     fitView({ duration: 400, padding: 0.1 });
   }, [fitView]);
 
-  const handleCompactView = useCallback(() => {
-    setLayoutMode('compact');
+  // Switching to any layout mode forces a full reset so dragged positions
+  // are discarded and the tree realigns in generation hierarchy.
+  const handleLayoutMode = useCallback((mode: LayoutMode) => {
+    setLayoutMode(mode);
     bumpLayoutReset();
   }, [setLayoutMode, bumpLayoutReset]);
+
+  const handleCompactView = useCallback(() => {
+    handleLayoutMode('compact');
+  }, [handleLayoutMode]);
 
   const handleZoomIn  = useCallback(() => zoomIn({ duration: 200 }),  [zoomIn]);
   const handleZoomOut = useCallback(() => zoomOut({ duration: 200 }), [zoomOut]);
@@ -192,7 +219,7 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeCon
       {LAYOUT_MODES.map(({ mode, title, ...rest }) => (
         <CtrlBtn
           key={mode}
-          onClick={() => setLayoutMode(mode)}
+          onClick={() => handleLayoutMode(mode)}
           title={title}
           active={layoutMode === mode}
         >
@@ -213,7 +240,7 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeCon
       <Divider />
 
       {/* Reset layout */}
-      <CtrlBtn onClick={bumpLayoutReset} title="Reset layout and fit view">
+      <CtrlBtn onClick={bumpLayoutReset} title="Reset layout">
         ↺
       </CtrlBtn>
 

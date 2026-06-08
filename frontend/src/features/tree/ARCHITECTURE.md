@@ -115,13 +115,31 @@ ParentChildEdge  UnionEdge   ← custom SVG path edges
 
 ## Layout Algorithms
 
-| Mode | Algorithm | Use Case |
-|---|---|---|
-| Vertical (TB) | dagre `rankdir: TB` | Standard top→down pedigree |
-| Horizontal (LR) | dagre `rankdir: LR` | Wide screens, many siblings |
-| Ancestor chart | Custom BFS up from focus | "Show my ancestors" |
-| Descendant chart | dagre TB from focus | "Show my descendants" |
-| Fan chart | Custom polar coordinates | Classic genealogy wheel |
+| `LayoutMode` | Algorithm | Use Case |
+| --- | --- | --- |
+| `generation` | dagre `rankdir: TB` | Oldest generation at top; each subsequent generation one rank lower. Simple, fast, ignores marriage coupling. |
+| `vertical` | `familyTreeLayout` (custom bottom-up) | Multi-marriage-aware; spouses placed adjacent, children centred below their family group. Default for deep genealogies. |
+| `horizontal` | dagre `rankdir: LR` | Left-to-right flow; useful on wide displays or small trees. |
+| `ancestor` | Custom BFS upward from focus | Shows all ancestors of the focus person going up. |
+| `descendant` | Custom BFS downward from focus | Shows all descendants of the focus person going down. |
+| `ancestor-family` | `familyTreeLayout` (ancestor subgraph) | Ancestors with their spouses kept adjacent. |
+| `descendant-family` | `familyTreeLayout` (descendant subgraph) | Descendants with their spouses kept adjacent. |
+| `fan` | Custom polar coordinates (180°) | Classic semicircular genealogy wheel up to 4 generations. |
+| `ancestry-fan` | Single custom `AncestryFanNode` | Full 360° ancestry fan rendered inside a single React Flow node. |
+| `pedigree` | `pedigreeChartLayout` (horizontal binary tree) | Focus person on the left, ancestors expanding right. |
+| `compact` | `familyTreeLayout` (tighter spacing) | Traditional family-tree layout with reduced gaps. Spouses adjacent, children centred below. |
+
+---
+
+## Canvas Controls — Reset Layout
+
+The **Reset Layout (↺)** button calls `bumpLayoutReset()` in the canvas store, which increments `layoutResetKey`. The effect in `TreeCanvas` that watches this key recomputes the layout from the current graph and replaces `displayNodes` — it does **not** call `fitView`. This means node positions are reset to their algorithmic defaults while the viewport pan/zoom remains where the user left it.
+
+Switching to a different layout mode (via any layout-mode button) still calls `fitView` after layout, so the whole tree centres in the viewport on mode change.
+
+### Union Ordinal Labels
+
+When a person has more than one union (e.g., two marriages), the edges are labelled with ordinals: **2nd Marriage**, **3rd Marriage**, etc. The first union carries no label. Labels appear only on the edge with the highest ordinal (i.e., the most recent marriage label is shown). The label text is derived from `unionOrdinal` on `UnionEdgeData` and can be overridden per family-group via `customLabel`.
 
 ---
 

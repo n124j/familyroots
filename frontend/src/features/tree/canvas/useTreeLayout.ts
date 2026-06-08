@@ -92,6 +92,16 @@ function applyLayout(
   let positions: Array<{ id: string; x: number; y: number }>;
 
   switch (opts.mode) {
+    case 'generation': {
+      const { nodes: positioned } = dagreLayout(nodes, edges, {
+        direction: 'TB',
+        nodeHGap: opts.nodeHGap ?? 32,
+        nodeVGap: opts.nodeVGap ?? 80,
+      });
+      positions = positioned;
+      break;
+    }
+
     case 'compact': {
       // familyTreeLayout with tighter spacing: keeps spouses adjacent and
       // children directly below their family group — no crossing union edges.
@@ -115,8 +125,8 @@ function applyLayout(
           })),
       };
       positions = familyTreeLayout(filteredGraph, {
-        nodeHGap: 20,  // tighter sibling gap
-        nodeVGap: 60,  // tighter generation gap
+        nodeHGap: 20,
+        nodeVGap: 60,
       });
       break;
     }

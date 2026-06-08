@@ -614,11 +614,10 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
     }
   }, [layoutNodes]);
 
-  // Reset node positions + fit view when the reset button is pressed
+  // Reset node positions only when the reset button is pressed (no fit view)
   useEffect(() => {
     if (layoutResetKey === 0) return; // skip the initial mount
     setDisplayNodes(layoutNodes);
-    setTimeout(() => fitView({ duration: 500, padding: 0.15 }), 50);
   }, [layoutResetKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Forward React Flow's node changes (drag, selection, etc.) to displayNodes

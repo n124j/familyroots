@@ -193,9 +193,9 @@ function UnionEdgeComponent({
 
   // ── Marriage: double line ─────────────────────────────────────────────────
   if (isMarriage) {
-    const offset = selected ? 2.5 : hl === true ? 2 : 1.5;
-    const [pathA] = getStraightPath({ sourceX: sourceX - offset, sourceY, targetX: targetX - offset, targetY });
-    const [pathB] = getStraightPath({ sourceX: sourceX + offset, sourceY, targetX: targetX + offset, targetY });
+    const lineOffset = selected ? 2.5 : hl === true ? 2 : 1.5;
+    const [pathA] = getStraightPath({ sourceX: sourceX - lineOffset, sourceY, targetX: targetX - lineOffset, targetY });
+    const [pathB] = getStraightPath({ sourceX: sourceX + lineOffset, sourceY, targetX: targetX + lineOffset, targetY });
     const midX = (sourceX + targetX) / 2;
     const midY = (sourceY + targetY) / 2;
 

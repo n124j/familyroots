@@ -24,6 +24,7 @@ export type UnionType =
 
 export type LayoutMode =
   | 'compact'            // dagre TB — compact top-to-bottom, groups related members together
+  | 'generation'         // dagre TB — simple top-to-bottom generation hierarchy
   | 'vertical'           // familyTree algorithm — multi-marriage aware generational layout
   | 'horizontal'         // dagre LR — left-to-right
   | 'ancestor'           // ancestors of focus person going up

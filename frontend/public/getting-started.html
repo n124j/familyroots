@@ -507,10 +507,10 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
     <ul class="steps">
       <li class="step"><div class="sn">1</div><div class="sb"><div class="sl">Go to the Register page</div><div class="sd">Open your browser and navigate to <strong>/register</strong></div></div></li>
       <li class="step"><div class="sn">2</div><div class="sb"><div class="sl">Enter your name</div><div class="sd">Fill in your first name and last name</div></div></li>
-      <li class="step"><div class="sn">3</div><div class="sb"><div class="sl">Add your email &amp; password</div><div class="sd">Use a valid email — you'll need to verify it. Password must be 8+ characters with a capital letter and number.</div></div></li>
-      <li class="step"><div class="sn">4</div><div class="sb"><div class="sl">Click "Create account"</div><div class="sd">You'll be redirected to the login page with a success message</div></div></li>
+      <li class="step"><div class="sn">3</div><div class="sb"><div class="sl">Add your email &amp; password</div><div class="sd">Use a valid email — you'll need to verify it. Password must be 8+ characters, contain a capital letter and a number. Re-enter it in the Confirm field.</div></div></li>
+      <li class="step"><div class="sn">4</div><div class="sb"><div class="sl">Click "Create account"</div><div class="sd">You'll be redirected to the login page with a success message. Check your inbox for a verification email.</div></div></li>
     </ul>
-    <div class="tip"><div class="tip-ico">💡</div><div class="tip-txt">You can also sign up instantly using <strong>Google</strong> or <strong>GitHub</strong> — no password needed!</div></div>
+    <div class="tip"><div class="tip-ico">📬</div><div class="tip-txt">After registering, check your inbox for a <strong>verification email</strong>. You must click the link before you can sign in for the first time.</div></div>
   </div>
   <div class="pane-r">
     <div class="browser">
@@ -526,9 +526,6 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
             <div class="auth-logo-sub">Create your free account</div>
           </div>
           <div class="auth-card">
-            <div class="mock-btn-sec" style="margin-bottom:8px">🔵 &nbsp;Continue with Google</div>
-            <div class="mock-btn-sec">🐙 &nbsp;Continue with GitHub</div>
-            <div class="mock-divider">or sign up with email</div>
             <div class="grid-2">
               <div>
                 <span class="mock-lbl">First name</span>
@@ -543,7 +540,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
             <div class="mock-inp filled">alice@example.com</div>
             <span class="mock-lbl">Password</span>
             <div class="mock-inp focused">••••••••••</div>
-            <div class="mock-btn-pri">Create account</div>
+            <span class="mock-lbl">Confirm password</span>
+            <div class="mock-inp" style="color:var(--light)">Re-enter password</div>
+            <div class="mock-btn-pri" style="margin-top:6px">Create account</div>
           </div>
           <div class="mock-link">Already have an account? <span style="color:var(--brand);font-weight:700">Sign in</span></div>
         </div>
@@ -640,8 +639,6 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
           </div>
           <div class="auth-card">
             <div class="success-banner">✅ &nbsp;Account created! Check your inbox for a verification link.</div>
-            <div class="mock-btn-sec" style="margin-bottom:6px">🔵 &nbsp;Continue with Google</div>
-            <div class="mock-divider">or sign in with email</div>
             <span class="mock-lbl">Email</span>
             <div class="mock-inp filled">alice@example.com</div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -649,7 +646,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
               <span style="font-size:9px;color:var(--brand)">Forgot password?</span>
             </div>
             <div class="mock-inp focused">••••••••••</div>
-            <div class="mock-btn-pri">Sign in</div>
+            <div class="mock-btn-pri" style="margin-top:4px">Sign in</div>
           </div>
           <div class="mock-link">Don't have an account? <span style="color:var(--brand);font-weight:700">Create one free</span></div>
         </div>
@@ -699,14 +696,22 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
         </div>
         <div class="cards-grid"><!-- B -->
           <div class="tree-card">
-            <div class="tc-top"><div class="tc-emoji">🌳</div><div class="tc-role">Owner</div></div>
-            <div class="tc-name">Johnson Family</div>
+            <div class="tc-top">
+              <!-- Cover photo thumbnail -->
+              <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#818cf8);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🌳</div>
+              <div class="tc-role" style="margin-left:auto">Owner</div>
+            </div>
+            <div class="tc-name" style="margin-top:6px">Johnson Family</div>
             <div class="tc-desc">Maternal side, 4 generations</div>
             <div class="tc-stats"><span><b>12</b> people</span><span><b>3</b> members</span></div>
             <div class="tc-dots">⋯</div>
           </div>
           <div class="tree-card">
-            <div class="tc-top"><div class="tc-emoji">🌿</div><div class="tc-role" style="background:#dcfce7;color:#15803d">Editor</div></div>
+            <div class="tc-top">
+              <!-- Cover icon (no photo uploaded) -->
+              <div class="tc-emoji">🌿</div>
+              <div class="tc-role" style="background:#dcfce7;color:#15803d;margin-left:auto">Editor</div>
+            </div>
             <div class="tc-name">Smith Family</div>
             <div class="tc-desc">Paternal side</div>
             <div class="tc-stats"><span><b>8</b> people</span><span><b>2</b> members</span></div>
@@ -739,9 +744,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
       <li class="step"><div class="sn">1</div><div class="sb"><div class="sl">Click "+ New tree"</div><div class="sd">Find it in the top-right corner of the Dashboard</div></div></li>
       <li class="step"><div class="sn">2</div><div class="sb"><div class="sl">Give your tree a name</div><div class="sd">e.g. "Johnson Family" or "Mom's Side" — be descriptive</div></div></li>
       <li class="step"><div class="sn">3</div><div class="sb"><div class="sl">Add an optional description</div><div class="sd">Notes like "Maternal side, traced back to Ireland 1800s" help collaborators</div></div></li>
-      <li class="step"><div class="sn">4</div><div class="sb"><div class="sl">Choose a cover emoji</div><div class="sd">Pick a fun emoji to represent the tree visually on the Dashboard</div></div></li>
-      <li class="step"><div class="sn">5</div><div class="sb"><div class="sl">Click "Create tree"</div><div class="sd">You'll be taken directly to the empty tree canvas to start adding people</div></div></li>
+      <li class="step"><div class="sn">4</div><div class="sb"><div class="sl">Click "Create tree"</div><div class="sd">You'll be taken directly to the empty tree canvas to start adding people</div></div></li>
     </ul>
+    <div class="tip"><div class="tip-ico">🖼️</div><div class="tip-txt">Want a cover photo or custom icon? After creating, click <strong>⋯</strong> on the tree card → <strong>Edit tree</strong> to upload a photo and choose an emoji icon. See the next step!</div></div>
   </div>
   <div class="pane-r">
     <div style="position:relative;width:100%;max-width:480px;height:300px">
@@ -764,19 +769,8 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
           <div class="modal-h">🌳 &nbsp;New family tree</div>
           <span class="mock-lbl">Name *</span>
           <div class="mock-inp focused" style="margin-bottom:10px">The Johnson Family</div>
-          <span class="mock-lbl">Description</span>
-          <div class="mock-inp" style="height:48px;margin-bottom:10px;padding-top:6px;color:var(--light)">Maternal side, traced to Ireland…</div>
-          <span class="mock-lbl">Cover emoji</span>
-          <div class="emoji-grid">
-            <div class="emoji-opt sel">🌳</div>
-            <div class="emoji-opt">🌲</div>
-            <div class="emoji-opt">🌴</div>
-            <div class="emoji-opt">🌿</div>
-            <div class="emoji-opt">🌸</div>
-            <div class="emoji-opt">🏡</div>
-            <div class="emoji-opt">📜</div>
-            <div class="emoji-opt">🧬</div>
-          </div>
+          <span class="mock-lbl">Description <span style="font-weight:400;color:var(--light)">(optional)</span></span>
+          <div class="mock-inp" style="height:52px;margin-bottom:14px;padding-top:6px;color:var(--light)">Maternal side, traced to Ireland…</div>
           <div class="modal-footer">
             <div class="modal-cancel">Cancel</div>
             <div class="modal-create">Create tree</div>
@@ -788,9 +782,79 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 8 — TREE CANVAS
+     SLIDE 8 — CUSTOMISE YOUR TREE
 ═══════════════════════════════════════════════ -->
 <div class="slide layout-split" id="s8">
+  <div class="pane-l">
+    <div class="slide-tag">Step 5b</div>
+    <h2 class="slide-h">Customise your tree's cover</h2>
+    <p class="slide-sub">Add a cover photo and a backup emoji icon so your tree stands out on the Dashboard.</p>
+    <ul class="steps">
+      <li class="step"><div class="sn">1</div><div class="sb"><div class="sl">Click ⋯ on the tree card</div><div class="sd">On the Dashboard, hover over your tree card to reveal the <strong>⋯</strong> menu in the corner</div></div></li>
+      <li class="step"><div class="sn">2</div><div class="sb"><div class="sl">Select "Edit tree"</div><div class="sd">Opens the Edit tree panel with name, description, cover photo and icon options</div></div></li>
+      <li class="step"><div class="sn">3</div><div class="sb"><div class="sl">Upload a cover photo (optional)</div><div class="sd">Click <strong>Upload photo</strong> — supports JPG, PNG or WEBP up to 10 MB. A thumbnail preview appears instantly.</div></div></li>
+      <li class="step"><div class="sn">4</div><div class="sb"><div class="sl">Choose a cover icon</div><div class="sd">Pick one of the 12 emoji presets. This icon is shown when no photo has been uploaded.</div></div></li>
+      <li class="step"><div class="sn">5</div><div class="sb"><div class="sl">Click "Save changes"</div><div class="sd">The Dashboard card updates immediately with your new cover.</div></div></li>
+    </ul>
+  </div>
+  <div class="pane-r">
+    <div style="position:relative;width:100%;max-width:480px;height:300px">
+      <!-- Dashboard background (blurred) -->
+      <div class="app-wrap" style="opacity:.4;filter:blur(2px)">
+        <div class="app-sidebar">
+          <div class="sidebar-logo">🌳 FamilyRoots</div>
+          <div class="nav-item active">Dashboard</div>
+        </div>
+        <div class="app-main">
+          <div class="app-ph">Welcome back, Alice 👋</div>
+          <div class="cards-grid" style="margin-top:10px">
+            <div class="tree-card"><div class="tc-name">Johnson Family</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Edit tree modal on top -->
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;border-radius:12px">
+        <div class="modal" style="width:280px">
+          <div class="modal-h">✏️ &nbsp;Edit tree</div>
+          <span class="mock-lbl">Name</span>
+          <div class="mock-inp filled" style="margin-bottom:8px">The Johnson Family</div>
+          <!-- Cover photo section -->
+          <span class="mock-lbl">Cover photo</span>
+          <div style="border:1.5px dashed #93c5fd;border-radius:8px;padding:10px;text-align:center;margin-bottom:8px;background:#eff6ff">
+            <div style="font-size:16px;margin-bottom:3px">📷</div>
+            <div style="font-size:9px;font-weight:700;color:#3b82f6">Upload photo</div>
+            <div style="font-size:8px;color:#94a3b8;margin-top:2px">JPG, PNG or WEBP · max 10 MB</div>
+          </div>
+          <!-- Cover icon section -->
+          <span class="mock-lbl">Cover icon <span style="font-weight:400;color:var(--light)">(used when no photo)</span></span>
+          <div class="emoji-grid" style="margin-top:4px;margin-bottom:10px">
+            <div class="emoji-opt sel">🌳</div>
+            <div class="emoji-opt">🌲</div>
+            <div class="emoji-opt">🌴</div>
+            <div class="emoji-opt">🌿</div>
+            <div class="emoji-opt">🌸</div>
+            <div class="emoji-opt">🏡</div>
+            <div class="emoji-opt">📜</div>
+            <div class="emoji-opt">⛩️</div>
+            <div class="emoji-opt">🎋</div>
+            <div class="emoji-opt">🧬</div>
+            <div class="emoji-opt">🗺️</div>
+            <div class="emoji-opt">📖</div>
+          </div>
+          <div class="modal-footer">
+            <div class="modal-cancel">Cancel</div>
+            <div class="modal-create">Save changes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 9 — TREE CANVAS
+═══════════════════════════════════════════════ -->
+<div class="slide layout-split" id="s9">
   <div class="pane-l">
     <div class="slide-tag">Step 6</div>
     <h2 class="slide-h">Meet the tree canvas</h2>
@@ -798,7 +862,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
     <ul class="steps">
       <li class="step"><div class="sn">A</div><div class="sb"><div class="sl">← Dashboard (top-left)</div><div class="sd">Click to go back to your Dashboard at any time</div></div></li>
       <li class="step"><div class="sn">B</div><div class="sb"><div class="sl">Tree name &amp; person count</div><div class="sd">Shows the tree's name and how many people are in it</div></div></li>
-      <li class="step"><div class="sn">C</div><div class="sb"><div class="sl">Action buttons (top-right)</div><div class="sd">Export, Layouts, Theme, Members — and "+ Add person" to begin</div></div></li>
+      <li class="step"><div class="sn">C</div><div class="sb"><div class="sl">Action buttons (top-right)</div><div class="sd"><strong>↓ Export</strong> (PDF / CSV / .frt / .zip+photos), Layouts, Theme, Members — and <strong>+ Add person</strong> to begin</div></div></li>
       <li class="step"><div class="sn">D</div><div class="sb"><div class="sl">The canvas area</div><div class="sd">Drag to pan, scroll to zoom. Family members appear as connected cards here</div></div></li>
     </ul>
     <div class="tip"><div class="tip-ico">⌨️</div><div class="tip-txt">Press <strong>Ctrl + Space</strong> anywhere on the canvas to open the quick person search!</div></div>
@@ -812,6 +876,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
         <span class="ctb-name">The Johnson Family</span><!-- B -->
         <span class="ctb-count">0 people</span>
         <div class="ctb-actions"><!-- C -->
+          <span class="ctb-btn">↓ Export</span>
           <span class="ctb-btn">Layouts</span>
           <span class="ctb-btn">🎨 Theme</span>
           <span class="ctb-btn">Members</span>
@@ -838,9 +903,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 9 — ADD FIRST PERSON
+     SLIDE 10 — ADD FIRST PERSON
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s9">
+<div class="slide layout-split" id="s10">
   <div class="pane-l">
     <div class="slide-tag">Step 7</div>
     <h2 class="slide-h">Add your first person</h2>
@@ -903,9 +968,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 10 — BUILD RELATIONSHIPS
+     SLIDE 11 — BUILD RELATIONSHIPS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s10">
+<div class="slide layout-split" id="s11">
   <div class="pane-l">
     <div class="slide-tag">Step 8</div>
     <h2 class="slide-h">Connect family members</h2>
@@ -954,19 +1019,20 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 11 — VIEWS & LAYOUTS
+     SLIDE 12 — VIEWS & LAYOUTS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s11">
+<div class="slide layout-split" id="s12">
   <div class="pane-l">
     <div class="slide-tag">Step 9</div>
     <h2 class="slide-h">Explore different tree views</h2>
     <p class="slide-sub">FamilyRoots supports multiple beautiful visualisations of the same tree.</p>
     <ul class="steps">
       <li class="step"><div class="sn">1</div><div class="sb"><div class="sl">Click "Layouts" in the top bar</div><div class="sd">A panel opens showing all available layout options</div></div></li>
-      <li class="step"><div class="sn">2</div><div class="sb"><div class="sl">Pick a layout style</div><div class="sd"><strong>Family Tree</strong> — classic top-down chart<br><strong>Fan Chart</strong> — circular ancestry up to 8 generations<br><strong>Pedigree</strong> — ancestors flowing left-to-right</div></div></li>
-      <li class="step"><div class="sn">3</div><div class="sb"><div class="sl">Customise with 🎨 Theme</div><div class="sd">Change node colours, backgrounds, and fonts using the Theme button</div></div></li>
+      <li class="step"><div class="sn">2</div><div class="sb"><div class="sl">Pick a layout style</div><div class="sd"><strong>Generation Sort</strong> — oldest generation at top, each level below<br><strong>Vertical</strong> — multi-marriage-aware family tree<br><strong>Fan Chart</strong> — circular ancestry up to 8 generations<br><strong>Pedigree</strong> — ancestors flowing left-to-right</div></div></li>
+      <li class="step"><div class="sn">3</div><div class="sb"><div class="sl">Use canvas toolbar controls (top-left)</div><div class="sd">The floating toolbar in the top-left has zoom controls, all layout mode buttons, expand/collapse, and <strong>↺ Reset layout</strong> (resets node positions to the algorithm's default without moving the viewport)</div></div></li>
+      <li class="step"><div class="sn">4</div><div class="sb"><div class="sl">Customise with 🎨 Theme</div><div class="sd">Change node colours, backgrounds, and fonts using the Theme button</div></div></li>
     </ul>
-    <div class="tip"><div class="tip-ico">💾</div><div class="tip-txt">You can save named layouts and reload them later — great for presentations!</div></div>
+    <div class="tip"><div class="tip-ico">💡</div><div class="tip-txt"><strong>Generation Sort</strong> places the oldest generation at the very top and each subsequent generation one row lower — great for seeing the full lineage at a glance. <strong>↺ Reset layout</strong> snaps nodes back to their calculated positions without zooming, so you don't lose your current view.</div></div>
   </div>
   <div class="pane-r">
     <div class="layout-panel">
@@ -974,8 +1040,23 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
       <div class="lp-grid">
         <div class="layout-opt sel">
           <div class="lo-ico">🌳</div>
-          <div class="lo-lbl">Family Tree</div>
-          <div class="lo-desc">Classic top-down chart</div>
+          <div class="lo-lbl">Compact</div>
+          <div class="lo-desc">Traditional family tree</div>
+        </div>
+        <div class="layout-opt">
+          <div class="lo-ico">📊</div>
+          <div class="lo-lbl">Generation Sort</div>
+          <div class="lo-desc">Oldest generation at top</div>
+        </div>
+        <div class="layout-opt">
+          <div class="lo-ico">↕</div>
+          <div class="lo-lbl">Vertical</div>
+          <div class="lo-desc">Multi-marriage aware</div>
+        </div>
+        <div class="layout-opt">
+          <div class="lo-ico">↑</div>
+          <div class="lo-lbl">Ancestor</div>
+          <div class="lo-desc">All ancestors upward</div>
         </div>
         <div class="layout-opt">
           <div class="lo-ico">🌀</div>
@@ -987,53 +1068,90 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
           <div class="lo-lbl">Pedigree</div>
           <div class="lo-desc">Left-to-right ancestors</div>
         </div>
-        <div class="layout-opt">
-          <div class="lo-ico">↔️</div>
-          <div class="lo-lbl">Ancestor</div>
-          <div class="lo-desc">Compact horizontal</div>
-        </div>
-        <div class="layout-opt">
-          <div class="lo-ico">🔵</div>
-          <div class="lo-lbl">Dagre</div>
-          <div class="lo-desc">Auto graph layout</div>
-        </div>
-        <div class="layout-opt">
-          <div class="lo-ico">💾</div>
-          <div class="lo-lbl">Saved layouts</div>
-          <div class="lo-desc">Reload named views</div>
-        </div>
       </div>
-      <!-- Fan chart preview (SVG) -->
-      <div style="padding:0 14px 14px;text-align:center">
-        <svg width="200" height="100" viewBox="0 0 200 105" xmlns="http://www.w3.org/2000/svg">
-          <!-- Fan chart arcs -->
-          <path d="M100,95 L100,55" stroke="#6366f1" stroke-width="1.5" fill="none"/>
-          <!-- Gen 1 arc -->
-          <path d="M100,55 A40,40 0 0,1 140,95" stroke="#6366f1" stroke-width="8" fill="none" opacity=".7"/>
-          <path d="M100,55 A40,40 0 0,0 60,95" stroke="#ec4899" stroke-width="8" fill="none" opacity=".7"/>
-          <!-- Gen 2 arc -->
-          <path d="M100,55 A65,65 0 0,1 165,95" stroke="#818cf8" stroke-width="8" fill="none" opacity=".5"/>
-          <path d="M100,55 A65,65 0 0,0 35,95" stroke="#f9a8d4" stroke-width="8" fill="none" opacity=".5"/>
-          <!-- Gen 3 arc -->
-          <path d="M100,55 A88,88 0 0,1 188,95" stroke="#c7d2fe" stroke-width="8" fill="none" opacity=".35"/>
-          <path d="M100,55 A88,88 0 0,0 12,95" stroke="#fce7f3" stroke-width="8" fill="none" opacity=".35"/>
-          <!-- Center -->
-          <circle cx="100" cy="55" r="12" fill="white" stroke="#6366f1" stroke-width="2"/>
-          <text x="100" y="59" text-anchor="middle" font-size="9" fill="#6366f1" font-weight="700">You</text>
-          <!-- Labels -->
-          <text x="120" y="90" font-size="7" fill="#64748b">Parents</text>
-          <text x="148" y="90" font-size="7" fill="#64748b">Grandparents</text>
-          <text x="5" y="20" font-size="8" fill="#6366f1" font-weight="600">Fan Chart — 3 generations shown</text>
-        </svg>
+      <!-- Canvas toolbar mockup — matches TreeControls.tsx exactly -->
+      <div style="padding:10px 14px 14px">
+        <div style="font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Canvas toolbar (floating, top-left of canvas)</div>
+        <div style="display:flex;align-items:center;gap:3px;padding:5px 7px;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);flex-wrap:wrap">
+
+          <!-- Zoom out: MinusIcon (horizontal line SVG) -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#475569;background:#f8fafc" title="Zoom out">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="7" x2="12" y2="7"/></svg>
+          </div>
+          <!-- Zoom % -->
+          <div style="font-size:7px;font-family:monospace;color:#94a3b8;min-width:26px;text-align:center">100%</div>
+          <!-- Zoom in: PlusIcon SVG -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#475569;background:#f8fafc" title="Zoom in">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+          </div>
+          <!-- Fit view: FitIcon (nested rects SVG) -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#475569;background:#f8fafc" title="Fit view">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="12" height="12" rx="1"/><rect x="4" y="4" width="6" height="6"/></svg>
+          </div>
+
+          <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+
+          <!-- Generation Sort: pyramid SVG (active/highlighted) -->
+          <div style="width:22px;height:22px;border-radius:6px;background:var(--brand);color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(99,102,241,.4)" title="Generation sort">
+            <svg width="12" height="11" viewBox="0 0 14 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="4.5" y="0.5" width="5" height="2.5" rx="0.5"/><line x1="5.5" y1="3" x2="3" y2="5.5"/><line x1="8.5" y1="3" x2="11" y2="5.5"/><rect x="0.5" y="5.5" width="5" height="2.5" rx="0.5"/><rect x="8.5" y="5.5" width="5" height="2.5" rx="0.5"/><line x1="3" y1="8" x2="2.5" y2="10.5"/><line x1="11" y1="8" x2="11.5" y2="10.5"/><rect x="0.5" y="10.5" width="4" height="2" rx="0.5"/><rect x="9.5" y="10.5" width="4" height="2" rx="0.5"/></svg>
+          </div>
+          <!-- Vertical ↕ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Vertical (multi-marriage aware)">↕</div>
+          <!-- Horizontal ↔ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Horizontal">↔</div>
+          <!-- Ancestor ↑ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Ancestor chart">↑</div>
+          <!-- Descendant ↓ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Descendant chart">↓</div>
+          <!-- Descendants+spouses: DescendantFamilyIcon SVG -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#475569;background:#f8fafc" title="Descendants + spouses">
+            <svg width="13" height="11" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8" cy="2" r="1.8" fill="currentColor" stroke="none"/><line x1="8" y1="3.8" x2="8" y2="5.5"/><line x1="3.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="3.5" y1="5.5" x2="3.5" y2="7.5"/><line x1="12.5" y1="5.5" x2="12.5" y2="7.5"/><circle cx="1.8" cy="10.5" r="1.5"/><line x1="3.3" y1="10.5" x2="4" y2="10.5"/><circle cx="5.3" cy="10.5" r="1.5"/><circle cx="10" cy="10.5" r="1.5"/><line x1="11.5" y1="10.5" x2="12.2" y2="10.5"/><circle cx="13.7" cy="10.5" r="1.5"/></svg>
+          </div>
+          <!-- Ancestors+spouses: AncestorFamilyIcon SVG -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#475569;background:#f8fafc" title="Ancestors + spouses">
+            <svg width="13" height="11" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="1.8" cy="3.5" r="1.5"/><line x1="3.3" y1="3.5" x2="4" y2="3.5"/><circle cx="5.3" cy="3.5" r="1.5"/><circle cx="10" cy="3.5" r="1.5"/><line x1="11.5" y1="3.5" x2="12.2" y2="3.5"/><circle cx="13.7" cy="3.5" r="1.5"/><line x1="3.5" y1="5" x2="3.5" y2="8.5"/><line x1="12.5" y1="5" x2="12.5" y2="8.5"/><line x1="3.5" y1="8.5" x2="12.5" y2="8.5"/><line x1="8" y1="8.5" x2="8" y2="10.2"/><circle cx="8" cy="12" r="1.8" fill="currentColor" stroke="none"/></svg>
+          </div>
+          <!-- Fan ◑ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Fan chart (180°)">◑</div>
+          <!-- Ancestry fan ◎ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Ancestry fan (360°)">◎</div>
+          <!-- Pedigree ⊢ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:#475569;background:#f8fafc" title="Pedigree chart">⊢</div>
+
+          <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+
+          <!-- Expand all ⊞ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:#475569;background:#f8fafc" title="Expand all branches">⊞</div>
+          <!-- Collapse ⊟ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:#475569;background:#f8fafc" title="Collapse to focus">⊟</div>
+
+          <div style="width:1px;height:16px;background:var(--border);margin:0 2px"></div>
+
+          <!-- Reset layout ↺ -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:#475569;background:#f8fafc" title="Reset layout">↺</div>
+          <!-- Compact view: CompactViewIcon SVG (two cards top → one card bottom) -->
+          <div style="width:22px;height:22px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#475569;background:#f8fafc" title="Compact view">
+            <svg width="11" height="10" viewBox="0 0 14 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect x="0.5" y="0.5" width="4" height="2.5" rx="0.5"/><rect x="9.5" y="0.5" width="4" height="2.5" rx="0.5"/><rect x="5" y="9" width="4" height="2.5" rx="0.5"/><line x1="2.5" y1="3" x2="2.5" y2="5.5"/><line x1="11.5" y1="3" x2="11.5" y2="5.5"/><line x1="2.5" y1="5.5" x2="11.5" y2="5.5"/><line x1="7" y1="5.5" x2="7" y2="9"/></svg>
+          </div>
+        </div>
+        <!-- Annotation legend -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:7px">
+          <div style="font-size:7.5px;color:#475569"><svg width="9" height="8" viewBox="0 0 14 13" fill="none" stroke="#6366f1" stroke-width="1.3" stroke-linecap="round" style="vertical-align:middle;margin-right:2px"><rect x="4.5" y="0.5" width="5" height="2.5" rx="0.5"/><line x1="5.5" y1="3" x2="3" y2="5.5"/><line x1="8.5" y1="3" x2="11" y2="5.5"/><rect x="0.5" y="5.5" width="5" height="2.5" rx="0.5"/><rect x="8.5" y="5.5" width="5" height="2.5" rx="0.5"/></svg> <strong style="color:#6366f1">Generation Sort</strong></div>
+          <div style="font-size:7.5px;color:#475569">↕ Vertical (multi-marriage aware)</div>
+          <div style="font-size:7.5px;color:#475569">↑ Ancestor &nbsp; ↓ Descendant</div>
+          <div style="font-size:7.5px;color:#475569">◑ Fan (180°) &nbsp; ◎ Fan (360°) &nbsp; ⊢ Pedigree</div>
+          <div style="font-size:7.5px;color:#475569">⊞ Expand all &nbsp; ⊟ Collapse</div>
+          <div style="font-size:7.5px;color:#475569">↺ Reset layout (positions only, no zoom)</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 12 — SEARCH
+     SLIDE 13 — SEARCH
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s12">
+<div class="slide layout-split" id="s13">
   <div class="pane-l">
     <div class="slide-tag">Step 10</div>
     <h2 class="slide-h">Search across all your trees</h2>
@@ -1090,9 +1208,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 13 — SHARE & COLLABORATE
+     SLIDE 14 — SHARE & COLLABORATE
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s13">
+<div class="slide layout-split" id="s14">
   <div class="pane-l">
     <div class="slide-tag">Step 11</div>
     <h2 class="slide-h">Share your tree with family</h2>
@@ -1149,9 +1267,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 14 — REPORTS
+     SLIDE 15 — REPORTS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s14">
+<div class="slide layout-split" id="s15">
   <div class="pane-l">
     <div class="slide-tag">Step 12</div>
     <h2 class="slide-h">View reports &amp; export data</h2>
@@ -1209,9 +1327,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 15 — SETTINGS (bonus)
+     SLIDE 16 — SETTINGS (bonus)
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s15">
+<div class="slide layout-split" id="s16">
   <div class="pane-l">
     <div class="slide-tag">Bonus</div>
     <h2 class="slide-h">Personalise your account</h2>
@@ -1263,9 +1381,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 16 — YOU'RE READY!
+     SLIDE 17 — YOU'RE READY!
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-end" id="s16">
+<div class="slide layout-end" id="s17">
   <div style="font-size:72px;margin-bottom:14px">🎉</div>
   <h2 class="end-h">You're ready to start!</h2>
   <p class="end-sub">Here's your quick-reference cheat sheet to keep handy</p>
@@ -1302,9 +1420,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 
 
 <!-- ══════════════════════════════════════════
-     SLIDE 17 — TROUBLESHOOTING: MEMBERS NOT VISIBLE
+     SLIDE 18 — TROUBLESHOOTING: MEMBERS NOT VISIBLE
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s17">
+<div class="slide layout-split" id="s18">
   <div class="pane-l">
     <div class="slide-tag" style="color:#f59e0b">🔧 Troubleshooting</div>
     <h2 class="slide-h">Members not showing in tree?</h2>
@@ -1332,8 +1450,8 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
       <li class="step">
         <div class="sn sn-warn">3</div>
         <div class="sb">
-          <div class="sl">Select "Vertical (top → bottom)"</div>
-          <div class="sd">Click the <strong>↕ Vertical (top → bottom)</strong> layout icon. This resets the tree to a clean top-down arrangement so all members are laid out in view.</div>
+          <div class="sl">Select "Vertical ↕"</div>
+          <div class="sd">Click the <strong>↕ Vertical</strong> layout icon. This resets the tree to a clean multi-marriage-aware top-down arrangement so all members are laid out in view.</div>
         </div>
       </li>
     </ul>
@@ -1393,13 +1511,18 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
           <!-- Vertical layout — highlighted brand -->
           <div class="layout-opt highlighted" style="background:var(--brand-xlight)">
             <div class="lo-ico">↕</div>
-            <div class="lo-lbl" style="color:var(--brand-dark)">Vertical<br>(top → bottom)</div>
-            <div class="lo-desc" style="color:var(--brand)">Resets to full view</div>
+            <div class="lo-lbl" style="color:var(--brand-dark)">Vertical</div>
+            <div class="lo-desc" style="color:var(--brand)">Multi-marriage aware</div>
             <div style="margin-top:5px">
               <span class="callout"><span class="callout-num">3</span>Then this</span>
             </div>
           </div>
           <!-- Other layouts (dimmed) -->
+          <div class="layout-opt" style="opacity:.45">
+            <div class="lo-ico">📊</div>
+            <div class="lo-lbl">Generation Sort</div>
+            <div class="lo-desc">Other options</div>
+          </div>
           <div class="layout-opt" style="opacity:.45">
             <div class="lo-ico">🌀</div>
             <div class="lo-lbl">Fan Chart</div>
@@ -1415,11 +1538,6 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
             <div class="lo-lbl">Horizontal</div>
             <div class="lo-desc">Other options</div>
           </div>
-          <div class="layout-opt" style="opacity:.45">
-            <div class="lo-ico">💾</div>
-            <div class="lo-lbl">Saved layouts</div>
-            <div class="lo-desc">Other options</div>
-          </div>
         </div>
       </div>
 
@@ -1428,9 +1546,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 18 — MORE TROUBLESHOOTING
+     SLIDE 19 — MORE TROUBLESHOOTING
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s18">
+<div class="slide layout-split" id="s19">
   <div class="pane-l">
     <div class="slide-tag" style="color:#f59e0b">🔧 Troubleshooting</div>
     <h2 class="slide-h">More common issues &amp; fixes</h2>
@@ -1441,7 +1559,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
         <div class="sn sn-warn">?</div>
         <div class="sb">
           <div class="sl">Canvas looks jumbled or overlapping</div>
-          <div class="sd">Open <strong>Layouts → Vertical (top → bottom)</strong> to auto-arrange all nodes into a clean layout.</div>
+          <div class="sd">Open <strong>Layouts → Vertical ↕</strong> to auto-arrange all nodes into a clean top-down layout.</div>
         </div>
       </li>
       <li class="step">
@@ -1488,7 +1606,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
         <div class="issue-card">
           <div class="issue-label"><div class="issue-ico">🔀</div><div class="issue-h">Tree layout is messy</div></div>
           <div class="issue-problem">Nodes overlap or lines cross in confusing ways</div>
-          <div class="issue-fix"><strong>Fix:</strong> Layouts → <strong>Vertical (top → bottom)</strong> resets to a clean auto-layout</div>
+          <div class="issue-fix"><strong>Fix:</strong> Layouts → <strong>Vertical ↕</strong> resets to a clean auto-layout</div>
         </div>
 
         <div class="issue-card">
@@ -1532,9 +1650,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 
 
 <!-- ══════════════════════════════════════════
-     SLIDE 19 — TIPS & TRICKS: CTRL INTERACTIONS
+     SLIDE 20 — TIPS & TRICKS: CTRL INTERACTIONS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s19">
+<div class="slide layout-split" id="s20">
   <div class="pane-l">
     <div class="slide-tag tip-tag">💡 Tips &amp; Tricks</div>
     <h2 class="slide-h">Power moves with <span class="ctrl-key" style="font-size:18px;vertical-align:middle;padding:3px 10px">Ctrl</span></h2>
@@ -1656,9 +1774,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 20 — MORE CANVAS TIPS & SHORTCUTS
+     SLIDE 21 — MORE CANVAS TIPS & SHORTCUTS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s20">
+<div class="slide layout-split" id="s21">
   <div class="pane-l">
     <div class="slide-tag tip-tag">💡 Tips &amp; Tricks</div>
     <h2 class="slide-h">More canvas tips to know</h2>
@@ -1764,7 +1882,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
         <div class="ptip">
           <div class="ptip-ico">📐</div>
           <div class="ptip-h">Auto-tidy messy layouts</div>
-          <div class="ptip-d">Layouts → <strong>Expand all branches</strong>, then <strong>Vertical (top → bottom)</strong> to reset everything cleanly.</div>
+          <div class="ptip-d">Layouts → <strong>Expand all branches</strong>, then <strong>Vertical ↕</strong> to reset everything cleanly.</div>
         </div>
         <div class="ptip">
           <div class="ptip-ico">💾</div>
@@ -1782,7 +1900,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 <!-- ── Navigation ── -->
 <div class="nav-bar">
   <button class="nav-btn" id="btnPrev" onclick="go(-1)" title="Previous (← Arrow)">&#8592;</button>
-  <span class="nav-counter" id="counter">1 / 16</span>
+  <span class="nav-counter" id="counter">1 / 21</span>
   <button class="nav-btn" id="btnNext" onclick="go(1)" title="Next (→ Arrow)">&#8594;</button>
 </div>
 
@@ -1793,7 +1911,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 <div class="progress"><div class="progress-fill" id="progress"></div></div>
 
 <script>
-const TOTAL = 20;
+const TOTAL = 21;
 let cur = 1;
 
 // Build dots
