@@ -14,6 +14,8 @@ interface TreeSummary {
   role: string;
   person_count: number;
   member_count: number;
+  link_sharing: string;
+  share_token: string | null;
 }
 
 const TREE_COVER_PRESETS = ['🌳','🌲','🌴','🌿','🌸','🏡','📜','⛩️','🎋','🧬','🗺️','📖'];
@@ -746,13 +748,19 @@ function ShareTreeModal({
   currentUserId: string;
   onClose: () => void;
 }) {
+  const appRole    = useAuthStore((s) => s.user?.appRole);
+  const isStandard = appRole === 'STANDARD';
+
+  const [linkSharing,    setLinkSharing]    = useState(tree.link_sharing ?? 'RESTRICTED');
+  const [savingSharing,  setSavingSharing]  = useState(false);
+
   const [members,     setMembers]     = useState<TreeMember[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
 
-  const [inviteMode,   setInviteMode]   = useState<'user' | 'email'>('user');
+  const [inviteMode,   setInviteMode]   = useState<'user' | 'email'>(isStandard ? 'email' : 'user');
   const [selectedUser, setSelectedUser] = useState('');
   const [emailInput,   setEmailInput]   = useState('');
   const [inviteRole,   setInviteRole]   = useState('VIEWER');
@@ -790,7 +798,6 @@ function ShareTreeModal({
     setInviteError('');
     try {
       if (inviteMode === 'user') {
-        // Direct member add — no invitation email needed for existing users
         const res = await fetch(`${API_BASE}/trees/${tree.id}/members`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...authHeader },
@@ -803,7 +810,6 @@ function ShareTreeModal({
         }
         setSelectedUser('');
       } else {
-        // Invitation email for external / unknown addresses
         const email = emailInput.trim();
         if (!email) return;
         const res = await fetch(`${API_BASE}/trees/${tree.id}/invitations`, {
@@ -840,6 +846,26 @@ function ShareTreeModal({
     fetchAll();
   }
 
+  async function handleLinkSharingChange(value: 'RESTRICTED' | 'ANYONE') {
+    setSavingSharing(true);
+    try {
+      const res = await fetch(`${API_BASE}/trees/${tree.id}/link-sharing`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        credentials: 'include',
+        body: JSON.stringify({ link_sharing: value }),
+      });
+      if (res.ok) setLinkSharing(value);
+    } finally {
+      setSavingSharing(false);
+    }
+  }
+
+  function copyShareLink() {
+    const url = `${window.location.origin}/shared/${tree.share_token}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+  }
+
   const canManage = tree.role === 'OWNER' || tree.role === 'ADMIN';
 
   return (
@@ -847,18 +873,16 @@ function ShareTreeModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-4 md:p-6 max-h-[90vh] md:max-h-[85vh] flex flex-col mx-4 md:mx-0">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl flex flex-col mx-4 md:mx-0 max-h-[90vh] md:max-h-[85vh]">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Share "{tree.name}"</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Manage who has access to this tree</p>
-          </div>
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">Share "{tree.name}"</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
         {error && (
-          <div className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
+          <div className="mx-6 mt-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
         )}
 
         {loading ? (
@@ -866,59 +890,61 @@ function ShareTreeModal({
             <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto min-h-0 space-y-5">
+          <div className="flex-1 overflow-y-auto min-h-0">
 
-            {/* Invite section — OWNER or ADMIN only */}
+            {/* Add people — OWNER or ADMIN only */}
             {canManage && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Invite people</p>
+              <div className="px-6 py-4 border-b border-gray-100">
+                {/* Mode toggle — hidden for Standard users who can only invite by email */}
+                {!isStandard && (
+                  <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit mb-3">
+                    {(['user', 'email'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => { setInviteMode(m); setSelectedUser(''); setEmailInput(''); }}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                          inviteMode === m ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {m === 'user' ? 'Select user' : 'Email address'}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                {/* Mode toggle */}
-                <div className="flex gap-1 p-1 bg-gray-100 rounded-lg w-fit mb-3">
-                  {(['user', 'email'] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => { setInviteMode(m); setSelectedUser(''); setEmailInput(''); }}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                        inviteMode === m ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      {m === 'user' ? 'Select user' : 'Email address'}
-                    </button>
-                  ))}
-                </div>
-
-                <form onSubmit={handleInvite} className="space-y-2">
-                  {inviteMode === 'user' ? (
-                    <select
-                      value={selectedUser}
-                      onChange={(e) => setSelectedUser(e.target.value)}
-                      required
-                      className="w-full h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    >
-                      <option value="">
-                        {tenantUsers.length === 0 ? 'All tenant users are already members' : 'Select a user…'}
-                      </option>
-                      {tenantUsers.map((u) => (
-                        <option key={u.id} value={u.id}>{u.display_name} ({u.email})</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="someone@example.com"
-                      required
-                      className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    />
-                  )}
+                <form onSubmit={handleInvite}>
                   <div className="flex gap-2">
+                    <div className="flex-1">
+                      {inviteMode === 'user' ? (
+                        <select
+                          value={selectedUser}
+                          onChange={(e) => setSelectedUser(e.target.value)}
+                          required
+                          className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        >
+                          <option value="">
+                            {tenantUsers.length === 0 ? 'All users are already members' : 'Select a person…'}
+                          </option>
+                          {tenantUsers.map((u) => (
+                            <option key={u.id} value={u.id}>{u.display_name} ({u.email})</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="email"
+                          value={emailInput}
+                          onChange={(e) => setEmailInput(e.target.value)}
+                          placeholder="Add people by email"
+                          required
+                          className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        />
+                      )}
+                    </div>
                     <select
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value)}
-                      className="flex-1 h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      className="h-10 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                     >
                       <option value="VIEWER">Viewer</option>
                       <option value="EDITOR">Editor</option>
@@ -927,55 +953,26 @@ function ShareTreeModal({
                     <button
                       type="submit"
                       disabled={inviting || (inviteMode === 'user' ? !selectedUser : !emailInput.trim())}
-                      className="h-9 px-4 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                      className="h-10 px-4 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                     >
-                      {inviting ? '…' : inviteMode === 'user' ? 'Add' : 'Send invite'}
+                      {inviting ? '…' : 'Share'}
                     </button>
                   </div>
-                  {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
+                  {inviteError && <p className="text-xs text-red-600 mt-1.5">{inviteError}</p>}
                 </form>
               </div>
             )}
 
-            {/* Pending invitations */}
-            {invitations.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Pending invitations ({invitations.length})
-                </p>
-                <div className="space-y-1">
-                  {invitations.map((inv) => (
-                    <div key={inv.id} className="flex items-center justify-between px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm text-gray-800 truncate">{inv.invitee_email}</span>
-                        <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${MEMBER_ROLE_BADGE[inv.role] ?? MEMBER_ROLE_BADGE['VIEWER']}`}>
-                          {inv.role.charAt(0) + inv.role.slice(1).toLowerCase()}
-                        </span>
-                      </div>
-                      {canManage && (
-                        <button
-                          onClick={() => handleRevoke(inv.id)}
-                          className="text-xs text-gray-400 hover:text-red-600 transition-colors ml-2 shrink-0"
-                        >
-                          Revoke
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Current members */}
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Members ({members.length})
+            {/* People with access — members + pending invitations */}
+            <div className="px-6 py-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                People with access
               </p>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 shrink-0">
+                  <div key={m.id} className="flex items-center justify-between py-2 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-xs font-semibold text-brand-700 shrink-0">
                         {(m.display_name || m.email).charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -999,11 +996,104 @@ function ShareTreeModal({
                     </div>
                   </div>
                 ))}
+
+                {invitations.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between py-2 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-xs font-semibold text-amber-700 shrink-0">
+                        {inv.invitee_email.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm text-gray-800 truncate">{inv.invitee_email}</div>
+                        <div className="text-xs text-amber-600">Invitation pending</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${MEMBER_ROLE_BADGE[inv.role] ?? MEMBER_ROLE_BADGE['VIEWER']}`}>
+                        {inv.role.charAt(0) + inv.role.slice(1).toLowerCase()}
+                      </span>
+                      {canManage && (
+                        <button
+                          onClick={() => handleRevoke(inv.id)}
+                          title="Revoke invitation"
+                          className="text-sm text-gray-300 hover:text-red-500 transition-colors leading-none"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
           </div>
         )}
+
+        {/* General access — visible to all users */}
+        <div className="px-6 py-4 border-t border-gray-100">
+          <p className="text-sm font-medium text-gray-700 mb-3">General access</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                {linkSharing === 'ANYONE' ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <circle cx="8" cy="8" r="6.5" />
+                    <ellipse cx="8" cy="8" rx="3" ry="6.5" />
+                    <line x1="1.5" y1="6" x2="14.5" y2="6" />
+                    <line x1="1.5" y1="10" x2="14.5" y2="10" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <rect x="3" y="7" width="10" height="7" rx="1.5" />
+                    <path d="M5 7V5a3 3 0 0 1 6 0v2" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0">
+                {canManage ? (
+                  <select
+                    value={linkSharing}
+                    onChange={(e) => handleLinkSharingChange(e.target.value as 'RESTRICTED' | 'ANYONE')}
+                    disabled={savingSharing}
+                    className="text-sm font-medium text-gray-900 bg-transparent border-none outline-none cursor-pointer pr-1 disabled:opacity-60"
+                  >
+                    <option value="RESTRICTED">Restricted</option>
+                    <option value="ANYONE">Anyone with the link</option>
+                  </select>
+                ) : (
+                  <p className="text-sm font-medium text-gray-900">
+                    {linkSharing === 'ANYONE' ? 'Anyone with the link' : 'Restricted'}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500">
+                  {linkSharing === 'ANYONE'
+                    ? 'Anyone with the link can view this tree'
+                    : 'Only people invited can access'}
+                </p>
+              </div>
+            </div>
+            {tree.share_token && (
+              <button
+                onClick={copyShareLink}
+                className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 hover:border-brand-300 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                Copy link
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end px-6 py-4 border-t border-gray-100">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+
       </div>
     </div>
   );

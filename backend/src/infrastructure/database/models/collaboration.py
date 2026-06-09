@@ -38,6 +38,10 @@ class FamilyTreeModel(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    link_sharing: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'RESTRICTED'"))
+    share_token: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, unique=True, index=True, server_default=text("gen_random_uuid()")
+    )
 
     def __repr__(self) -> str:
         return f"<FamilyTreeModel id={self.id!s} name={self.name!r}>"

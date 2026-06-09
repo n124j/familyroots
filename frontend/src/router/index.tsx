@@ -41,6 +41,7 @@ const PrivacyPage        = lazy(() => import('@pages/PrivacyPage'));
 const HelpPage           = lazy(() => import('@pages/HelpPage'));
 const LandingPage           = lazy(() => import('@pages/LandingPage'));
 const ConfirmDeletionPage   = lazy(() => import('@pages/ConfirmDeletionPage'));
+const SharedTreePage        = lazy(() => import('@pages/SharedTreePage'));
 
 // AppShell wraps all authenticated routes (sidebar + topbar)
 const AppShell           = lazy(() => import('@shared/components/layout/AppShell'));
@@ -102,6 +103,12 @@ const router = createBrowserRouter([
   {
     path: '/confirm-deletion',
     element: <Lazy><ConfirmDeletionPage /></Lazy>,
+  },
+
+  // ── Public shared tree viewer (no auth required) ──────────────────────
+  {
+    path: '/shared/:shareToken',
+    element: <Lazy><SharedTreePage /></Lazy>,
   },
 
   // ── OAuth callback (public — token arrives here) ───────────────────────

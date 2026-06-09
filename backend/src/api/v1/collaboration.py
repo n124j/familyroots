@@ -145,6 +145,8 @@ class TreeSummaryResponse(BaseModel):
     role: TreeRole
     person_count: int
     member_count: int
+    link_sharing: str = "RESTRICTED"
+    share_token: Optional[uuid.UUID] = None
 
 
 class CreateTreeRequest(BaseModel):
@@ -161,11 +163,12 @@ async def create_tree(
     from sqlalchemy import text
 
     tree_id = uuid.uuid4()
+    share_token = uuid.uuid4()
 
     await uow._session.execute(text("""
-        INSERT INTO family_trees (id, tenant_id, name, description)
-        VALUES (:id, :tenant_id, :name, :description)
-    """), {"id": tree_id, "tenant_id": current_user.tenant_id, "name": body.name, "description": body.description})
+        INSERT INTO family_trees (id, tenant_id, name, description, share_token)
+        VALUES (:id, :tenant_id, :name, :description, :share_token)
+    """), {"id": tree_id, "tenant_id": current_user.tenant_id, "name": body.name, "description": body.description, "share_token": share_token})
 
     await uow._session.execute(text("""
         INSERT INTO tree_members (id, tree_id, user_id, tenant_id, role, joined_at)
@@ -179,6 +182,8 @@ async def create_tree(
         role=TreeRole.OWNER,
         person_count=0,
         member_count=1,
+        link_sharing="RESTRICTED",
+        share_token=share_token,
     )
 
 
@@ -272,7 +277,7 @@ async def update_tree(
             SET name = :name, description = :description,
                 cover_emoji = COALESCE(:cover_emoji, cover_emoji)
             WHERE id = :tid AND is_deleted = false
-            RETURNING id, name, description, cover_emoji, cover_image_url
+            RETURNING id, name, description, cover_emoji, cover_image_url, link_sharing, share_token
         """),
         {"tid": tree_id, "name": body.name, "description": body.description,
          "cover_emoji": body.cover_emoji},
@@ -325,6 +330,8 @@ async def update_tree(
         role=effective_role,
         person_count=counts.person_count if counts else 0,
         member_count=counts.member_count if counts else 0,
+        link_sharing=row.link_sharing or "RESTRICTED",
+        share_token=row.share_token,
     )
 
 
@@ -423,6 +430,174 @@ async def delete_tree_photo(
         {"tid": tree_id, "tenant": current_user.tenant_id},
     )
     await uow._session.commit()
+
+
+# ── Link sharing ───────────────────────────────────────────────────────────────
+
+class UpdateLinkSharingRequest(BaseModel):
+    link_sharing: str = Field(..., pattern="^(RESTRICTED|ANYONE)$")
+
+
+@router.patch(
+    "/trees/{tree_id}/link-sharing",
+    response_model=TreeSummaryResponse,
+    summary="Update public link-sharing setting (OWNER or ADMIN only)",
+)
+async def update_link_sharing(
+    tree_id: uuid.UUID,
+    body: UpdateLinkSharingRequest,
+    current_user: CurrentUserDep,
+    uow: UoWDep,
+) -> TreeSummaryResponse:
+    from sqlalchemy import text
+
+    if current_user.app_role != AppRole.ADMIN:
+        row = (await uow._session.execute(
+            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if row is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+        if row.role not in ("OWNER", "ADMIN"):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can change link sharing")
+
+    result = await uow._session.execute(
+        text("""
+            UPDATE family_trees
+            SET link_sharing = :link_sharing
+            WHERE id = :tid AND is_deleted = false
+            RETURNING id, name, description, cover_emoji, cover_image_url, link_sharing, share_token
+        """),
+        {"tid": tree_id, "link_sharing": body.link_sharing},
+    )
+    row = result.first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+
+    counts = (await uow._session.execute(
+        text("""
+            SELECT
+              (SELECT COUNT(*) FROM persons WHERE tree_id = :tid AND is_deleted = false) AS person_count,
+              (SELECT COUNT(*) FROM tree_members WHERE tree_id = :tid) AS member_count
+        """),
+        {"tid": tree_id},
+    )).first()
+
+    if current_user.app_role == AppRole.ADMIN:
+        effective_role = TreeRole.OWNER
+    else:
+        role_val = (await uow._session.execute(
+            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).scalar()
+        effective_role = TreeRole(role_val) if role_val else TreeRole.ADMIN
+
+    await uow._session.commit()
+    return TreeSummaryResponse(
+        id=row.id,
+        name=row.name,
+        description=row.description,
+        cover_emoji=row.cover_emoji,
+        cover_image_url=row.cover_image_url,
+        role=effective_role,
+        person_count=counts.person_count if counts else 0,
+        member_count=counts.member_count if counts else 0,
+        link_sharing=row.link_sharing,
+        share_token=row.share_token,
+    )
+
+
+@router.get(
+    "/trees/shared/{share_token}/graph",
+    summary="Public read-only tree graph — accessible without authentication when link_sharing is ANYONE",
+)
+async def get_shared_tree_graph(
+    share_token: uuid.UUID,
+    uow: UoWDep,
+) -> dict:
+    from sqlalchemy import text
+
+    tree_row = (await uow._session.execute(
+        text("SELECT id, name, description, link_sharing FROM family_trees WHERE share_token = :token AND is_deleted = false LIMIT 1"),
+        {"token": share_token},
+    )).first()
+
+    if tree_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if tree_row.link_sharing != "ANYONE":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This tree is not publicly shared")
+
+    tree_id = tree_row.id
+
+    persons_q = text("""
+        SELECT id, tree_id, display_given_name, display_surname,
+               sex, is_living, is_deceased, photo_url,
+               birth_date, death_date, birth_year, death_year
+        FROM persons
+        WHERE tree_id = :tid AND is_deleted = false
+        ORDER BY display_surname, display_given_name
+    """)
+    person_rows = (await uow._session.execute(persons_q, {"tid": tree_id})).fetchall()
+
+    persons = [
+        {
+            "id": str(r.id),
+            "treeId": str(r.tree_id),
+            "displayGivenName": r.display_given_name,
+            "displaySurname": r.display_surname,
+            "sex": r.sex,
+            "isLiving": r.is_living,
+            "isDeceased": r.is_deceased,
+            **({"photoUrl": r.photo_url} if r.photo_url else {}),
+            **({"birthDate": r.birth_date.isoformat()} if r.birth_date else {}),
+            **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
+            **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
+            **({"deathYear": r.death_year} if r.death_year is not None else {}),
+        }
+        for r in person_rows
+    ]
+
+    fg_q = text("""
+        SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label,
+               fgm.person_id, fgm.role, fgm.parentage_type
+        FROM family_groups fg
+        LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
+        LEFT JOIN persons p ON p.id = fgm.person_id
+        WHERE fg.tree_id = :tid
+          AND (fgm.person_id IS NULL OR p.is_deleted = false)
+        ORDER BY fg.id
+    """)
+    fg_rows = (await uow._session.execute(fg_q, {"tid": tree_id})).fetchall()
+
+    groups: dict[str, dict] = {}
+    for r in fg_rows:
+        gid = str(r.id)
+        if gid not in groups:
+            groups[gid] = {
+                "id": gid,
+                "treeId": str(r.tree_id),
+                "unionType": r.union_type,
+                **({"customLabel": r.custom_label} if r.custom_label else {}),
+                "parentIds": [],
+                "children": {},
+            }
+        if r.person_id is None:
+            continue
+        pid = str(r.person_id)
+        if r.role == "PARENT":
+            if pid not in groups[gid]["parentIds"]:
+                groups[gid]["parentIds"].append(pid)
+        elif r.role == "CHILD":
+            groups[gid]["children"][pid] = r.parentage_type or "BIOLOGICAL"
+
+    return {
+        "treeId":          str(tree_id),
+        "treeName":        tree_row.name,
+        "treeDescription": tree_row.description,
+        "userRole":        "VIEWER",
+        "persons":         persons,
+        "familyGroups":    list(groups.values()),
+    }
 
 
 @router.get(
@@ -752,6 +927,8 @@ async def list_my_trees(
                 ft.description,
                 ft.cover_emoji,
                 ft.cover_image_url,
+                ft.link_sharing,
+                ft.share_token,
                 (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
                 (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
             FROM family_trees ft
@@ -770,6 +947,8 @@ async def list_my_trees(
                 role=TreeRole(effective_role),
                 person_count=row.person_count,
                 member_count=row.member_count,
+                link_sharing=row.link_sharing or "RESTRICTED",
+                share_token=row.share_token,
             )
             for row in rows
         ]
@@ -782,6 +961,8 @@ async def list_my_trees(
             ft.description,
             ft.cover_emoji,
             ft.cover_image_url,
+            ft.link_sharing,
+            ft.share_token,
             tm.role,
             (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
             (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
@@ -803,6 +984,8 @@ async def list_my_trees(
             role=TreeRole(row.role),
             person_count=row.person_count,
             member_count=row.member_count,
+            link_sharing=row.link_sharing or "RESTRICTED",
+            share_token=row.share_token,
         )
         for row in rows
     ]
