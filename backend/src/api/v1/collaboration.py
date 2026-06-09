@@ -201,15 +201,14 @@ async def delete_tree(
 ) -> None:
     from sqlalchemy import text
 
-    if current_user.app_role != AppRole.ADMIN:
-        row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if row.role != "OWNER":
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the tree owner can delete this tree")
+    row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if row.role != "OWNER":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the tree owner can delete this tree")
 
     # Grab name before soft-delete for the audit record
     tree_row = (await uow._session.execute(
@@ -260,16 +259,15 @@ async def update_tree(
 ) -> TreeSummaryResponse:
     from sqlalchemy import text
 
-    # App-level admin bypasses; otherwise require ADMIN or OWNER tree role
-    if current_user.app_role != AppRole.ADMIN:
-        row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if row.role not in ("OWNER", "ADMIN"):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can edit this tree")
+    # Require ADMIN or OWNER tree role
+    member_row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if member_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if member_row.role not in ("OWNER", "ADMIN"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can edit this tree")
 
     result = await uow._session.execute(
         text("""
@@ -295,14 +293,7 @@ async def update_tree(
         {"tid": tree_id},
     )).first()
 
-    # Determine effective role for response
-    if current_user.app_role == AppRole.ADMIN:
-        effective_role = TreeRole.OWNER
-    else:
-        effective_role = TreeRole(row_role) if (row_role := (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).scalar()) else TreeRole.ADMIN
+    effective_role = TreeRole(member_row.role)
 
     from src.domain.collaboration.entities import AuditEntry, Action, AuditEntityType
     from src.infrastructure.repositories.collaboration import AuditLogRepository
@@ -351,15 +342,14 @@ async def upload_tree_photo(
     from sqlalchemy import text
     from src.config import get_settings
 
-    if current_user.app_role != AppRole.ADMIN:
-        row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if row.role not in ("OWNER", "ADMIN"):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can update this tree")
+    row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if row.role not in ("OWNER", "ADMIN"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can update this tree")
 
     if file.content_type not in _TREE_PHOTO_ALLOWED_TYPES:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Only JPEG, PNG, WEBP or GIF images are allowed")
@@ -415,15 +405,14 @@ async def delete_tree_photo(
 ) -> None:
     from sqlalchemy import text
 
-    if current_user.app_role != AppRole.ADMIN:
-        row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if row.role not in ("OWNER", "ADMIN"):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can update this tree")
+    row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if row.role not in ("OWNER", "ADMIN"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can update this tree")
 
     await uow._session.execute(
         text("UPDATE family_trees SET cover_image_url = NULL WHERE id = :tid AND tenant_id = :tenant AND is_deleted = false"),
@@ -451,15 +440,14 @@ async def update_link_sharing(
 ) -> TreeSummaryResponse:
     from sqlalchemy import text
 
-    if current_user.app_role != AppRole.ADMIN:
-        row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if row.role not in ("OWNER", "ADMIN"):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can change link sharing")
+    member_row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if member_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if member_row.role not in ("OWNER", "ADMIN"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can change link sharing")
 
     result = await uow._session.execute(
         text("""
@@ -483,14 +471,7 @@ async def update_link_sharing(
         {"tid": tree_id},
     )).first()
 
-    if current_user.app_role == AppRole.ADMIN:
-        effective_role = TreeRole.OWNER
-    else:
-        role_val = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).scalar()
-        effective_role = TreeRole(role_val) if role_val else TreeRole.ADMIN
+    effective_role = TreeRole(member_row.role)
 
     await uow._session.commit()
     return TreeSummaryResponse(
@@ -615,8 +596,8 @@ async def export_tree_zip(
     from fastapi.responses import StreamingResponse
     from sqlalchemy import text
 
-    # Membership / admin bypass (same pattern as tree_graph)
-    if current_user.app_role not in (AppRole.ADMIN, AppRole.AUDITOR):
+    # Auditor bypass; all others (including app-level ADMIN) must be members
+    if current_user.app_role != AppRole.AUDITOR:
         row = (await uow._session.execute(
             text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
             {"tid": tree_id, "uid": current_user.id},
@@ -915,11 +896,11 @@ async def list_my_trees(
 ) -> list[TreeSummaryResponse]:
     from sqlalchemy import text
 
-    is_elevated = current_user.app_role in (AppRole.ADMIN, AppRole.AUDITOR)
+    # Only AUDITOR sees all trees across the tenant; app-level ADMIN is treated like a regular user
+    is_elevated = current_user.app_role == AppRole.AUDITOR
 
     if is_elevated:
-        # Admin/auditor can see all trees; their effective role is OWNER (admin) or VIEWER (auditor)
-        effective_role = "OWNER" if current_user.app_role == AppRole.ADMIN else "VIEWER"
+        effective_role = "VIEWER"
         q = text("""
             SELECT
                 ft.id,
@@ -1001,10 +982,8 @@ async def get_tree_graph(
 ) -> dict:
     from sqlalchemy import text
 
-    # Admin and auditor bypass membership check; resolve effective role for response
-    if current_user.app_role == AppRole.ADMIN:
-        effective_tree_role = "OWNER"
-    elif current_user.app_role == AppRole.AUDITOR:
+    # Auditor bypass; all others (including app-level ADMIN) must be members
+    if current_user.app_role == AppRole.AUDITOR:
         effective_tree_role = "VIEWER"
     else:
         membership_q = text(
@@ -1466,7 +1445,7 @@ async def auto_merge_trees(
 
     tenant_id = current_user.tenant_id
 
-    # Validate every requested tree exists in the tenant
+    # Validate every requested tree exists in the tenant and user is a member
     for tree_id in body.tree_ids:
         row = (await uow._session.execute(
             text("SELECT id FROM family_trees WHERE id = :tid AND tenant_id = :tenant AND is_deleted = false LIMIT 1"),
@@ -1474,6 +1453,13 @@ async def auto_merge_trees(
         )).first()
         if row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Tree {tree_id} not found")
+        if current_user.app_role != AppRole.AUDITOR:
+            member_row = (await uow._session.execute(
+                text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+                {"tid": tree_id, "uid": current_user.id},
+            )).first()
+            if not member_row:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, f"You are not a member of tree {tree_id}")
 
     # Load persons (name + sex + birth_year) from every tree
     tree_name_map: dict[uuid.UUID, dict[str, uuid.UUID]] = {}   # tree_id → {name_key: person_id}
@@ -1536,7 +1522,7 @@ async def merge_trees(
 
     tenant_id = current_user.tenant_id
 
-    # Validate all source trees exist and belong to tenant
+    # Validate all source trees exist, belong to tenant, and user is a member
     for src in body.sources:
         tree_row = (await uow._session.execute(
             text("SELECT id FROM family_trees WHERE id = :tid AND tenant_id = :tenant AND is_deleted = false LIMIT 1"),
@@ -1544,6 +1530,13 @@ async def merge_trees(
         )).first()
         if tree_row is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Tree {src.tree_id} not found")
+        if current_user.app_role != AppRole.AUDITOR:
+            member_row = (await uow._session.execute(
+                text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+                {"tid": src.tree_id, "uid": current_user.id},
+            )).first()
+            if not member_row:
+                raise HTTPException(status.HTTP_403_FORBIDDEN, f"You are not a member of tree {src.tree_id}")
 
     # Validate all pivot persons exist in their respective trees
     for src in body.sources:
@@ -1799,8 +1792,8 @@ async def list_members(
 ) -> list[MemberResponse]:
     from sqlalchemy import text
 
-    # Admin/auditor bypass membership check
-    if current_user.app_role not in (AppRole.ADMIN, AppRole.AUDITOR):
+    # Auditor bypass; all others (including app-level ADMIN) must be members
+    if current_user.app_role != AppRole.AUDITOR:
         check = (await uow._session.execute(
             text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
             {"tid": tree_id, "uid": current_user.id},
@@ -1851,16 +1844,15 @@ async def add_member_direct(
 ) -> MemberResponse:
     from sqlalchemy import text
 
-    # Require OWNER or ADMIN tree role (or app-level ADMIN)
-    if current_user.app_role != AppRole.ADMIN:
-        caller_row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if caller_row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if caller_row.role not in ("OWNER", "ADMIN"):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can add members directly")
+    # Require OWNER or ADMIN tree role
+    caller_row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if caller_row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if caller_row.role not in ("OWNER", "ADMIN"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can add members directly")
 
     # Verify target user belongs to this tenant
     user_row = (await uow._session.execute(
@@ -1892,6 +1884,50 @@ async def add_member_direct(
 
     display_name = f"{user_row.given_name or ''} {user_row.family_name or ''}".strip() or user_row.email
 
+    # Fetch tree name for notification
+    tree_name_row = (await uow._session.execute(
+        text("SELECT name FROM family_trees WHERE id = :tid AND is_deleted = false LIMIT 1"),
+        {"tid": tree_id},
+    )).first()
+    tree_name = tree_name_row.name if tree_name_row else str(tree_id)
+
+    actor_display = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
+
+    # Create in-app notification for the added user
+    import json as _json
+    _notif_data = _json.dumps({
+        "tree_id": str(tree_id),
+        "tree_name": tree_name,
+        "shared_by_id": str(current_user.id),
+        "shared_by_name": actor_display,
+        "role": body.role.value,
+    })
+    await uow._session.execute(
+        text("""
+            INSERT INTO notifications (user_id, tenant_id, type, title, body, data)
+            VALUES (:user_id, :tenant_id, 'TREE_SHARED',
+                    :title, :nbody, CAST(:data AS jsonb))
+        """),
+        {
+            "user_id": body.user_id,
+            "tenant_id": current_user.tenant_id,
+            "title": f"You've been added to \"{tree_name}\"",
+            "nbody": f"{actor_display} shared \"{tree_name}\" with you as {body.role.value.capitalize()}",
+            "data": _notif_data,
+        },
+    )
+    await uow._session.commit()
+
+    import asyncio as _asyncio
+    from src.api.v1.push import send_push_to_user as _push
+    _asyncio.create_task(_push(
+        uow._session,
+        body.user_id,
+        f"You've been added to \"{tree_name}\"",
+        f"{actor_display} shared \"{tree_name}\" with you as {body.role.value.capitalize()}",
+        {"type": "TREE_SHARED", "tree_id": str(tree_id), "tree_name": tree_name},
+    ))
+
     return MemberResponse(
         id=member_id,
         tree_id=tree_id,
@@ -1918,15 +1954,14 @@ async def list_tenant_users_for_share(
 ) -> list[TenantUserForShareResponse]:
     from sqlalchemy import text
 
-    if current_user.app_role != AppRole.ADMIN:
-        row = (await uow._session.execute(
-            text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
-            {"tid": tree_id, "uid": current_user.id},
-        )).first()
-        if row is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
-        if row.role not in ("OWNER", "ADMIN"):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can share this tree")
+    row = (await uow._session.execute(
+        text("SELECT role FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+        {"tid": tree_id, "uid": current_user.id},
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
+    if row.role not in ("OWNER", "ADMIN"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only owners and admins can share this tree")
 
     rows = (await uow._session.execute(text("""
         SELECT
@@ -2051,6 +2086,45 @@ async def send_invitation(
         html_body=_html,
         text_body=_text,
     ))
+
+    # If invitee already has an account, create an in-app TREE_INVITE notification
+    import json as _json
+    from sqlalchemy import text as _sql
+    invitee_row = (await svc._session.execute(
+        _sql("SELECT id, tenant_id FROM users WHERE email = :email AND tenant_id = :tid LIMIT 1"),
+        {"email": body.email, "tid": current_user.tenant_id},
+    )).first()
+    if invitee_row:
+        await svc._session.execute(
+            _sql("""
+                INSERT INTO notifications (user_id, tenant_id, type, title, body, data)
+                VALUES (:uid, :tenant_id, 'TREE_INVITE',
+                        :title, :nbody, CAST(:data AS jsonb))
+            """),
+            {
+                "uid": invitee_row.id,
+                "tenant_id": current_user.tenant_id,
+                "title": f"{actor_name} invited you to \"{tree_name}\"",
+                "nbody": f"You've been invited to join \"{tree_name}\" as {body.role.value.capitalize()}",
+                "data": _json.dumps({
+                    "token": invitation.token,
+                    "tree_id": str(tree_id),
+                    "tree_name": tree_name,
+                    "shared_by_name": actor_name,
+                    "role": body.role.value,
+                }),
+            },
+        )
+        await svc._session.commit()
+
+        from src.api.v1.push import send_push_to_user as _push
+        _asyncio.create_task(_push(
+            svc._session,
+            invitee_row.id,
+            f"{actor_name} invited you to \"{tree_name}\"",
+            f"Join \"{tree_name}\" as {body.role.value.capitalize()} on FamilyRoots",
+            {"type": "TREE_INVITE", "tree_name": tree_name},
+        ))
 
     return InvitationResponse.from_domain(invitation)
 

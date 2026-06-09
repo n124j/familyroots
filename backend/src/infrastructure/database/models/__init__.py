@@ -12,6 +12,12 @@ from src.infrastructure.database.models.person import (
     FamilyGroupModel,
     FamilyGroupMemberModel,
 )
+from src.infrastructure.database.models.permission_group import (
+    PermissionGroupModel,
+    PermissionGroupAssignmentModel,
+    PermissionGroupTreeModel,
+    PermissionGroupMemberModel,
+)
 
 __all__ = [
     "TenantModel",
@@ -23,4 +29,8 @@ __all__ = [
     "PersonModel",
     "FamilyGroupModel",
     "FamilyGroupMemberModel",
+    "PermissionGroupModel",
+    "PermissionGroupAssignmentModel",
+    "PermissionGroupTreeModel",
+    "PermissionGroupMemberModel",
 ]

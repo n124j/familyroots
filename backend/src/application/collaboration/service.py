@@ -49,17 +49,16 @@ class CollaborationService:
     ) -> TreeMembership:
         """Load the actor's membership and assert they can perform *action*.
 
-        Pass app_role="ADMIN" or "AUDITOR" to bypass the DB membership lookup
-        and grant a synthetic owner-level membership (write protection for
-        AUDITOR is enforced at the API layer via NotAuditorDep).
+        Pass app_role="AUDITOR" to bypass the DB membership lookup and grant
+        a synthetic viewer-level membership for compliance reads.
         """
-        if app_role in ("ADMIN", "AUDITOR"):
+        if app_role == "AUDITOR":
             return TreeMembership(
                 id=uuid.uuid4(),
                 tree_id=tree_id,
                 user_id=actor_id,
                 tenant_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
-                role=TreeRole.OWNER,
+                role=TreeRole.VIEWER,
             )
         membership = await self._members.get(tree_id, actor_id)
         if not membership:
@@ -99,6 +98,10 @@ class CollaborationService:
         if new_role == TreeRole.OWNER and actor_membership.role != TreeRole.OWNER:
             raise InsufficientPermissionError(Action.TRANSFER_OWNERSHIP, actor_membership.role)
 
+        # ADMIN cannot change another ADMIN's role — only OWNER can
+        if actor_membership.role == TreeRole.ADMIN and target.role == TreeRole.ADMIN:
+            raise InsufficientPermissionError(Action.CHANGE_MEMBER_ROLE, actor_membership.role)
+
         old_role = target.role
         await self._members.update_role(tree_id, target_user_id, new_role)
 
@@ -127,13 +130,31 @@ class CollaborationService:
         ip_address: Optional[str] = None,
         app_role: Optional[str] = None,
     ) -> None:
-        await self.require_permission(tree_id, actor_id, Action.REMOVE_MEMBER, app_role=app_role)
+        actor_membership = await self.require_permission(tree_id, actor_id, Action.REMOVE_MEMBER, app_role=app_role)
         target = await self._members.get(tree_id, target_user_id)
         if not target:
             return  # idempotent
 
         if target.role == TreeRole.OWNER:
             raise CannotRemoveOwnerError()
+
+        # ADMIN cannot revoke another ADMIN — only OWNER can
+        if actor_membership.role == TreeRole.ADMIN and target.role == TreeRole.ADMIN:
+            raise InsufficientPermissionError(Action.REMOVE_MEMBER, actor_membership.role)
+
+        # Fetch the removed user's name/email for the audit record before deleting
+        from sqlalchemy import text
+        user_row = (await self._session.execute(
+            text("SELECT email, given_name, family_name FROM users WHERE id = :uid LIMIT 1"),
+            {"uid": target_user_id},
+        )).first()
+        if user_row:
+            member_display = (
+                f"{user_row.given_name or ''} {user_row.family_name or ''}".strip()
+                or user_row.email
+            )
+        else:
+            member_display = str(target_user_id)
 
         await self._members.remove(tree_id, target_user_id)
         await self._audit.append(
@@ -145,6 +166,7 @@ class CollaborationService:
                 action=Action.REMOVE_MEMBER,
                 entity_type=AuditEntityType.MEMBER,
                 entity_id=target_user_id,
+                entity_display_name=member_display,
                 ip_address=ip_address,
             )
         )

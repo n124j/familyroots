@@ -47,6 +47,74 @@ class PermissionGroupModel(Base, TimestampMixin):
         return f"<PermissionGroupModel name={self.name!r} level={self.permission_level!r}>"
 
 
+class PermissionGroupTreeModel(Base):
+    """A tree that belongs to a permission group."""
+
+    __tablename__ = "permission_group_trees"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("permission_groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    tree_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("family_trees.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    added_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "tree_id", name="uq_pgt_group_tree"),
+    )
+
+
+class PermissionGroupMemberModel(Base):
+    """A user who belongs to a permission group."""
+
+    __tablename__ = "permission_group_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    group_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("permission_groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    added_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_pgm_group_user"),
+    )
+
+
 class PermissionGroupAssignmentModel(Base):
     """Maps a user to a permission group for a specific tree."""
 

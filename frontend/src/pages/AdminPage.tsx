@@ -46,23 +46,28 @@ interface PermissionGroup {
   name: string;
   description: string | null;
   permission_level: 'VISIBLE' | 'READ' | 'READ_WRITE';
-  assignment_count: number;
+  tree_count: number;
+  member_count: number;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
-interface GroupAssignment {
+interface GroupTree {
   id: string;
-  group_id: string;
+  tree_id: string;
+  tree_name: string;
+  added_by: string | null;
+  added_at: string;
+}
+
+interface GroupMember {
+  id: string;
   user_id: string;
   user_email: string;
   user_display_name: string;
-  tree_id: string;
-  tree_name: string;
-  permission_level: string;
-  assigned_by: string | null;
-  assigned_at: string;
+  added_by: string | null;
+  added_at: string;
 }
 
 interface TenantTree { id: string; name: string; }
@@ -1228,7 +1233,7 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
               <tr className="border-b" style={{ background: 'var(--portal-main-bg)', borderColor: 'var(--portal-border)' }}>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Group</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Level</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Assignments</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Access</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Actions</th>
               </tr>
             </thead>
@@ -1246,7 +1251,9 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {g.assignment_count} {g.assignment_count === 1 ? 'user' : 'users'}
+                    <span>{g.tree_count} {g.tree_count === 1 ? 'tree' : 'trees'}</span>
+                    <span className="mx-1 text-gray-300">·</span>
+                    <span>{g.member_count} {g.member_count === 1 ? 'member' : 'members'}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -1254,7 +1261,7 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
                         onClick={() => setMembersTarget(g)}
                         className="px-2.5 py-1 text-xs font-medium text-brand-600 bg-white border border-brand-200 rounded-lg hover:bg-brand-50 transition-colors"
                       >
-                        Members
+                        Manage
                       </button>
                       <button
                         onClick={() => setEditTarget(g)}
@@ -1287,9 +1294,9 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
         />
       )}
 
-      {/* Members modal */}
+      {/* Detail modal */}
       {membersTarget && (
-        <GroupMembersModal
+        <GroupDetailModal
           group={membersTarget}
           token={token}
           onClose={() => { setMembersTarget(null); fetchGroups(); }}
@@ -1303,8 +1310,9 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Delete group?</h2>
             <p className="text-sm text-gray-500 mb-4">
-              <span className="font-medium text-gray-800">{deleteTarget.name}</span> and all{' '}
-              {deleteTarget.assignment_count} assignment{deleteTarget.assignment_count !== 1 ? 's' : ''} will be permanently removed.
+              <span className="font-medium text-gray-800">{deleteTarget.name}</span> will be permanently removed.
+              All {deleteTarget.member_count} member{deleteTarget.member_count !== 1 ? 's' : ''} will lose access to its{' '}
+              {deleteTarget.tree_count} tree{deleteTarget.tree_count !== 1 ? 's' : ''}.
             </p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)}
@@ -1423,165 +1431,224 @@ function GroupFormModal({
   );
 }
 
-// ── Group Members Modal ─────────────────────────────────────────────────────────
+// ── Group Detail Modal (Trees + Members) ───────────────────────────────────────
 
-function GroupMembersModal({
+function GroupDetailModal({
   group, token, onClose,
 }: { group: PermissionGroup; token: string | null; onClose: () => void; }) {
-  const [assignments, setAssignments] = useState<GroupAssignment[]>([]);
-  const [users,  setUsers]  = useState<{ id: string; email: string; display: string }[]>([]);
-  const [trees,  setTrees]  = useState<TenantTree[]>([]);
+  const [groupTrees,   setGroupTrees]   = useState<GroupTree[]>([]);
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+  const [availTrees,   setAvailTrees]   = useState<TenantTree[]>([]);
+  const [availUsers,   setAvailUsers]   = useState<{ id: string; email: string; display: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [addOpen, setAddOpen] = useState(false);
-  const [selUser, setSelUser] = useState('');
-  const [selTree, setSelTree] = useState('');
-  const [adding,  setAdding]  = useState(false);
-  const [error,   setError]   = useState('');
+  const [addTreeOpen,   setAddTreeOpen]   = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [selTree,   setSelTree]   = useState('');
+  const [selUser,   setSelUser]   = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState('');
   const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   async function fetchAll() {
     setLoading(true);
-    const [aRes, uRes, tRes] = await Promise.all([
-      fetch(`${API_BASE}/admin/permission-groups/${group.id}/assignments`, { headers: authHeader, credentials: 'include' }),
-      fetch(`${API_BASE}/admin/users?page_size=200`, { headers: authHeader, credentials: 'include' }),
+    const [tRes, mRes, atRes, auRes] = await Promise.all([
+      fetch(`${API_BASE}/admin/permission-groups/${group.id}/trees`, { headers: authHeader, credentials: 'include' }),
+      fetch(`${API_BASE}/admin/permission-groups/${group.id}/members`, { headers: authHeader, credentials: 'include' }),
       fetch(`${API_BASE}/admin/trees`, { headers: authHeader, credentials: 'include' }),
+      fetch(`${API_BASE}/admin/users?page_size=200`, { headers: authHeader, credentials: 'include' }),
     ]);
-    if (aRes.ok) setAssignments(await aRes.json());
-    if (uRes.ok) {
-      const d = await uRes.json();
-      setUsers((d.items ?? []).map((u: any) => ({
-        id: u.id,
-        email: u.email,
+    if (tRes.ok) setGroupTrees(await tRes.json());
+    if (mRes.ok) setGroupMembers(await mRes.json());
+    if (atRes.ok) setAvailTrees(await atRes.json());
+    if (auRes.ok) {
+      const d = await auRes.json();
+      setAvailUsers((d.items ?? []).map((u: any) => ({
+        id: u.id, email: u.email,
         display: [u.given_name, u.family_name].filter(Boolean).join(' ') || u.email,
       })));
     }
-    if (tRes.ok) setTrees(await tRes.json());
     setLoading(false);
   }
 
   useEffect(() => { fetchAll(); }, []);
 
-  async function handleAdd(e: React.FormEvent) {
+  async function handleAddTree(e: React.FormEvent) {
     e.preventDefault();
-    setAdding(true); setError('');
+    setSaving(true); setError('');
     try {
-      const res = await fetch(`${API_BASE}/admin/permission-groups/${group.id}/assignments`, {
+      const res = await fetch(`${API_BASE}/admin/permission-groups/${group.id}/trees`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         credentials: 'include',
-        body: JSON.stringify({ user_id: selUser, tree_id: selTree }),
+        body: JSON.stringify({ tree_id: selTree }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).detail ?? 'Failed to assign');
+        throw new Error((err as any).detail ?? 'Failed to add tree');
       }
-      setAddOpen(false); setSelUser(''); setSelTree('');
+      setAddTreeOpen(false); setSelTree('');
       fetchAll();
     } catch (e) { setError((e as Error).message); }
-    finally { setAdding(false); }
+    finally { setSaving(false); }
   }
 
-  async function handleRemove(assignmentId: string) {
-    await fetch(`${API_BASE}/admin/permission-groups/${group.id}/assignments/${assignmentId}`, {
+  async function handleRemoveTree(entryId: string) {
+    const entry = groupTrees.find(t => t.id === entryId);
+    if (!entry) return;
+    await fetch(`${API_BASE}/admin/permission-groups/${group.id}/trees/${entry.tree_id}`, {
       method: 'DELETE', headers: authHeader, credentials: 'include',
     });
     fetchAll();
   }
 
+  async function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError('');
+    try {
+      const res = await fetch(`${API_BASE}/admin/permission-groups/${group.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        credentials: 'include',
+        body: JSON.stringify({ user_id: selUser }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).detail ?? 'Failed to add member');
+      }
+      setAddMemberOpen(false); setSelUser('');
+      fetchAll();
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    await fetch(`${API_BASE}/admin/permission-groups/${group.id}/members/${memberId}`, {
+      method: 'DELETE', headers: authHeader, credentials: 'include',
+    });
+    fetchAll();
+  }
+
+  const groupTreeIds   = new Set(groupTrees.map(t => t.tree_id));
+  const groupMemberIds = new Set(groupMembers.map(m => m.user_id));
+  const treesToAdd     = availTrees.filter(t => !groupTreeIds.has(t.id));
+  const usersToAdd     = availUsers.filter(u => !groupMemberIds.has(u.id));
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 max-h-[80vh] flex flex-col">
-        <div className="flex items-start justify-between mb-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{group.name}</h2>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-1 ${LEVEL_BADGE[group.permission_level]}`}>
-              {LEVEL_LABEL[group.permission_level]}
-            </span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${LEVEL_BADGE[group.permission_level]}`}>
+                {LEVEL_LABEL[group.permission_level]}
+              </span>
+              <span className="text-xs text-gray-400">{LEVEL_DESC[group.permission_level]}</span>
+            </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-1">×</button>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
+          <div className="flex justify-center py-12">
             <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {assignments.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No users assigned yet.</p>
-            ) : (
-              <table className="w-full text-sm mb-4">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">User</th>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Tree</th>
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Assigned</th>
-                    <th className="px-3 py-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {assignments.map((a) => (
-                    <tr key={a.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2">
-                        <div className="font-medium text-gray-900">{a.user_display_name}</div>
-                        <div className="text-xs text-gray-500">{a.user_email}</div>
-                      </td>
-                      <td className="px-3 py-2 text-gray-700">{a.tree_name}</td>
-                      <td className="px-3 py-2 text-xs text-gray-500">
-                        {new Date(a.assigned_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          onClick={() => handleRemove(a.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >Remove</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4 space-y-6">
+            {error && (
+              <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
             )}
 
-            {addOpen ? (
-              <form onSubmit={handleAdd} className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
-                <p className="text-sm font-medium text-gray-700">Add assignment</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">User</label>
-                    <select value={selUser} onChange={(e) => setSelUser(e.target.value)} required
-                      className="w-full h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-                      <option value="">Select user…</option>
-                      {users.map((u) => <option key={u.id} value={u.id}>{u.display} ({u.email})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Tree</label>
-                    <select value={selTree} onChange={(e) => setSelTree(e.target.value)} required
-                      className="w-full h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-                      <option value="">Select tree…</option>
-                      {trees.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                {error && <p className="text-xs text-red-600">{error}</p>}
-                <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => { setAddOpen(false); setError(''); }}
-                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
-                  <button type="submit" disabled={adding || !selUser || !selTree}
+            {/* ── Trees section ── */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">Trees ({groupTrees.length})</h3>
+                {treesToAdd.length > 0 && !addTreeOpen && (
+                  <button onClick={() => { setAddTreeOpen(true); setAddMemberOpen(false); setError(''); }}
+                    className="text-xs text-brand-600 font-medium hover:text-brand-700">+ Add tree</button>
+                )}
+              </div>
+
+              {addTreeOpen && (
+                <form onSubmit={handleAddTree} className="flex gap-2 mb-3">
+                  <select value={selTree} onChange={(e) => setSelTree(e.target.value)} required
+                    className="flex-1 h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="">Select tree…</option>
+                    {treesToAdd.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  <button type="button" onClick={() => { setAddTreeOpen(false); setSelTree(''); setError(''); }}
+                    className="px-3 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                  <button type="submit" disabled={saving || !selTree}
                     className="px-3 py-1.5 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
-                    {adding ? 'Assigning…' : 'Assign'}
+                    {saving ? '…' : 'Add'}
                   </button>
+                </form>
+              )}
+
+              {groupTrees.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
+                  No trees yet. Add trees for members to access.
+                </p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                  {groupTrees.map(t => (
+                    <div key={t.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
+                      <span className="text-sm font-medium text-gray-800">{t.tree_name}</span>
+                      <button onClick={() => handleRemoveTree(t.id)}
+                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  ))}
                 </div>
-              </form>
-            ) : (
-              <button
-                onClick={() => setAddOpen(true)}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
-              >
-                + Add user to this group
-              </button>
-            )}
+              )}
+            </section>
+
+            {/* ── Members section ── */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">Members ({groupMembers.length})</h3>
+                {usersToAdd.length > 0 && !addMemberOpen && (
+                  <button onClick={() => { setAddMemberOpen(true); setAddTreeOpen(false); setError(''); }}
+                    className="text-xs text-brand-600 font-medium hover:text-brand-700">+ Add member</button>
+                )}
+              </div>
+
+              {addMemberOpen && (
+                <form onSubmit={handleAddMember} className="flex gap-2 mb-3">
+                  <select value={selUser} onChange={(e) => setSelUser(e.target.value)} required
+                    className="flex-1 h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="">Select user…</option>
+                    {usersToAdd.map(u => <option key={u.id} value={u.id}>{u.display} ({u.email})</option>)}
+                  </select>
+                  <button type="button" onClick={() => { setAddMemberOpen(false); setSelUser(''); setError(''); }}
+                    className="px-3 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                  <button type="submit" disabled={saving || !selUser}
+                    className="px-3 py-1.5 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
+                    {saving ? '…' : 'Add'}
+                  </button>
+                </form>
+              )}
+
+              {groupMembers.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-3 border border-dashed border-gray-200 rounded-lg">
+                  No members yet. Add users to grant them access to all group trees.
+                </p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                  {groupMembers.map(m => (
+                    <div key={m.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
+                      <div>
+                        <div className="text-sm font-medium text-gray-800">{m.user_display_name}</div>
+                        <div className="text-xs text-gray-500">{m.user_email}</div>
+                      </div>
+                      <button onClick={() => handleRemoveMember(m.id)}
+                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         )}
       </div>

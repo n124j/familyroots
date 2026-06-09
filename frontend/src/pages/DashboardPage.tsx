@@ -984,7 +984,8 @@ function ShareTreeModal({
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${MEMBER_ROLE_BADGE[m.role] ?? MEMBER_ROLE_BADGE['VIEWER']}`}>
                         {m.role.charAt(0) + m.role.slice(1).toLowerCase()}
                       </span>
-                      {canManage && m.role !== 'OWNER' && m.user_id !== currentUserId && (
+                      {canManage && m.role !== 'OWNER' && m.user_id !== currentUserId
+                        && !(tree.role === 'ADMIN' && m.role === 'ADMIN') && (
                         <button
                           onClick={() => handleRemoveMember(m.user_id)}
                           title="Remove from tree"

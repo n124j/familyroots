@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 import { usePortalThemeStore, PORTAL_PRESETS, PORTAL_PRESET_LABEL, type PortalTheme } from '@store/portalTheme.store';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
-type Tab = 'profile' | 'security' | 'appearance';
+type Tab = 'profile' | 'security' | 'appearance' | 'notifications';
 
 interface UserProfile {
   given_name: string | null;
@@ -421,8 +421,263 @@ function DangerZone({ userEmail, accessToken }: { userEmail: string; accessToken
   );
 }
 
+// ── Notifications Tab ─────────────────────────────────────────────────────────
+
+interface SettingsNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: Record<string, string>;
+  is_read: boolean;
+  created_at: string;
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  TREE_INVITE: 'Invitation',
+  TREE_SHARED: 'Added to tree',
+};
+
+const TYPE_BADGE: Record<string, string> = {
+  TREE_INVITE: 'bg-violet-100 text-violet-700',
+  TREE_SHARED: 'bg-green-100 text-green-700',
+};
+
+function expiresIn(createdAt: string): string {
+  const expiry = new Date(new Date(createdAt).getTime() + 90 * 24 * 60 * 60 * 1000);
+  const days = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return 'Expiring soon';
+  if (days === 1) return 'Expires tomorrow';
+  if (days < 7) return `Expires in ${days} days`;
+  if (days < 30) return `Expires in ${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''}`;
+  return `Expires in ${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? 's' : ''}`;
+}
+
+const ITEMS_PER_PAGE = 15;
+
+function NotificationsTab({ accessToken }: { accessToken: string | null }) {
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<SettingsNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState<string | null>(null);
+  const [itemErrors, setItemErrors] = useState<Record<string, string>>({});
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetch(`${API_BASE}/notifications`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    })
+      .then((r) => r.json())
+      .then(setNotifications)
+      .finally(() => setLoading(false));
+  }, [accessToken]);
+
+  async function markAllRead() {
+    await fetch(`${API_BASE}/notifications/read-all`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    });
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+  }
+
+  async function markRead(id: string) {
+    await fetch(`${API_BASE}/notifications/${id}/read`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    });
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
+    setItemErrors((prev) => { const e = { ...prev }; delete e[id]; return e; });
+  }
+
+  async function acceptInvite(n: SettingsNotification) {
+    setAccepting(n.id);
+    setItemErrors((prev) => { const e = { ...prev }; delete e[n.id]; return e; });
+    try {
+      const res = await fetch(`${API_BASE}/invitations/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+        body: JSON.stringify({ token: n.data.token }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, is_read: true } : x));
+        await markRead(n.id);
+        if (n.data.tree_id) navigate(`/trees/${n.data.tree_id}`);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        const msg = (body as any).detail ?? `Failed (${res.status})`;
+        setItemErrors((prev) => ({ ...prev, [n.id]: typeof msg === 'string' ? msg : JSON.stringify(msg) }));
+      }
+    } catch (err: any) {
+      setItemErrors((prev) => ({ ...prev, [n.id]: err.message ?? 'Network error' }));
+    } finally {
+      setAccepting(null);
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const totalPages = Math.ceil(notifications.length / ITEMS_PER_PAGE);
+  const pageItems = notifications.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">
+          Notifications are kept for <strong>3 months</strong> then automatically removed.
+        </p>
+        {unreadCount > 0 && (
+          <button
+            onClick={markAllRead}
+            className="text-xs font-medium text-brand-600 hover:underline shrink-0"
+          >
+            Mark all as read
+          </button>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#9ca3af" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 3a4 4 0 0 1 4 4c0 3 1 4 1.5 5h-11C6 11 7 10 7 7a4 4 0 0 1 4-4z" />
+              <path d="M9 17a2 2 0 0 0 4 0" />
+            </svg>
+          </div>
+          <p className="text-sm font-medium text-gray-500">No notifications</p>
+          <p className="text-xs text-gray-400 mt-1">You're all caught up.</p>
+        </div>
+      ) : (
+        <>
+        <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
+          {pageItems.map((n) => (
+            <div
+              key={n.id}
+              className={`px-5 py-4 transition-colors ${!n.is_read ? 'bg-blue-50/40' : ''}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${!n.is_read ? 'bg-brand-500' : 'bg-transparent'}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${TYPE_BADGE[n.type] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {TYPE_LABEL[n.type] ?? n.type}
+                    </span>
+                    {!n.is_read && (
+                      <span className="text-[11px] font-medium text-brand-600">New</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 leading-snug">{n.title}</p>
+                  {n.body && <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>}
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <span className="text-[11px] text-gray-400">{new Date(n.created_at).toLocaleString()}</span>
+                    <span className="text-[11px] text-gray-300">·</span>
+                    <span className="text-[11px] text-gray-400">{expiresIn(n.created_at)}</span>
+                  </div>
+
+                  {/* Error */}
+                  {itemErrors[n.id] && (
+                    <p className="text-xs text-red-600 mt-1.5 bg-red-50 px-2 py-1 rounded">{itemErrors[n.id]}</p>
+                  )}
+
+                  {/* Actions */}
+                  {n.type === 'TREE_INVITE' && (
+                    <div className="flex gap-2 mt-2.5 flex-wrap">
+                      {n.data.token && !n.is_read && (
+                        <button
+                          onClick={() => acceptInvite(n)}
+                          disabled={accepting === n.id}
+                          className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
+                        >
+                          {accepting === n.id ? 'Accepting…' : 'Accept invitation'}
+                        </button>
+                      )}
+                      {n.data.tree_id && (
+                        <button
+                          onClick={() => navigate(`/trees/${n.data.tree_id}`)}
+                          className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          View tree
+                        </button>
+                      )}
+                      {!n.is_read && (
+                        <button
+                          onClick={() => markRead(n.id)}
+                          className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {n.type === 'TREE_SHARED' && (
+                    <div className="flex gap-2 mt-2.5">
+                      {n.data.tree_id && (
+                        <button
+                          onClick={() => { markRead(n.id); navigate(`/trees/${n.data.tree_id}`); }}
+                          className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 transition-colors"
+                        >
+                          View tree
+                        </button>
+                      )}
+                      {!n.is_read && (
+                        <button
+                          onClick={() => markRead(n.id)}
+                          className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-gray-400">
+              {page * ITEMS_PER_PAGE + 1}–{Math.min((page + 1) * ITEMS_PER_PAGE, notifications.length)} of {notifications.length}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ← Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
-  const label = tab.charAt(0).toUpperCase() + tab.slice(1);
+  const label = tab === 'notifications' ? 'Notifications' : tab.charAt(0).toUpperCase() + tab.slice(1);
   return (
     <a
       href={`/settings/${tab}`}
@@ -443,7 +698,11 @@ export default function SettingsPage() {
   const storeUser   = useAuthStore((s) => s.user);
   const setUser     = useAuthStore((s) => s.setUser);
 
-  const activeTab: Tab = tab === 'security' ? 'security' : tab === 'appearance' ? 'appearance' : 'profile';
+  const activeTab: Tab =
+    tab === 'security' ? 'security' :
+    tab === 'appearance' ? 'appearance' :
+    tab === 'notifications' ? 'notifications' :
+    'profile';
 
   const [profile,     setProfile]     = useState<UserProfile | null>(null);
   const [loading,     setLoading]     = useState(true);
@@ -544,15 +803,18 @@ export default function SettingsPage() {
       />
       <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-5 md:mb-6">Settings</h1>
 
-      <div className="flex gap-1 mb-8 border-b border-gray-200">
-        <TabLink tab="profile"  active={activeTab === 'profile'} />
-        <TabLink tab="security" active={activeTab === 'security'} />
-        <TabLink tab="appearance" active={activeTab === 'appearance'} />
+      <div className="flex gap-1 mb-8 border-b border-gray-200 overflow-x-auto">
+        <TabLink tab="profile"       active={activeTab === 'profile'} />
+        <TabLink tab="security"      active={activeTab === 'security'} />
+        <TabLink tab="appearance"    active={activeTab === 'appearance'} />
+        <TabLink tab="notifications" active={activeTab === 'notifications'} />
       </div>
 
       {activeTab === 'appearance' && <AppearanceTab />}
 
-      {activeTab !== 'appearance' && loading ? (
+      {activeTab === 'notifications' && <NotificationsTab accessToken={accessToken} />}
+
+      {(activeTab === 'profile' || activeTab === 'security') && (loading ? (
         <div className="flex justify-center py-16">
           <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -665,7 +927,7 @@ export default function SettingsPage() {
             <DangerZone userEmail={profile.email} accessToken={accessToken} />
           )}
         </div>
-      )}
+      ))}
     </div>
   );
 }

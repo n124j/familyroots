@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     rate_limit_default_per_minute: int = 60
 
+    # ── Web Push (VAPID) ─────────────────────────────────────
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_claims_email: str = "noreply@familyroots.app"
+
     # ── Sentry ───────────────────────────────────────────────
     sentry_dsn: str = ""
 

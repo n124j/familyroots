@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from src.api.deps import SessionDep, VerifiedUserDep
+from src.api.v1._admin_log import LOGIN_EVENT_TYPES
 from src.domain.collaboration.entities import AppRole
 
 router = APIRouter(tags=["Activity"])
@@ -120,7 +121,7 @@ def _build_query(
 
     if action_filter:
         params["action_filter"] = action_filter
-        if action_filter in ("LOGIN", "FAILED_LOGIN", "LOGOUT"):
+        if action_filter in LOGIN_EVENT_TYPES:
             audit_where += " AND false"
             login_where += " AND le.event_type = :action_filter"
         else:

@@ -50,6 +50,14 @@ const ACTION_OPTIONS = [
   { value: 'ADMIN_DEACTIVATE', label: 'Admin: deactivate user' },
   { value: 'ADMIN_ACTIVATE', label: 'Admin: activate user' },
   { value: 'ADMIN_UPDATE', label: 'Admin: update user' },
+  // Admin — permission groups
+  { value: 'PG_CREATE', label: 'Permission group: create' },
+  { value: 'PG_UPDATE', label: 'Permission group: update' },
+  { value: 'PG_DELETE', label: 'Permission group: delete' },
+  { value: 'PG_ADD_TREE', label: 'Permission group: add tree' },
+  { value: 'PG_REMOVE_TREE', label: 'Permission group: remove tree' },
+  { value: 'PG_ADD_MEMBER', label: 'Permission group: add member' },
+  { value: 'PG_REMOVE_MEMBER', label: 'Permission group: remove member' },
   // Tree content
   { value: 'CREATE_PERSON', label: 'Create person' },
   { value: 'UPDATE_PERSON', label: 'Update person' },
@@ -84,13 +92,20 @@ const ADMIN_ACTION_LABELS: Record<string, string> = {
   ADMIN_DEACTIVATE: 'Deactivated user',
   ADMIN_ACTIVATE:   'Activated user',
   ADMIN_UPDATE:     'Updated user',
+  PG_CREATE:        'Created permission group',
+  PG_UPDATE:        'Updated permission group',
+  PG_DELETE:        'Deleted permission group',
+  PG_ADD_TREE:      'Added tree to group',
+  PG_REMOVE_TREE:   'Removed tree from group',
+  PG_ADD_MEMBER:    'Added member to group',
+  PG_REMOVE_MEMBER: 'Removed member from group',
 };
 
 function actionBadge(action: string): string {
   if (action === 'LOGIN') return 'bg-green-100 text-green-800';
   if (action === 'LOGOUT') return 'bg-gray-100 text-gray-700';
   if (action === 'FAILED_LOGIN') return 'bg-red-100 text-red-800';
-  if (action.startsWith('ADMIN_')) return 'bg-purple-100 text-purple-800';
+  if (action.startsWith('ADMIN_') || action.startsWith('PG_')) return 'bg-purple-100 text-purple-800';
   if (action.startsWith('CREATE') || action.startsWith('ADD') || action.startsWith('UPLOAD') || action.startsWith('INVITE'))
     return 'bg-blue-100 text-blue-800';
   if (action.startsWith('DELETE') || action.startsWith('REMOVE') || action === 'ADMIN_DEACTIVATE')

@@ -11,6 +11,8 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select, text
 
 from src.api.deps import AdminUserDep, SessionDep, TokenStoreDep
+from src.api.v1._admin_log import log_admin_action
+from src.domain.collaboration.entities import AppRole
 from src.config import get_settings
 from src.infrastructure.database.models.login_event import LoginEventModel
 from src.infrastructure.database.models.user import UserModel
@@ -110,7 +112,7 @@ async def create_user(
         password_reset_token=reset_token,
         password_reset_expires_at=datetime.now(tz=timezone.utc) + timedelta(hours=24),
     )
-    await _log_admin_action(
+    await log_admin_action(
         session, current_user.tenant_id, current_user.id,
         current_user.full_name, "ADMIN_CREATE", user.email, _admin_ip(request),
     )
@@ -242,17 +244,17 @@ async def update_user(
 
     # Log each significant change as a separate activity entry
     if verification_changed is True:
-        await _log_admin_action(session, current_user.tenant_id, current_user.id,
+        await log_admin_action(session, current_user.tenant_id, current_user.id,
                                 current_user.full_name, "ADMIN_VERIFY", user_email, _admin_ip(request))
     elif verification_changed is False:
-        await _log_admin_action(session, current_user.tenant_id, current_user.id,
+        await log_admin_action(session, current_user.tenant_id, current_user.id,
                                 current_user.full_name, "ADMIN_UNVERIFY", user_email, _admin_ip(request))
     if body.is_active is not None:
         event = "ADMIN_ACTIVATE" if body.is_active else "ADMIN_DEACTIVATE"
-        await _log_admin_action(session, current_user.tenant_id, current_user.id,
+        await log_admin_action(session, current_user.tenant_id, current_user.id,
                                 current_user.full_name, event, user_email, _admin_ip(request))
     if verification_changed is None and body.is_active is None:
-        await _log_admin_action(session, current_user.tenant_id, current_user.id,
+        await log_admin_action(session, current_user.tenant_id, current_user.id,
                                 current_user.full_name, "ADMIN_UPDATE", user_email, _admin_ip(request))
 
     await session.commit()
@@ -288,7 +290,7 @@ async def verify_user(
     user.email_verification_token = None
     user_email = user.email
     user_name = user.full_name
-    await _log_admin_action(session, current_user.tenant_id, current_user.id,
+    await log_admin_action(session, current_user.tenant_id, current_user.id,
                             current_user.full_name, "ADMIN_VERIFY", user_email, _admin_ip(request))
     await session.commit()
     await session.refresh(user)
@@ -326,7 +328,7 @@ async def deactivate_user(
     user_email = user.email
     user_name = user.full_name
     user.is_active = False
-    await _log_admin_action(session, current_user.tenant_id, current_user.id,
+    await log_admin_action(session, current_user.tenant_id, current_user.id,
                             current_user.full_name, "ADMIN_DEACTIVATE", user_email, _admin_ip(request))
     await session.commit()
     # Revoke all active sessions so they can't keep using the app
@@ -338,27 +340,6 @@ async def deactivate_user(
 
 def _admin_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
-
-
-async def _log_admin_action(
-    session,
-    tenant_id: uuid.UUID,
-    admin_id: uuid.UUID,
-    admin_name: str,
-    event_type: str,
-    target_email: str,
-    ip_address: str | None = None,
-) -> None:
-    """Write an admin action to login_events so it appears in the activity feed."""
-    session.add(LoginEventModel(
-        tenant_id=tenant_id,
-        user_id=admin_id,
-        user_display_name=admin_name,
-        user_email=target_email,   # target's email (overloaded for admin events)
-        event_type=event_type,
-        success=True,
-        ip_address=ip_address,
-    ))
 
 
 async def _send_account_deactivated_email(email: str, display_name: str) -> None:
@@ -402,6 +383,13 @@ async def list_tree_persons_admin(
     session: SessionDep,
 ) -> list[dict]:
     from sqlalchemy import text
+    if current_user.app_role != AppRole.AUDITOR:
+        member_row = (await session.execute(
+            text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if not member_row:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not a member of this tree")
     rows = (await session.execute(text("""
         SELECT id, display_given_name, display_surname, photo_url, birth_year, sex
         FROM persons

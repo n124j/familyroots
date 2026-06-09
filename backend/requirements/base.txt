@@ -37,3 +37,6 @@ boto3==1.35.0
 python-ulid==3.0.0
 email-validator==2.2.0
 orjson==3.10.12
+
+# Web Push
+pywebpush==2.0.0

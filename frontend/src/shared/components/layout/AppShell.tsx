@@ -1,18 +1,132 @@
-import React, { useEffect, useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import React, { useEffect, useState, useRef } from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { usePortalThemeStore } from '@store/portalTheme.store';
 import { Footer } from './Footer';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: Record<string, string>;
+  is_read: boolean;
+  created_at: string;
+}
+
+function NotificationItem({
+  n,
+  accessToken,
+  apiBase,
+  onUpdate,
+}: {
+  n: Notification;
+  accessToken: string | null;
+  apiBase: string;
+  onUpdate: (id: string, patch: Partial<Notification>) => void;
+}) {
+  const navigate = useNavigate();
+  const [accepting, setAccepting] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [declined, setDeclined] = useState(false);
+
+  async function handleAccept() {
+    setAccepting(true);
+    try {
+      const res = await fetch(`${apiBase}/invitations/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+        body: JSON.stringify({ token: n.data.token }),
+      });
+      if (res.ok) {
+        setAccepted(true);
+        onUpdate(n.id, { is_read: true });
+        await fetch(`${apiBase}/notifications/${n.id}/read`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+        });
+        if (n.data.tree_id) navigate(`/trees/${n.data.tree_id}`);
+      }
+    } finally {
+      setAccepting(false);
+    }
+  }
+
+  async function handleDecline() {
+    setDeclined(true);
+    onUpdate(n.id, { is_read: true });
+    await fetch(`${apiBase}/notifications/${n.id}/read`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    });
+  }
+
+  return (
+    <div className={`px-4 py-3 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50/50' : ''}`}>
+      <div className="flex items-start gap-2.5">
+        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!n.is_read ? 'bg-brand-500' : 'bg-transparent'}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-gray-900 leading-snug">{n.title}</p>
+          {n.body && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{n.body}</p>}
+          <p className="text-[11px] text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+
+          {/* Actions */}
+          {n.type === 'TREE_INVITE' && !accepted && !declined && (
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={handleAccept}
+                disabled={accepting}
+                className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
+              >
+                {accepting ? 'Accepting…' : 'Accept'}
+              </button>
+              <button
+                onClick={handleDecline}
+                className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Decline
+              </button>
+            </div>
+          )}
+          {n.type === 'TREE_INVITE' && accepted && (
+            <p className="text-xs text-green-600 mt-1 font-medium">Accepted — opening tree…</p>
+          )}
+          {n.type === 'TREE_INVITE' && declined && (
+            <p className="text-xs text-gray-400 mt-1">Invitation declined</p>
+          )}
+          {n.type === 'TREE_SHARED' && n.data.tree_id && (
+            <button
+              onClick={() => navigate(`/trees/${n.data.tree_id}`)}
+              className="mt-2 text-xs font-medium text-brand-600 hover:underline"
+            >
+              View tree →
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppShell() {
+  const navigate     = useNavigate();
   const user         = useAuthStore((s) => s.user);
   const logout       = useAuthStore((s) => s.logout);
   const accessToken  = useAuthStore((s) => s.accessToken);
   const [loggingOut,   setLoggingOut]   = useState(false);
   const [sidebarOpen,  setSidebarOpen]  = useState(false);
   const portalTheme  = usePortalThemeStore((s) => s.theme);
+
+  const [notifOpen,     setNotifOpen]     = useState(false);
+  const [unreadCount,   setUnreadCount]   = useState(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifLoading,  setNotifLoading]  = useState(false);
+  const bellRef = useRef<HTMLDivElement>(null);
 
   // Inject portal CSS custom properties onto <html> whenever theme changes
   useEffect(() => {
@@ -39,6 +153,209 @@ export default function AppShell() {
     return () => { document.body.style.overflow = ''; };
   }, [sidebarOpen]);
 
+  // Register service worker + subscribe to Web Push
+  useEffect(() => {
+    if (!accessToken || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    (async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        // Fetch VAPID public key
+        const keyRes = await fetch(`${API_BASE}/push/vapid-public-key`);
+        if (!keyRes.ok) return;
+        const { vapid_public_key } = await keyRes.json();
+        if (!vapid_public_key) return;
+
+        // Convert base64url to Uint8Array
+        const base64 = vapid_public_key.replace(/-/g, '+').replace(/_/g, '/');
+        const raw = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+
+        const existing = await reg.pushManager.getSubscription();
+        const sub = existing ?? await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: raw,
+        });
+
+        const json = sub.toJSON();
+        await fetch(`${API_BASE}/push/subscribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+          body: JSON.stringify({
+            endpoint: sub.endpoint,
+            p256dh: json.keys?.p256dh ?? '',
+            auth: json.keys?.auth ?? '',
+          }),
+        });
+      } catch (_) {
+        // Push not supported or permission denied — silent fail
+      }
+    })();
+  }, [accessToken]);
+
+  // ── Toast notification system ──────────────────────────────────────────
+  interface ToastNotif { id: string; title: string; body: string | null; type: string; treeId?: string; }
+  const [toasts, setToasts] = useState<ToastNotif[]>([]);
+  const prevCountRef = useRef(-1);
+
+  function dismissToast(id: string) {
+    setToasts((p) => p.filter((t) => t.id !== id));
+  }
+
+  function pushToast(t: Omit<ToastNotif, 'id'>) {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((p) => [...p.slice(-2), { ...t, id }]);
+    setTimeout(() => dismissToast(id), 6000);
+  }
+
+  // Poll every 10 s; show toast when new notifications arrive
+  useEffect(() => {
+    if (!accessToken) return;
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const d = await res.json();
+        const newCount: number = d.count ?? 0;
+        setUnreadCount(newCount);
+
+        // Show toast when count increases (skip the very first fetch)
+        if (prevCountRef.current !== -1 && newCount > prevCountRef.current) {
+          try {
+            const nr = await fetch(`${API_BASE}/notifications?limit=1`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+              credentials: 'include',
+            });
+            if (nr.ok) {
+              const items = await nr.json();
+              if (items.length > 0) {
+                pushToast({
+                  title: items[0].title,
+                  body: items[0].body,
+                  type: items[0].type,
+                  treeId: items[0].data?.tree_id,
+                });
+              }
+            }
+          } catch {}
+        }
+        prevCountRef.current = newCount;
+      } catch {}
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 10_000);
+    return () => clearInterval(interval);
+  }, [accessToken]);
+
+  // Close notification panel on outside click
+  useEffect(() => {
+    if (!notifOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [notifOpen]);
+
+  async function openNotifications() {
+    if (notifOpen) { setNotifOpen(false); return; }
+    setNotifOpen(true);
+    setNotifLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/notifications`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+        // Mark all as read
+        if (unreadCount > 0) {
+          await fetch(`${API_BASE}/notifications/read-all`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}` },
+            credentials: 'include',
+          });
+          setUnreadCount(0);
+        }
+      }
+    } finally {
+      setNotifLoading(false);
+    }
+  }
+
+  const bellButton = (
+    <div ref={bellRef} className="relative">
+      <button
+        onClick={openNotifications}
+        className="relative p-1.5 rounded-lg hover:bg-black/10 transition-colors"
+        style={{ color: 'var(--portal-logo-text)' }}
+        aria-label="Notifications"
+      >
+        {/* Bell SVG */}
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 5h-13C3 11 4 10 4 7a5 5 0 0 1 5-5z" />
+          <path d="M7.5 15a1.5 1.5 0 0 0 3 0" />
+        </svg>
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {/* Notification dropdown panel */}
+      {notifOpen && (
+        <div className="absolute left-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[200] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="text-sm font-semibold text-gray-900">Notifications</span>
+            {notifications.some(n => !n.is_read) && (
+              <button
+                onClick={async () => {
+                  await fetch(`${API_BASE}/notifications/read-all`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                    credentials: 'include',
+                  });
+                  setUnreadCount(0);
+                  setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+                }}
+                className="text-xs text-brand-600 hover:underline"
+              >
+                Mark all as read
+              </button>
+            )}
+          </div>
+          <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+            {notifLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : notifications.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">No notifications yet</p>
+            ) : (
+              notifications.map((n) => (
+                <NotificationItem
+                  key={n.id}
+                  n={n}
+                  accessToken={accessToken}
+                  apiBase={API_BASE}
+                  onUpdate={(id, patch) =>
+                    setNotifications((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+                  }
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const isElevated = user?.appRole === 'ADMIN' || user?.appRole === 'AUDITOR';
   const isAdmin    = user?.appRole === 'ADMIN';
 
@@ -58,9 +375,15 @@ export default function AppShell() {
         className="h-14 flex items-center justify-between px-4 border-b shrink-0"
         style={{ borderColor: 'var(--portal-sidebar-border)' }}
       >
-        <span className="font-bold text-lg" style={{ color: 'var(--portal-logo-text)' }}>
-          FamilyRoots
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-lg" style={{ color: 'var(--portal-logo-text)' }}>
+            FamilyRoots
+          </span>
+          {/* Bell — shown on desktop, hidden on mobile (mobile has its own) */}
+          <div className="hidden md:block">
+            {(unreadCount > 0 || notifOpen) && bellButton}
+          </div>
+        </div>
         {/* Close button — mobile only */}
         <button
           className="md:hidden -mr-1 p-1.5 rounded-lg hover:bg-black/10 transition-colors"
@@ -165,6 +488,7 @@ export default function AppShell() {
           <span className="font-bold text-base ml-3" style={{ color: 'var(--portal-logo-text)' }}>
             FamilyRoots
           </span>
+          {unreadCount > 0 && <div className="ml-1">{bellButton}</div>}
         </div>
 
         {/* Page content */}
@@ -175,6 +499,52 @@ export default function AppShell() {
           <Footer />
         </main>
       </div>
+
+      {/* ── In-app toast notifications ── */}
+      {toasts.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-[500] flex flex-col gap-2 items-end pointer-events-none">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className="pointer-events-auto w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 flex items-start gap-3"
+              style={{ animation: 'slideInRight 0.25s ease-out' }}
+            >
+              <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 5h-13C3 11 4 10 4 7a5 5 0 0 1 5-5z" />
+                  <path d="M7.5 15a1.5 1.5 0 0 0 3 0" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 leading-snug">{t.title}</p>
+                {t.body && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{t.body}</p>}
+                {t.treeId && (
+                  <button
+                    onClick={() => { navigate(`/trees/${t.treeId}`); dismissToast(t.id); }}
+                    className="text-xs font-medium text-brand-600 hover:underline mt-1"
+                  >
+                    View tree →
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => dismissToast(t.id)}
+                className="text-gray-300 hover:text-gray-500 text-lg leading-none shrink-0 -mt-0.5"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(20px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 }
