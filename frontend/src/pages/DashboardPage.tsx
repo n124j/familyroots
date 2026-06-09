@@ -753,6 +753,7 @@ function ShareTreeModal({
 
   const [linkSharing,    setLinkSharing]    = useState(tree.link_sharing ?? 'RESTRICTED');
   const [savingSharing,  setSavingSharing]  = useState(false);
+  const [linkCopied,     setLinkCopied]     = useState(false);
 
   const [members,     setMembers]     = useState<TreeMember[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
@@ -863,7 +864,10 @@ function ShareTreeModal({
 
   function copyShareLink() {
     const url = `${window.location.origin}/shared/${tree.share_token}`;
-    navigator.clipboard.writeText(url).catch(() => {});
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }).catch(() => {});
   }
 
   const canManage = tree.role === 'OWNER' || tree.role === 'ADMIN';
@@ -1077,9 +1081,13 @@ function ShareTreeModal({
             {tree.share_token && (
               <button
                 onClick={copyShareLink}
-                className="shrink-0 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 hover:border-brand-300 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap border ${
+                  linkCopied
+                    ? 'text-green-700 bg-green-50 border-green-300'
+                    : 'text-brand-600 hover:text-brand-700 border-brand-200 hover:border-brand-300'
+                }`}
               >
-                Copy link
+                {linkCopied ? '✓ Copied!' : 'Copy link'}
               </button>
             )}
           </div>
