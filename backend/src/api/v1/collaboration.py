@@ -520,6 +520,7 @@ async def get_shared_tree_graph(
     """)
     person_rows = (await uow._session.execute(persons_q, {"tid": tree_id})).fetchall()
 
+    from src.api.v1._s3 import presign_photo as _presign_photo
     persons = [
         {
             "id": str(r.id),
@@ -529,7 +530,7 @@ async def get_shared_tree_graph(
             "sex": r.sex,
             "isLiving": r.is_living,
             "isDeceased": r.is_deceased,
-            **({"photoUrl": r.photo_url} if r.photo_url else {}),
+            **({"photoUrl": _presign_photo(r.photo_url)} if r.photo_url else {}),
             **({"birthDate": r.birth_date.isoformat()} if r.birth_date else {}),
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
@@ -1010,6 +1011,7 @@ async def get_tree_graph(
     """)
     person_rows = (await uow._session.execute(persons_q, {"tid": tree_id})).fetchall()
 
+    from src.api.v1._s3 import presign_photo as _presign_photo
     persons = [
         {
             "id": str(r.id),
@@ -1019,7 +1021,7 @@ async def get_tree_graph(
             "sex": r.sex,
             "isLiving": r.is_living,
             "isDeceased": r.is_deceased,
-            **({"photoUrl": r.photo_url} if r.photo_url else {}),
+            **({"photoUrl": _presign_photo(r.photo_url)} if r.photo_url else {}),
             **({"birthDate": r.birth_date.isoformat()} if r.birth_date else {}),
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
@@ -1351,20 +1353,11 @@ async def import_tree_zip(
 
     # 4. Upload photos to S3 and update photo_url on each person
     if photo_filename_map:
-        import boto3
-        from botocore.config import Config as BotoCfg
+        from src.api.v1._s3 import _make_s3_client
         from src.config import get_settings
         settings = get_settings()
         bucket = settings.s3_bucket or "familyroots-local"
-        public_base = (settings.s3_public_url or settings.s3_endpoint_url or "").rstrip("/")
-        s3 = boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint_url or None,
-            aws_access_key_id=settings.aws_access_key_id or "minioadmin",
-            aws_secret_access_key=settings.aws_secret_access_key or "minioadmin",
-            region_name=settings.aws_region,
-            config=BotoCfg(signature_version="s3v4"),
-        )
+        s3 = _make_s3_client(settings)
         zip_names = set(zf.namelist())
         for old_pid, zip_path in photo_filename_map.items():
             new_pid = old_to_new.get(old_pid)
@@ -1378,10 +1371,10 @@ async def import_tree_zip(
                                 "gif": "image/gif"}.get(ext.lower(), "image/jpeg")
                 s3_key = f"tenants/{current_user.tenant_id}/trees/{new_tree_id}/persons/{new_pid}/photo/{uuid.uuid4()}.{ext}"
                 s3.put_object(Bucket=bucket, Key=s3_key, Body=photo_bytes, ContentType=content_type)
-                photo_url = f"{public_base}/{bucket}/{s3_key}" if public_base else f"/{bucket}/{s3_key}"
+                # Store only the S3 key — presigned URLs are generated at read time
                 await uow._session.execute(text("""
                     UPDATE persons SET photo_url = :url WHERE id = :pid
-                """), {"url": photo_url, "pid": new_pid})
+                """), {"url": s3_key, "pid": new_pid})
             except Exception:
                 pass  # skip individual photo failures
 

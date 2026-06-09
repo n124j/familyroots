@@ -231,6 +231,7 @@ async def update_person(
                  before=before_snap,
                  after={"name": full_name, "sex": row.sex, "is_living": row.is_living})
     await session.commit()
+    from src.api.v1._s3 import presign_photo
     return PersonResponse(
         id=row.id,
         tree_id=row.tree_id,
@@ -239,7 +240,7 @@ async def update_person(
         sex=row.sex,
         is_living=row.is_living,
         is_deceased=row.is_deceased,
-        photo_url=row.photo_url,
+        photo_url=presign_photo(row.photo_url),
         birth_date=row.birth_date,
         death_date=row.death_date,
         birth_year=row.birth_year,
@@ -295,27 +296,24 @@ async def upload_person_photo(
     bucket = settings.s3_bucket or "familyroots-local"
     s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=file.content_type)
 
-    # Build public URL (browser-accessible)
-    public_base = (settings.s3_public_url or settings.s3_endpoint_url or "").rstrip("/")
-    photo_url = f"{public_base}/{bucket}/{key}" if public_base else f"/{bucket}/{key}"
-
-    # Persist on person
+    # Persist only the S3 key — presigned URLs are generated at read time
     result = await session.execute(
         sa_text("""
             UPDATE persons SET photo_url = :url
             WHERE id = :pid AND tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
             RETURNING id
         """),
-        {"url": photo_url, "pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
+        {"url": key, "pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
     )
     if result.first() is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Person not found")
     from src.domain.collaboration.entities import Action, AuditEntityType
     await _audit(session, tree_id, user, Action.UPDATE_PHOTO, AuditEntityType.MEDIA,
-                 entity_id=person_id, after={"photo_url": photo_url})
+                 entity_id=person_id, after={"s3_key": key})
     await session.commit()
 
-    return {"photo_url": photo_url}
+    from src.api.v1._s3 import presign_photo
+    return {"photo_url": presign_photo(key)}
 
 
 # ── Remove profile photo ──────────────────────────────────────────
