@@ -87,6 +87,18 @@ class GoogleOAuthClient(OAuthClient):
     USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
     SCOPES = ["openid", "email", "profile"]
 
+    def build_authorization_url(self, state: str) -> str:
+        params = {
+            "client_id": self.client_id,
+            "redirect_uri": self.redirect_uri,
+            "response_type": "code",
+            "scope": " ".join(self.SCOPES),
+            "state": state,
+            "access_type": "offline",
+            "prompt": "select_account",
+        }
+        return f"{self.AUTH_URL}?{urlencode(params)}"
+
     async def get_user_info(self, access_token: str) -> OAuthUserInfo:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
