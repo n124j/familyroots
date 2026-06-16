@@ -108,16 +108,17 @@ function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProp
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(tree); }}
         title={tree.is_pinned ? 'Unpin from top' : 'Pin to top'}
-        className={`absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
+        style={!tree.is_pinned ? { background: 'var(--portal-card-bg)', borderColor: 'var(--portal-border)' } : undefined}
+        className={`absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 w-7 h-7 flex items-center justify-center rounded-full border shadow-sm transition-colors ${
           tree.is_pinned
-            ? 'text-brand-600 bg-brand-50 hover:bg-brand-100'
+            ? 'text-brand-600 bg-brand-50 border-brand-200 hover:bg-brand-100'
             : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100'
         }`}
       >
         <PinIcon filled={tree.is_pinned} />
       </button>
       <Link to={`/trees/${tree.id}`} className="block p-6">
-        <div className="flex items-start justify-between mb-4 pr-7">
+        <div className="flex items-start justify-between mb-4">
           {tree.cover_image_url ? (
             <img
               src={tree.cover_image_url}
