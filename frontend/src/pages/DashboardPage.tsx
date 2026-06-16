@@ -197,14 +197,27 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
   const [page,    setPage]    = useState(getStoredPage);
+  const [search,  setSearch]  = useState('');
 
   function goToPage(p: number) {
     setPage(p);
     sessionStorage.setItem(DASHBOARD_PAGE_KEY, String(p));
   }
 
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    goToPage(1);
+  }
+
   const PAGE_SIZE   = 16;
-  const sortedTrees  = [...trees].sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
+  const query = search.trim().toLowerCase();
+  const matchingTrees = query
+    ? trees.filter((t) =>
+        t.name.toLowerCase().includes(query) ||
+        (t.description ?? '').toLowerCase().includes(query)
+      )
+    : trees;
+  const sortedTrees  = [...matchingTrees].sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
   const totalPages  = Math.max(1, Math.ceil(sortedTrees.length / PAGE_SIZE));
   const visibleTrees = sortedTrees.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -510,6 +523,33 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {!loading && !error && trees.length > 0 && (
+        <div className="relative mb-5 max-w-sm">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            <circle cx="7" cy="7" r="5.5" />
+            <line x1="11" y1="11" x2="15" y2="15" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search trees…"
+            aria-label="Search trees"
+            className="w-full h-10 pl-9 pr-8 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          {search && (
+            <button
+              onClick={() => handleSearchChange('')}
+              title="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {loading && (
         <div className="flex justify-center py-16">
           <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -530,6 +570,14 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {!loading && !error && trees.length > 0 && sortedTrees.length === 0 && (
+        <div className="text-center py-20 text-gray-400">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-lg font-medium text-gray-600">No trees match "{search.trim()}"</p>
+          <p className="text-sm mt-1">Try a different name or clear the search.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {visibleTrees.map((tree) => (
           <TreeCard key={tree.id} tree={tree} onEdit={openEdit} onDelete={setDeleteTarget} onShare={setShareTarget} onTogglePin={handleTogglePin} />
@@ -540,7 +588,7 @@ export default function DashboardPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
           <p className="text-sm text-gray-500">
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, trees.length)} of {trees.length} trees
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sortedTrees.length)} of {sortedTrees.length} trees
           </p>
           <div className="flex items-center gap-1">
             <button
