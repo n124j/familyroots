@@ -4,10 +4,9 @@ import { SEO } from '@shared/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@store/auth.store';
 import { queryKeys } from '@queries/keys';
+import { get } from '@api/client';
 import type { ApiTreeGraph } from '@features/tree/types';
 import { isPreset, presetDataUri } from '@features/tree/avatarPresets';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 interface PersonDetail {
   id: string;
@@ -98,14 +97,7 @@ export default function ProfilePage() {
 
   const { data: person, isLoading, error } = useQuery<PersonDetail>({
     queryKey: queryKeys.persons.detail(treeId ?? '', personId ?? ''),
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Person not found');
-      return res.json();
-    },
+    queryFn: () => get<PersonDetail>(`/trees/${treeId}/persons/${personId}`),
     enabled: !!treeId && !!personId && !!accessToken,
     staleTime: 5 * 60_000,
   });
@@ -113,14 +105,7 @@ export default function ProfilePage() {
   // Graph is cached by FamilyTreePage — no extra network cost when navigated from there
   const { data: graph } = useQuery<ApiTreeGraph>({
     queryKey: queryKeys.trees.detail(treeId ?? ''),
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/graph`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to load tree');
-      return res.json();
-    },
+    queryFn: () => get<ApiTreeGraph>(`/trees/${treeId}/graph`),
     enabled: !!treeId && !!accessToken,
     staleTime: 5 * 60_000,
   });

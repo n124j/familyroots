@@ -101,6 +101,14 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+function formatDateTime(iso: string | null) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
 // ── Create user modal ──────────────────────────────────────────────────────────
 
 function CreateUserModal({
@@ -1058,7 +1066,7 @@ export default function AdminPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{formatDate(user.last_login_at)}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatDateTime(user.last_login_at)}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{formatDate(user.created_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">

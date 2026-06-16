@@ -10,13 +10,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from src.api.deps import JWTServiceDep, TokenStoreDep, UoWDep
 from src.config import Settings, get_settings
 from src.infrastructure.database.models.collaboration import OAuthConnectionModel
+from src.infrastructure.database.models.login_event import LoginEventModel
 from src.infrastructure.database.models.user import UserModel
 from src.infrastructure.security.oauth import OAuthUserInfo, get_oauth_client
 
@@ -32,17 +33,27 @@ _REFRESH_TTL = 60 * 60 * 24 * 30  # 30 days in seconds
 async def oauth_redirect(
     provider: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    next: str | None = Query(default=None, max_length=512),
 ) -> RedirectResponse:
     if provider not in SUPPORTED_PROVIDERS:
         raise HTTPException(404, f"Unknown OAuth provider: {provider}")
 
     client = get_oauth_client(provider, settings)
     state = client.generate_state()
+    next_path = _safe_next_path(next)
 
     resp = RedirectResponse(client.build_authorization_url(state), status_code=302)
     resp.set_cookie(
         key=f"oauth_state_{provider}",
         value=state,
+        max_age=600,
+        httponly=True,
+        samesite="lax",
+        secure=not settings.debug,
+    )
+    resp.set_cookie(
+        key=f"oauth_next_{provider}",
+        value=next_path,
         max_age=600,
         httponly=True,
         samesite="lax",
@@ -56,21 +67,29 @@ async def oauth_redirect(
 @router.get("/{provider}/callback")
 async def oauth_callback(
     provider: str,
-    code: str,
-    state: str,
     request: Request,
     uow: UoWDep,
     jwt_service: JWTServiceDep,
     token_store: TokenStoreDep,
     settings: Annotated[Settings, Depends(get_settings)],
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
 ) -> RedirectResponse:
     if provider not in SUPPORTED_PROVIDERS:
         raise HTTPException(404, f"Unknown OAuth provider: {provider}")
 
+    next_path = _safe_next_path(request.cookies.get(f"oauth_next_{provider}"))
+
+    # User clicked "Cancel" / denied access on the provider's consent screen —
+    # the provider redirects back with `error` and no `code`.
+    if error or not code:
+        return _redirect_error(settings, provider, next_path, "oauth_cancelled")
+
     # Validate CSRF state
     cookie_state = request.cookies.get(f"oauth_state_{provider}")
     if not cookie_state or cookie_state != state:
-        return _redirect_error(settings, "oauth_state_mismatch")
+        return _redirect_error(settings, provider, next_path, "oauth_state_mismatch")
 
     client = get_oauth_client(provider, settings)
 
@@ -78,13 +97,19 @@ async def oauth_callback(
         access_token = await client.exchange_code(code)
         user_info: OAuthUserInfo = await client.get_user_info(access_token)
     except Exception:
-        return _redirect_error(settings, "oauth_provider_error")
+        return _redirect_error(settings, provider, next_path, "oauth_provider_error")
 
     async with uow:
         # 1. Find or provision user
         user = await _find_or_create_user(uow, user_info, settings)
         if user is None:
-            return _redirect_error(settings, "oauth_provisioning_disabled")
+            return _redirect_error(settings, provider, next_path, "oauth_provisioning_disabled")
+
+        # Flush so a brand-new user row exists before the FK-dependent
+        # oauth_connections insert below — UserModel/OAuthConnectionModel have
+        # no ORM relationship() linking them, so autoflush ordering can't be
+        # relied on to insert the user first.
+        await uow._session.flush()
 
         # 2. Upsert OAuth connection record
         result = await uow._session.execute(
@@ -109,13 +134,26 @@ async def oauth_callback(
                 avatar_url=user_info.avatar_url,
             ))
 
-        # 3. Issue JWT pair
+        # 3. Update last login + record login event (mirrors password-login bookkeeping)
+        ip_address = request.client.host if request.client else None
+        user.last_login_at = datetime.now(timezone.utc)
+        uow._session.add(LoginEventModel(
+            tenant_id=user.tenant_id,
+            user_id=user.id,
+            user_display_name=user.full_name,
+            user_email=user.email,
+            event_type="LOGIN",
+            success=True,
+            ip_address=ip_address,
+        ))
+
+        # 4. Issue JWT pair
         jwt_access, _  = jwt_service.create_access_token(user.id, user.tenant_id)
         jwt_refresh, jti = jwt_service.create_refresh_token(user.id, user.tenant_id)
         await token_store.store(jti, user.id, _REFRESH_TTL)
         await uow.commit()
 
-    # 4. Redirect frontend with token in query param (frontend moves it to memory)
+    # 5. Redirect frontend with token in query param (frontend moves it to memory)
     frontend_url = (
         f"{settings.frontend_base_url}/auth/callback"
         f"?access_token={jwt_access}&provider={provider}"
@@ -130,10 +168,17 @@ async def oauth_callback(
         max_age=_REFRESH_TTL,
     )
     resp.delete_cookie(f"oauth_state_{provider}")
+    resp.delete_cookie(f"oauth_next_{provider}")
     return resp
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _safe_next_path(next_path: str | None) -> str:
+    """Whitelist-free open-redirect guard: only allow same-origin relative paths."""
+    if next_path and next_path.startswith("/") and not next_path.startswith("//"):
+        return next_path
+    return "/login"
 
 async def _find_or_create_user(
     uow: UoWDep,
@@ -178,8 +223,12 @@ async def _find_or_create_user(
     return new_user
 
 
-def _redirect_error(settings: Settings, reason: str) -> RedirectResponse:
-    return RedirectResponse(
-        f"{settings.frontend_base_url}/login?error={reason}",
+def _redirect_error(settings: Settings, provider: str, next_path: str, reason: str) -> RedirectResponse:
+    separator = "&" if "?" in next_path else "?"
+    resp = RedirectResponse(
+        f"{settings.frontend_base_url}{next_path}{separator}error={reason}",
         status_code=302,
     )
+    resp.delete_cookie(f"oauth_state_{provider}")
+    resp.delete_cookie(f"oauth_next_{provider}")
+    return resp

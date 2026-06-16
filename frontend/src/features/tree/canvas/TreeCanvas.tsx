@@ -391,15 +391,17 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
   const setSetSelectedPersonId = useCanvasStore((s) => s.setSetSelectedPersonId);
   useEffect(() => { setSetSelectedPersonId(setSelectedPersonId); }, [setSelectedPersonId, setSetSelectedPersonId]);
 
-  const graphLoaded = useRef(false);
+  // Expand every branch immediately so the full tree is visible on open.
+  // Driven by expandedNodeIds (not a mount-only ref) so it self-heals if the
+  // canvas store gets reset out from under an already-loaded graph — e.g.
+  // React StrictMode's dev-only double-invoke of FamilyTreePage's unmount
+  // cleanup (resetCanvas) racing with this effect on a cached-data revisit.
   useEffect(() => {
-    if (!graph || graphLoaded.current) return;
-    graphLoaded.current = true;
-    // Expand every branch immediately so the full tree is visible on open
+    if (!graph || graph.persons.length === 0 || expandedNodeIds.size > 0) return;
     expandAll(graph);
     // Wait for ReactFlow to finish laying out all nodes before fitting
     setTimeout(() => fitView({ duration: 600, padding: 0.12 }), 150);
-  }, [graph]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [graph, expandedNodeIds, expandAll]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const layoutOpts = useMemo(
     () => ({

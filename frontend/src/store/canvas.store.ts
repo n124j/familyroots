@@ -64,7 +64,7 @@ const initialState = {
   focusPersonId: null,
   selectedPersonId: null,
   selectedEdge: null,
-  layoutMode: 'compact' as LayoutMode,
+  layoutMode: 'vertical' as LayoutMode, // "Vertical (multi-marriage aware)" — default on tree open
   zoom: 0.8,
   pan: { x: 0, y: 0 },
   expandedNodeIds: new Set<string>(),

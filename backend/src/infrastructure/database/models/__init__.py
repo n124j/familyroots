@@ -6,6 +6,7 @@ from src.infrastructure.database.models.login_event import LoginEventModel
 from src.infrastructure.database.models.collaboration import (
     FamilyTreeModel,
     TreeMemberModel,
+    TreePinModel,
 )
 from src.infrastructure.database.models.person import (
     PersonModel,
@@ -26,6 +27,7 @@ __all__ = [
     "LoginEventModel",
     "FamilyTreeModel",
     "TreeMemberModel",
+    "TreePinModel",
     "PersonModel",
     "FamilyGroupModel",
     "FamilyGroupMemberModel",

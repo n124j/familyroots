@@ -27,6 +27,12 @@ x-backend-env: &backend-env
   SENTRY_DSN:              ${SENTRY_DSN}
   LOG_LEVEL:               INFO
   LOG_FORMAT:              json
+  GOOGLE_CLIENT_ID:        ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET:    ${GOOGLE_CLIENT_SECRET:-}
+  GITHUB_CLIENT_ID:        ${GITHUB_CLIENT_ID:-}
+  GITHUB_CLIENT_SECRET:    ${GITHUB_CLIENT_SECRET:-}
+  DEFAULT_TENANT_ID:       ${DEFAULT_TENANT_ID:-}
+  DEFAULT_TENANT_SLUG:     ${DEFAULT_TENANT_SLUG:-familyroots-system}
 
 x-restart: &restart
   restart: unless-stopped

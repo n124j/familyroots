@@ -16,10 +16,19 @@ interface TreeSummary {
   member_count: number;
   link_sharing: string;
   share_token: string | null;
+  is_pinned: boolean;
 }
 
 const TREE_COVER_PRESETS = ['🌳','🌲','🌴','🌿','🌸','🏡','📜','⛩️','🎋','🧬','🗺️','📖'];
 const DEFAULT_COVER = '🌳';
+
+const DASHBOARD_PAGE_KEY = 'familyroots_dashboard_page';
+
+function getStoredPage(): number {
+  const raw = sessionStorage.getItem(DASHBOARD_PAGE_KEY);
+  const n = raw ? parseInt(raw, 10) : 1;
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
 
 const ROLE_BADGE: Record<string, string> = {
   OWNER:  'bg-brand-100 text-brand-700',
@@ -67,9 +76,16 @@ interface TreeCardProps {
   onEdit: (tree: TreeSummary) => void;
   onDelete: (tree: TreeSummary) => void;
   onShare: (tree: TreeSummary) => void;
+  onTogglePin: (tree: TreeSummary) => void;
 }
 
-function TreeCard({ tree, onEdit, onDelete, onShare }: TreeCardProps) {
+const PinIcon = ({ filled }: { filled: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5.5 1.5h5l-.5 4.5 2 2v1.5h-4v4l-.5 1-.5-1v-4h-4V8l2-2z" />
+  </svg>
+);
+
+function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -89,8 +105,19 @@ function TreeCard({ tree, onEdit, onDelete, onShare }: TreeCardProps) {
   return (
     <div className="relative rounded-xl border hover:border-brand-300 hover:shadow-sm transition-all group"
       style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-border)' }}>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(tree); }}
+        title={tree.is_pinned ? 'Unpin from top' : 'Pin to top'}
+        className={`absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
+          tree.is_pinned
+            ? 'text-brand-600 bg-brand-50 hover:bg-brand-100'
+            : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100'
+        }`}
+      >
+        <PinIcon filled={tree.is_pinned} />
+      </button>
       <Link to={`/trees/${tree.id}`} className="block p-6">
-        <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start justify-between mb-4 pr-7">
           {tree.cover_image_url ? (
             <img
               src={tree.cover_image_url}
@@ -169,11 +196,17 @@ export default function DashboardPage() {
   const [trees,   setTrees]   = useState<TreeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
-  const [page,    setPage]    = useState(1);
+  const [page,    setPage]    = useState(getStoredPage);
+
+  function goToPage(p: number) {
+    setPage(p);
+    sessionStorage.setItem(DASHBOARD_PAGE_KEY, String(p));
+  }
 
   const PAGE_SIZE   = 16;
-  const totalPages  = Math.ceil(trees.length / PAGE_SIZE);
-  const visibleTrees = trees.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const sortedTrees  = [...trees].sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
+  const totalPages  = Math.max(1, Math.ceil(sortedTrees.length / PAGE_SIZE));
+  const visibleTrees = sortedTrees.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Import .frt
   const importInputRef             = useRef<HTMLInputElement>(null);
@@ -354,7 +387,12 @@ export default function DashboardPage() {
         if (!r.ok) throw new Error('Failed to load trees');
         return r.json();
       })
-      .then((data) => { setTrees(data); setPage(1); })
+      .then((data) => {
+        setTrees(data);
+        // Clamp the restored page in case the tree count has shrunk since last visit
+        const tp = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+        setPage((p) => Math.min(Math.max(p, 1), tp));
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [accessToken]);
@@ -384,12 +422,27 @@ export default function DashboardPage() {
       }
       const tree: TreeSummary = await res.json();
       setTrees((prev) => [tree, ...prev]);
-      setPage(1);
+      goToPage(1);
       setModalOpen(false);
     } catch (err: any) {
       setCreateError(err.message);
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleTogglePin(tree: TreeSummary) {
+    const pinning = !tree.is_pinned;
+    setTrees((prev) => prev.map((t) => t.id === tree.id ? { ...t, is_pinned: pinning } : t));
+    try {
+      const res = await fetch(`${API_BASE}/trees/${tree.id}/pin`, {
+        method: pinning ? 'POST' : 'DELETE',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to update pin');
+    } catch {
+      setTrees((prev) => prev.map((t) => t.id === tree.id ? { ...t, is_pinned: !pinning } : t));
     }
   }
 
@@ -479,7 +532,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {visibleTrees.map((tree) => (
-          <TreeCard key={tree.id} tree={tree} onEdit={openEdit} onDelete={setDeleteTarget} onShare={setShareTarget} />
+          <TreeCard key={tree.id} tree={tree} onEdit={openEdit} onDelete={setDeleteTarget} onShare={setShareTarget} onTogglePin={handleTogglePin} />
         ))}
       </div>
 
@@ -491,7 +544,7 @@ export default function DashboardPage() {
           </p>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => goToPage(page - 1)}
               disabled={page === 1}
               className="px-3 py-1.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -500,7 +553,7 @@ export default function DashboardPage() {
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <button
                 key={p}
-                onClick={() => setPage(p)}
+                onClick={() => goToPage(p)}
                 className={[
                   'w-8 h-8 text-sm font-medium rounded-lg transition-colors',
                   p === page
@@ -512,7 +565,7 @@ export default function DashboardPage() {
               </button>
             ))}
             <button
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => goToPage(page + 1)}
               disabled={page === totalPages}
               className="px-3 py-1.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >

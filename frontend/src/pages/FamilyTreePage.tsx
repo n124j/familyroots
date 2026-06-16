@@ -14,23 +14,25 @@ import { AVATAR_PRESETS, isPreset, presetDataUri } from '@features/tree/avatarPr
 import { useCanvasStore, type SelectedEdge } from '@store/canvas.store';
 import { useAuthStore } from '@store/auth.store';
 import { queryKeys } from '@queries/keys';
+import { apiClient, get, post, patch, del } from '@api/client';
+import axios from 'axios';
 import type { ApiTreeGraph } from '@features/tree/types';
 import { AuditLogModal } from '@features/audit/AuditLogModal';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+/** Extracts the backend's `detail` message from an axios error, falling back otherwise. */
+function apiErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    return (err.response?.data as any)?.detail ?? fallback;
+  }
+  return err instanceof Error ? err.message : fallback;
+}
 
-async function fetchTreeGraph(treeId: string, token: string | null): Promise<ApiTreeGraph> {
-  const res = await fetch(`${API_BASE}/trees/${treeId}/graph`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to load tree');
-  return res.json();
+async function fetchTreeGraph(treeId: string): Promise<ApiTreeGraph> {
+  return get<ApiTreeGraph>(`/trees/${treeId}/graph`);
 }
 
 async function createPerson(
   treeId: string,
-  token: string | null,
   fields: PersonFields,
 ): Promise<string> {
   const body: Record<string, unknown> = {
@@ -47,21 +49,12 @@ async function createPerson(
   if (fields.facebookHandle) body.facebook_handle  = fields.facebookHandle.trim();
   if (fields.xHandle)        body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
   if (fields.linkedinHandle) body.linkedin_handle  = fields.linkedinHandle.trim();
-  const res = await fetch(`${API_BASE}/trees/${treeId}/persons`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).detail ?? 'Failed to create person');
+  try {
+    const data = await post<{ id: string }>(`/trees/${treeId}/persons`, body);
+    return data.id;
+  } catch (err) {
+    throw new Error(apiErrorMessage(err, 'Failed to create person'));
   }
-  const data = await res.json();
-  return data.id as string;
 }
 
 // ── Shared person fields ───────────────────────────────────────────────────
@@ -301,7 +294,7 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
     setLoading(true);
     setError('');
     try {
-      await createPerson(treeId, token, fields);
+      await createPerson(treeId, fields);
       onAdded();
       onClose();
     } catch (err) {
@@ -391,18 +384,13 @@ function AddRelationModal({
 
   async function link(personId: string, force = false) {
     const suffix = force ? '?force=true' : '';
-    const res = await fetch(
-      `${API_BASE}/trees/${treeId}/persons/${anchorPersonId}/${cfg.linkPath(anchorPersonId)}${suffix}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify(cfg.linkBody(personId)),
-      },
-    );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).detail ?? 'Failed to link relationship');
+    try {
+      await post(
+        `/trees/${treeId}/persons/${anchorPersonId}/${cfg.linkPath(anchorPersonId)}${suffix}`,
+        cfg.linkBody(personId),
+      );
+    } catch (err) {
+      throw new Error(apiErrorMessage(err, 'Failed to link relationship'));
     }
   }
 
@@ -412,7 +400,7 @@ function AddRelationModal({
     if (dateErr) { setError(dateErr); return; }
     setLoading(true); setError('');
     try {
-      const newId = await createPerson(treeId, token, fields);
+      const newId = await createPerson(treeId, fields);
       await link(newId);
       onAdded();
     } catch (err) { setError((err as Error).message); }
@@ -708,18 +696,11 @@ function AddBothParentsModal({
     if (!fatherId || !motherId) return;
     setLoading(true); setError('');
     try {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${anchorPersonId}/parents/pair`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify({ father_id: fatherId, mother_id: motherId, parentage_type: 'BIOLOGICAL', union_type: 'MARRIAGE' }),
+      await post(`/trees/${treeId}/persons/${anchorPersonId}/parents/pair`, {
+        father_id: fatherId, mother_id: motherId, parentage_type: 'BIOLOGICAL', union_type: 'MARRIAGE',
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).detail ?? 'Failed to link parents');
-      }
       onAdded();
-    } catch (err) { setError((err as Error).message); }
+    } catch (err) { setError(apiErrorMessage(err, 'Failed to link parents')); }
     finally { setLoading(false); }
   }
 
@@ -842,15 +823,10 @@ function AddChildToUnionModal({
   async function handleRemoveUnion() {
     setRemoving(true);
     try {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/family-groups/${fgId}`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to remove union');
+      await del(`/trees/${treeId}/family-groups/${fgId}`);
       onRemoved();
     } catch (err) {
-      setError((err as Error).message);
+      setError(apiErrorMessage(err, 'Failed to remove union'));
       setRemoving(false);
       setConfirmRemove(false);
     }
@@ -863,19 +839,11 @@ function AddChildToUnionModal({
       union_type: 'UNKNOWN',
     };
     if (parent2Id) body.other_parent_id = parent2Id;
-    const url = `${API_BASE}/trees/${treeId}/persons/${parent1Id}/children${force ? '?force=true' : ''}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error((err as any).detail ?? 'Failed to link child');
+    const suffix = force ? '?force=true' : '';
+    try {
+      await post(`/trees/${treeId}/persons/${parent1Id}/children${suffix}`, body);
+    } catch (err) {
+      throw new Error(apiErrorMessage(err, 'Failed to link child'));
     }
   }
 
@@ -886,7 +854,7 @@ function AddChildToUnionModal({
     setLoading(true);
     setError('');
     try {
-      const newId = await createPerson(treeId, token, fields);
+      const newId = await createPerson(treeId, fields);
       await linkChild(newId);
       onAdded();
     } catch (err) {
@@ -1078,22 +1046,15 @@ async function uploadPersonPhoto(
   file: File,
   treeId: string,
   personId: string,
-  token: string | null,
 ): Promise<string> {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}/photo`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    credentials: 'include',
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as any).detail ?? 'Upload failed');
+  try {
+    const data = await post<{ photo_url: string }>(`/trees/${treeId}/persons/${personId}/photo`, form);
+    return data.photo_url;
+  } catch (err) {
+    throw new Error(apiErrorMessage(err, 'Upload failed'));
   }
-  const { photo_url } = await res.json();
-  return photo_url as string;
 }
 
 // ── Edit person modal ──────────────────────────────────────────────────────
@@ -1142,7 +1103,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
     setPhotoLoading(true);
     setPhotoError('');
     try {
-      const url = await uploadPersonPhoto(file, treeId, personId, token);
+      const url = await uploadPersonPhoto(file, treeId, personId);
       setPhotoUrl(url);
       onRefresh?.();
     } catch (err) {
@@ -1157,18 +1118,12 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
     setPhotoLoading(true);
     setPhotoError('');
     try {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify({ photo_url: presetId }),
-      });
-      if (!res.ok) throw new Error('Failed to set avatar');
+      await patch(`/trees/${treeId}/persons/${personId}`, { photo_url: presetId });
       setPhotoUrl(presetId);
       setShowPresets(false);
       onRefresh?.();
     } catch (err) {
-      setPhotoError((err as Error).message);
+      setPhotoError(apiErrorMessage(err, 'Failed to set avatar'));
     } finally {
       setPhotoLoading(false);
     }
@@ -1178,17 +1133,12 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
     setPhotoLoading(true);
     setPhotoError('');
     try {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}/photo`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to remove photo');
+      await del(`/trees/${treeId}/persons/${personId}/photo`);
       setPhotoUrl(undefined);
       setShowPresets(false);
       onRefresh?.();
     } catch (err) {
-      setPhotoError((err as Error).message);
+      setPhotoError(apiErrorMessage(err, 'Failed to remove photo'));
     } finally {
       setPhotoLoading(false);
     }
@@ -1215,19 +1165,10 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
       if (fields.facebookHandle)  body.facebook_handle  = fields.facebookHandle.trim();
       if (fields.xHandle)         body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
       if (fields.linkedinHandle)  body.linkedin_handle  = fields.linkedinHandle.trim();
-      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error((d as any).detail ?? 'Failed to save');
-      }
+      await patch(`/trees/${treeId}/persons/${personId}`, body);
       onSaved();
     } catch (err) {
-      setError((err as Error).message);
+      setError(apiErrorMessage(err, 'Failed to save'));
     } finally {
       setLoading(false);
     }
@@ -1569,15 +1510,11 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
     setLoading(true);
     setFetchErr('');
     setDetail(null);
-    fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      credentials: 'include',
-    })
-      .then((r) => { if (!r.ok) throw new Error('Not found'); return r.json(); })
+    get<PersonDetailFull>(`/trees/${treeId}/persons/${personId}`)
       .then(setDetail)
       .catch(() => setFetchErr('Failed to load profile'))
       .finally(() => setLoading(false));
-  }, [personId, treeId, token]);
+  }, [personId, treeId]);
 
   // Build name + photo maps from the already-loaded graph (zero extra requests)
   const nameMap = useMemo(() => {
@@ -1838,17 +1775,10 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
     setDeleting(true);
     setDeleteError('');
     try {
-      const res = await fetch(
-        `${API_BASE}/trees/${treeId}/family-groups/${familyGroupId}/members/${personId}`,
-        { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: 'include' },
-      );
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error((d as any).detail ?? 'Failed to remove');
-      }
+      await del(`/trees/${treeId}/family-groups/${familyGroupId}/members/${personId}`);
       onDeleted();
-    } catch (err: any) {
-      setDeleteError(err.message);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, 'Failed to remove'));
       setDeleting(false);
     }
   }
@@ -1959,18 +1889,10 @@ function SelectionPanel({
     setDeleting(true);
     setDeleteError('');
     try {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/persons/${personId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error((d as any).detail ?? 'Failed to delete');
-      }
+      await del(`/trees/${treeId}/persons/${personId}`);
       onDeleted();
-    } catch (err: any) {
-      setDeleteError(err.message);
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, 'Failed to delete'));
       setDeleting(false);
     }
   }
@@ -2110,15 +2032,11 @@ function MembersModal({
   const [removing, setRemoving] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/trees/${treeId}/members`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: 'include',
-    })
-      .then((r) => r.json())
+    get<Member[]>(`/trees/${treeId}/members`)
       .then(setMembers)
       .catch(() => setError('Failed to load members'))
       .finally(() => setLoading(false));
-  }, [treeId, token]);
+  }, [treeId]);
 
   const myRole = members.find((m) => m.user_id === currentUserId)?.role ?? '';
   const canRemove = myRole === 'OWNER' || myRole === 'ADMIN';
@@ -2126,18 +2044,10 @@ function MembersModal({
   async function handleRemove(member: Member) {
     setRemoving(member.user_id);
     try {
-      const res = await fetch(`${API_BASE}/trees/${treeId}/members/${member.user_id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error((d as any).detail ?? 'Failed to remove member');
-      }
+      await del(`/trees/${treeId}/members/${member.user_id}`);
       setMembers((prev) => prev.filter((m) => m.user_id !== member.user_id));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Failed to remove member'));
     } finally {
       setRemoving(null);
     }
@@ -2292,11 +2202,7 @@ function TreeTopBar({
     a.download = `${treeName.replace(/\s+/g, '_')}.frt`;
     a.click();
     URL.revokeObjectURL(url);
-    fetch(`${API_BASE}/trees/${graph.treeId}/export-log`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      credentials: 'include',
-    }).catch(() => {});
+    post(`/trees/${graph.treeId}/export-log`).catch(() => {});
   }
 
   async function handleExportZip() {
@@ -2304,23 +2210,15 @@ function TreeTopBar({
     setExportOpen(false);
     setExportingZip(true);
     try {
-      const res = await fetch(`${API_BASE}/trees/${graph.treeId}/export-zip`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
+      const res = await apiClient.get(`/trees/${graph.treeId}/export-zip`, { responseType: 'blob' });
+      const blob = res.data as Blob;
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href     = url;
       a.download = `${treeName.replace(/\s+/g, '_')}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-      fetch(`${API_BASE}/trees/${graph.treeId}/export-log`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        credentials: 'include',
-      }).catch(() => {});
+      post(`/trees/${graph.treeId}/export-log`).catch(() => {});
     } catch {
       // silently ignore
     } finally {
@@ -2644,7 +2542,7 @@ export default function FamilyTreePage() {
 
   const { data: graph, isLoading, refetch } = useQuery({
     queryKey: queryKeys.trees.detail(treeId ?? ''),
-    queryFn:  () => fetchTreeGraph(treeId ?? '', accessToken),
+    queryFn:  () => fetchTreeGraph(treeId ?? ''),
     enabled:  !!treeId && !!accessToken,
     staleTime: 5 * 60_000,
   });
@@ -2720,6 +2618,7 @@ export default function FamilyTreePage() {
 
       <div className="flex-1 relative mt-12">
         <TreeCanvas
+          key={treeId}
           ref={canvasRef}
           graph={graph ?? null}
           isLoading={isLoading}

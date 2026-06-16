@@ -147,6 +147,7 @@ class TreeSummaryResponse(BaseModel):
     member_count: int
     link_sharing: str = "RESTRICTED"
     share_token: Optional[uuid.UUID] = None
+    is_pinned: bool = False
 
 
 class CreateTreeRequest(BaseModel):
@@ -912,12 +913,14 @@ async def list_my_trees(
                 ft.link_sharing,
                 ft.share_token,
                 (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
-                (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
+                (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count,
+                (tp.id IS NOT NULL) AS is_pinned
             FROM family_trees ft
+            LEFT JOIN tree_pins tp ON tp.tree_id = ft.id AND tp.user_id = :user_id
             WHERE ft.is_deleted = false
             ORDER BY ft.created_at DESC
         """)
-        result = await uow._session.execute(q)
+        result = await uow._session.execute(q, {"user_id": current_user.id})
         rows = result.fetchall()
         return [
             TreeSummaryResponse(
@@ -931,6 +934,7 @@ async def list_my_trees(
                 member_count=row.member_count,
                 link_sharing=row.link_sharing or "RESTRICTED",
                 share_token=row.share_token,
+                is_pinned=row.is_pinned,
             )
             for row in rows
         ]
@@ -947,9 +951,11 @@ async def list_my_trees(
             ft.share_token,
             tm.role,
             (SELECT COUNT(*) FROM persons p WHERE p.tree_id = ft.id AND p.is_deleted = false) AS person_count,
-            (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count
+            (SELECT COUNT(*) FROM tree_members m WHERE m.tree_id = ft.id) AS member_count,
+            (tp.id IS NOT NULL) AS is_pinned
         FROM family_trees ft
         JOIN tree_members tm ON tm.tree_id = ft.id
+        LEFT JOIN tree_pins tp ON tp.tree_id = ft.id AND tp.user_id = :user_id
         WHERE tm.user_id = :user_id
           AND ft.is_deleted = false
         ORDER BY ft.created_at DESC
@@ -968,9 +974,54 @@ async def list_my_trees(
             member_count=row.member_count,
             link_sharing=row.link_sharing or "RESTRICTED",
             share_token=row.share_token,
+            is_pinned=row.is_pinned,
         )
         for row in rows
     ]
+
+
+# ── Tree pins (per-user Dashboard pins) ─────────────────────────────────────────
+
+@router.post("/trees/{tree_id}/pin", status_code=status.HTTP_204_NO_CONTENT, response_model=None,
+             response_class=Response, summary="Pin a tree to the top of the Dashboard")
+async def pin_tree(
+    tree_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    uow: UoWDep,
+) -> Response:
+    from sqlalchemy import text
+
+    if current_user.app_role != AppRole.AUDITOR:
+        member_row = (await uow._session.execute(
+            text("SELECT 1 FROM tree_members WHERE tree_id = :tid AND user_id = :uid LIMIT 1"),
+            {"tid": tree_id, "uid": current_user.id},
+        )).first()
+        if not member_row:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not a member of this tree")
+
+    await uow._session.execute(text("""
+        INSERT INTO tree_pins (tree_id, user_id, tenant_id)
+        VALUES (:tid, :uid, :tenant)
+        ON CONFLICT (user_id, tree_id) DO NOTHING
+    """), {"tid": tree_id, "uid": current_user.id, "tenant": current_user.tenant_id})
+    await uow.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/trees/{tree_id}/pin", status_code=status.HTTP_204_NO_CONTENT, response_model=None,
+               response_class=Response, summary="Unpin a tree from the Dashboard")
+async def unpin_tree(
+    tree_id: uuid.UUID,
+    current_user: CurrentUserDep,
+    uow: UoWDep,
+) -> Response:
+    from sqlalchemy import text
+
+    await uow._session.execute(text("""
+        DELETE FROM tree_pins WHERE tree_id = :tid AND user_id = :uid
+    """), {"tid": tree_id, "uid": current_user.id})
+    await uow.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ── Tree graph ─────────────────────────────────────────────────────────────────

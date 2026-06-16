@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SEO } from '@shared/components/SEO';
+import { OAuthButtons } from '@features/auth/components/OAuthButtons';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -25,6 +26,8 @@ async function register(body: {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const oauthError = searchParams.get('error');
 
   const [givenName,  setGivenName]  = useState('');
   const [familyName, setFamilyName] = useState('');
@@ -71,6 +74,25 @@ export default function RegisterPage() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
+          {/* OAuth error banner */}
+          {oauthError && (
+            <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {oauthError === 'oauth_state_mismatch'
+                ? 'Sign-in session expired. Please try again.'
+                : 'An error occurred with social sign-in. Please try again.'}
+            </div>
+          )}
+
+          {/* Social login */}
+          <OAuthButtons dividerLabel="" next="/register" />
+
+          {/* Divider */}
+          <div className="relative flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name row */}
             <div className="grid grid-cols-2 gap-3">

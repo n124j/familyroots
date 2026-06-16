@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
+import { OAuthButtons } from '@features/auth/components/OAuthButtons';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -13,9 +14,10 @@ type ModalType = 'login' | 'register' | null;
 
 // ─── Login Modal ──────────────────────────────────────────────────────────────
 
-function LoginModal({ onClose, onSwitchToRegister }: {
+function LoginModal({ onClose, onSwitchToRegister, initialError }: {
   onClose: () => void;
   onSwitchToRegister: () => void;
+  initialError?: string | null;
 }) {
   const navigate   = useNavigate();
   const storeLogin = useAuthStore((s) => s.login);
@@ -25,6 +27,7 @@ function LoginModal({ onClose, onSwitchToRegister }: {
   const [error,      setError]      = useState('');
   const [unverified, setUnverified] = useState(false);
   const [loading,    setLoading]    = useState(false);
+  const oauthError = initialError ?? '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,6 +78,22 @@ function LoginModal({ onClose, onSwitchToRegister }: {
         <div className="text-3xl mb-2">🌳</div>
         <h2 className="text-xl font-bold text-slate-900">Welcome back</h2>
         <p className="text-sm text-slate-500 mt-1">Sign in to your FamilyRoots account</p>
+      </div>
+
+      {oauthError && (
+        <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {oauthError === 'oauth_state_mismatch'
+            ? 'Sign-in session expired. Please try again.'
+            : 'An error occurred with social sign-in. Please try again.'}
+        </div>
+      )}
+
+      <OAuthButtons dividerLabel="" next="/?auth=login" />
+
+      <div className="relative flex items-center gap-3 my-5">
+        <div className="flex-1 h-px bg-slate-200" />
+        <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
+        <div className="flex-1 h-px bg-slate-200" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,9 +170,10 @@ function LoginModal({ onClose, onSwitchToRegister }: {
 
 // ─── Register Modal ───────────────────────────────────────────────────────────
 
-function RegisterModal({ onClose, onSwitchToLogin }: {
+function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
   onClose: () => void;
   onSwitchToLogin: () => void;
+  initialError?: string | null;
 }) {
   const [givenName,     setGivenName]     = useState('');
   const [familyName,    setFamilyName]    = useState('');
@@ -164,6 +184,7 @@ function RegisterModal({ onClose, onSwitchToLogin }: {
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(false);
   const [success,       setSuccess]       = useState(false);
+  const oauthError = initialError ?? '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -216,6 +237,22 @@ function RegisterModal({ onClose, onSwitchToLogin }: {
         <div className="text-3xl mb-2">🌳</div>
         <h2 className="text-xl font-bold text-slate-900">Create your free account</h2>
         <p className="text-sm text-slate-500 mt-1">Free during open beta · No payment needed</p>
+      </div>
+
+      {oauthError && (
+        <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {oauthError === 'oauth_state_mismatch'
+            ? 'Sign-in session expired. Please try again.'
+            : 'An error occurred with social sign-in. Please try again.'}
+        </div>
+      )}
+
+      <OAuthButtons dividerLabel="" next="/?auth=register" />
+
+      <div className="relative flex items-center gap-3 my-5">
+        <div className="flex-1 h-px bg-slate-200" />
+        <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
+        <div className="flex-1 h-px bg-slate-200" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -930,7 +967,7 @@ function CollabSection() {
 
 function HowItWorks() {
   const steps = [
-    { num: '1', emoji: '✉️', title: 'Create your free account', desc: 'Sign up with email and password, or use Google/GitHub OAuth. Email verification keeps your account secure.' },
+    { num: '1', emoji: '✉️', title: 'Create your free account', desc: 'Sign up with email and password, or use Google OAuth. Email verification keeps your account secure.' },
     { num: '2', emoji: '🌳', title: 'Add the first person', desc: 'Create a new tree and add yourself (or any ancestor). Set name, dates, sex, and a profile photo. Then branch outward.' },
     { num: '3', emoji: '🤝', title: 'Collaborate & explore', desc: 'Invite family members, attach photos and documents, and explore layouts from the top-down tree to the full ancestry fan chart.' },
   ];
@@ -1125,8 +1162,27 @@ export default function LandingPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isInitialised   = useAuthStore((s) => s.isInitialised);
   const navigate        = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [modal, setModal] = useState<ModalType>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Reopen the right popup (and surface the error) after a cancelled OAuth
+  // round-trip — the backend redirects back to /?auth=login|register&error=...
+  useEffect(() => {
+    const auth = searchParams.get('auth');
+    const error = searchParams.get('error');
+    if (auth === 'login' || auth === 'register') {
+      setModal(auth);
+      setAuthError(error);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('auth');
+        next.delete('error');
+        return next;
+      }, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isInitialised && isAuthenticated) navigate('/dashboard', { replace: true });
@@ -1134,9 +1190,9 @@ export default function LandingPage() {
 
   if (!isInitialised || isAuthenticated) return null;
 
-  const openSignIn  = () => setModal('login');
-  const openSignUp  = () => setModal('register');
-  const closeModal  = () => setModal(null);
+  const openSignIn  = () => { setAuthError(null); setModal('login'); };
+  const openSignUp  = () => { setAuthError(null); setModal('register'); };
+  const closeModal  = () => { setAuthError(null); setModal(null); };
 
   return (
     <>
@@ -1147,10 +1203,10 @@ export default function LandingPage() {
 
       {/* Auth modals */}
       {modal === 'login' && (
-        <LoginModal onClose={closeModal} onSwitchToRegister={openSignUp} />
+        <LoginModal onClose={closeModal} onSwitchToRegister={openSignUp} initialError={authError} />
       )}
       {modal === 'register' && (
-        <RegisterModal onClose={closeModal} onSwitchToLogin={openSignIn} />
+        <RegisterModal onClose={closeModal} onSwitchToLogin={openSignIn} initialError={authError} />
       )}
 
       <LandingNav onSignIn={openSignIn} onSignUp={openSignUp} />

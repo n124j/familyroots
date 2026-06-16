@@ -1,5 +1,5 @@
 /**
- * LoginPage — email/password sign-in form.
+ * LoginPage — email/password form + Google OAuth button.
  *
  * On success: stores access token in auth store, navigates to ?next or /dashboard.
  */
@@ -7,6 +7,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
+import { OAuthButtons } from '@features/auth/components/OAuthButtons';
 import { SEO } from '@shared/components/SEO';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -44,6 +45,7 @@ export default function LoginPage() {
   const [unverified,  setUnverified]  = useState(false);
   const [loading,     setLoading]     = useState(false);
 
+  const oauthError = searchParams.get('error');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,6 +110,25 @@ export default function LoginPage() {
               </p>
             </div>
           )}
+
+          {/* OAuth error banner */}
+          {oauthError && (
+            <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {oauthError === 'oauth_state_mismatch'
+                ? 'Sign-in session expired. Please try again.'
+                : 'An error occurred with social sign-in. Please try again.'}
+            </div>
+          )}
+
+          {/* Social login */}
+          <OAuthButtons dividerLabel="" next="/login" />
+
+          {/* Divider */}
+          <div className="relative flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
 
           {/* Email/password form */}
           <form onSubmit={handleSubmit} className="space-y-4">
