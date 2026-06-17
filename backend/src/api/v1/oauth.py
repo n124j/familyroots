@@ -18,6 +18,7 @@ from src.api.deps import JWTServiceDep, TokenStoreDep, UoWDep
 from src.config import Settings, get_settings
 from src.infrastructure.database.models.collaboration import OAuthConnectionModel
 from src.infrastructure.database.models.login_event import LoginEventModel
+from src.infrastructure.database.models.tenant import TenantModel
 from src.infrastructure.database.models.user import UserModel
 from src.infrastructure.security.oauth import OAuthUserInfo, get_oauth_client
 
@@ -202,6 +203,18 @@ async def _find_or_create_user(
         tenant_id = uuid.UUID(settings.default_tenant_id)
     except ValueError:
         return None
+
+    # Ensure the default tenant row exists before creating the user
+    result = await uow._session.execute(
+        sa_select(TenantModel).where(TenantModel.id == tenant_id)
+    )
+    if result.scalar_one_or_none() is None:
+        uow._session.add(TenantModel(
+            id=tenant_id,
+            name="Default",
+            slug="default",
+        ))
+        await uow._session.flush()
 
     parts = (info.display_name or "").strip().split()
     given  = parts[0] if parts else ""

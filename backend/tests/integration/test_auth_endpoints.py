@@ -152,6 +152,56 @@ class TestForgotPassword:
         assert "account-not-verified" in data.get("type", "")
 
 
+class TestOAuthRedirect:
+    async def test_google_redirect_returns_302(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get(
+            "/api/v1/auth/oauth/google",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert "accounts.google.com" in resp.headers["location"]
+
+    async def test_unknown_provider_returns_404(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get("/api/v1/auth/oauth/facebook")
+        assert resp.status_code == 404
+
+    async def test_redirect_sets_state_cookie(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get(
+            "/api/v1/auth/oauth/google",
+            follow_redirects=False,
+        )
+        assert "oauth_state_google" in resp.cookies
+
+    async def test_redirect_preserves_next_param(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get(
+            "/api/v1/auth/oauth/google?next=%2Fdashboard",
+            follow_redirects=False,
+        )
+        assert "oauth_next_google" in resp.cookies
+
+
+class TestOAuthCallback:
+    async def test_callback_without_code_redirects_with_error(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get(
+            "/api/v1/auth/oauth/google/callback?error=access_denied",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert "oauth_cancelled" in resp.headers["location"]
+
+    async def test_callback_missing_state_redirects_with_error(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get(
+            "/api/v1/auth/oauth/google/callback?code=fake-code",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+        assert "oauth_state_mismatch" in resp.headers["location"]
+
+    async def test_callback_unknown_provider_returns_404(self, test_client: AsyncClient) -> None:
+        resp = await test_client.get("/api/v1/auth/oauth/facebook/callback?code=x&state=y")
+        assert resp.status_code == 404
+
+
 class TestHealth:
     async def test_health_returns_200(self, test_client: AsyncClient) -> None:
         resp = await test_client.get("/health")

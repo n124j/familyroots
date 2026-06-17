@@ -159,3 +159,46 @@ test.describe('Session persistence', () => {
     await expect(page).not.toHaveURL('/login', { timeout: 5_000 });
   });
 });
+
+test.describe('OAuth — Google', () => {
+  test('login page shows Google sign-in button', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByText('Continue with Google')).toBeVisible();
+  });
+
+  test('clicking Google button redirects to backend OAuth endpoint', async ({ page }) => {
+    await page.goto('/login');
+
+    // Intercept the navigation to the backend OAuth route
+    const [request] = await Promise.all([
+      page.waitForRequest((req) => req.url().includes('/api/v1/auth/oauth/google')),
+      page.getByText('Continue with Google').click(),
+    ]);
+
+    expect(request.url()).toContain('/api/v1/auth/oauth/google');
+  });
+
+  test('OAuth callback with error redirects to login with message', async ({ page }) => {
+    await page.goto('/auth/callback?error=oauth_cancelled');
+    await expect(page).toHaveURL(/\/login\?error=oauth_cancelled/, { timeout: 5_000 });
+  });
+
+  test('OAuth callback without token redirects to login', async ({ page }) => {
+    await page.goto('/auth/callback');
+    await expect(page).toHaveURL(/\/login\?error=/, { timeout: 5_000 });
+  });
+
+  test('login page shows error banner for OAuth state mismatch', async ({ page }) => {
+    await page.goto('/login?error=oauth_state_mismatch');
+    await expect(
+      page.getByText(/session expired|try again/i)
+    ).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('login page shows generic error banner for OAuth provider error', async ({ page }) => {
+    await page.goto('/login?error=oauth_provider_error');
+    await expect(
+      page.getByText(/error occurred|try again/i)
+    ).toBeVisible({ timeout: 5_000 });
+  });
+});

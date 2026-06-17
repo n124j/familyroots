@@ -153,4 +153,95 @@ describe('useAuthStore', () => {
       expect(!!useAuthStore.getState().accessToken).toBe(true);
     });
   });
+
+  describe('OAuth callback login', () => {
+    it('stores OAuth token and user from callback', () => {
+      const { result } = renderHook(() => useAuthStore());
+
+      act(() => {
+        result.current.login('oauth-jwt-token', {
+          id: 'oauth-user-1',
+          tenantId: 'oauth-tenant-1',
+          email: 'oauth@google.com',
+          displayName: 'OAuth User',
+          avatarUrl: 'https://lh3.google.com/avatar',
+          isEmailVerified: true,
+          appRole: 'STANDARD',
+        });
+      });
+
+      expect(result.current.accessToken).toBe('oauth-jwt-token');
+      expect(result.current.user?.email).toBe('oauth@google.com');
+      expect(result.current.user?.avatarUrl).toBe('https://lh3.google.com/avatar');
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
+    it('handles OAuth user with ADMIN role', () => {
+      const { result } = renderHook(() => useAuthStore());
+
+      act(() => {
+        result.current.login('admin-token', {
+          id: 'admin-1',
+          tenantId: 't1',
+          email: 'admin@example.com',
+          displayName: 'Admin User',
+          avatarUrl: undefined,
+          isEmailVerified: true,
+          appRole: 'ADMIN',
+        });
+      });
+
+      expect(result.current.user?.appRole).toBe('ADMIN');
+    });
+
+    it('logout clears OAuth session', () => {
+      const { result } = renderHook(() => useAuthStore());
+
+      act(() => {
+        result.current.login('oauth-token', {
+          id: 'u1', tenantId: 't1', email: 'o@g.com',
+          displayName: 'O', avatarUrl: 'https://avatar.url', isEmailVerified: true, appRole: 'STANDARD',
+        });
+      });
+
+      act(() => {
+        result.current.logout();
+      });
+
+      expect(result.current.accessToken).toBeNull();
+      expect(result.current.user).toBeNull();
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+  });
+
+  describe('initAuth with OAuth session', () => {
+    it('recovers OAuth session via silent refresh', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ access_token: 'refreshed-oauth-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: 'oauth-user',
+            tenant_id: 'tenant-1',
+            email: 'oauth@google.com',
+            given_name: 'OAuth',
+            family_name: 'User',
+            avatar_url: 'https://lh3.google.com/pic',
+            email_verified: true,
+            app_role: 'STANDARD',
+          }),
+        });
+
+      await act(async () => {
+        await initAuth();
+      });
+
+      const state = useAuthStore.getState();
+      expect(state.accessToken).toBe('refreshed-oauth-token');
+      expect(state.isInitialised).toBe(true);
+    });
+  });
 });

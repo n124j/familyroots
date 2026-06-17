@@ -175,25 +175,32 @@ class FakeUnitOfWork(AbstractUnitOfWork):
 
     # Expose internal session stub for AuthService._find_user_by_email
     class _FakeSession:
-        def __init__(self, users: list[UserModel]) -> None:
+        def __init__(self, users: list[UserModel], tenants: list[Any] | None = None) -> None:
             self._users = users
+            self._tenants = tenants if tenants is not None else []
+            self._pending: list[Any] = []
 
         async def execute(self, stmt: Any, params: Any = None) -> Any:
             from src.infrastructure.database.models.user import UserModel as _UM
+            from src.infrastructure.database.models.tenant import TenantModel as _TM
 
-            # Only return user rows for ORM selects targeting UserModel.
-            # Text queries and selects on other models (TreeMemberModel, etc.)
-            # return empty so endpoints gracefully get None / [] and raise 403/404
-            # rather than crashing with AttributeError on unexpected model fields.
             items: list = []
             try:
                 col_descs = getattr(stmt, 'column_descriptions', None)
                 is_user_query = bool(col_descs and col_descs[0].get('entity') is _UM)
+                is_tenant_query = bool(col_descs and col_descs[0].get('entity') is _TM)
             except Exception:
                 is_user_query = False
+                is_tenant_query = False
 
-            if is_user_query:
-                items = list(self._users)
+            source = (
+                self._users if is_user_query
+                else self._tenants if is_tenant_query
+                else []
+            )
+            items = list(source)
+
+            if is_user_query or is_tenant_query:
                 try:
                     wc = getattr(stmt, 'whereclause', None)
                     if wc is not None:
@@ -228,15 +235,23 @@ class FakeUnitOfWork(AbstractUnitOfWork):
             return _Result(items)
 
         async def get(self, model: Any, pk: Any) -> Any:
-            """Simulate session.get(Model, primary_key) — lookup by id."""
             return next((u for u in self._users if str(u.id) == str(pk)), None)
 
         def add(self, entity: Any) -> None:
-            """No-op — login-event recording doesn't need persistence in unit tests."""
+            self._pending.append(entity)
+
+        async def flush(self) -> None:
+            from src.infrastructure.database.models.tenant import TenantModel as _TM
+            for entity in self._pending:
+                if isinstance(entity, _TM):
+                    self._tenants.append(entity)
+                elif isinstance(entity, UserModel):
+                    self._users.append(entity)
+            self._pending.clear()
 
     @property
     def _session(self) -> Any:
-        return self._FakeSession(self._users._users)
+        return self._FakeSession(self._users._users, self._tenants._tenants)
 
 
 class FakeTokenStore(AbstractRefreshTokenRepository):
