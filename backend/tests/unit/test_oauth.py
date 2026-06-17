@@ -15,6 +15,7 @@ from src.infrastructure.security.oauth import OAuthUserInfo
 from src.api.v1.oauth import _find_or_create_user, _safe_next_path
 
 TEST_TENANT_ID = uuid.UUID("00000000-0000-0000-0000-000000000099")
+TEST_TENANT_SLUG = "familyroots-system"
 
 
 # ── Fake session that supports both UserModel and TenantModel ────────────────
@@ -53,6 +54,8 @@ class FakeOAuthSession:
                         items = [i for i in items if getattr(i, "email", None) == val.lower()]
                     elif key == "id" and val is not None:
                         items = [i for i in items if str(i.id) == str(val)]
+                    elif key == "slug" and val is not None:
+                        items = [i for i in items if getattr(i, "slug", None) == val]
         except Exception:
             pass
 
@@ -71,6 +74,8 @@ class FakeOAuthSession:
     def add(self, entity: Any) -> None:
         self._added.append(entity)
         if isinstance(entity, TenantModel):
+            if entity.id is None:
+                entity.id = uuid.uuid4()
             self._tenants.append(entity)
         elif isinstance(entity, UserModel):
             self._users.append(entity)
@@ -88,9 +93,9 @@ class FakeOAuthUoW:
         return self._session_obj
 
 
-def _make_settings(default_tenant_id: str = "") -> MagicMock:
+def _make_settings(default_tenant_slug: str = "") -> MagicMock:
     s = MagicMock()
-    s.default_tenant_id = default_tenant_id
+    s.default_tenant_slug = default_tenant_slug
     return s
 
 
@@ -128,7 +133,7 @@ class TestFindOrCreateUser:
 
         session = FakeOAuthSession(users=[existing])
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
 
         result = await _find_or_create_user(uow, _make_user_info(), settings)
 
@@ -147,7 +152,7 @@ class TestFindOrCreateUser:
 
         session = FakeOAuthSession(users=[existing])
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
 
         result = await _find_or_create_user(uow, _make_user_info(), settings)
 
@@ -167,27 +172,17 @@ class TestFindOrCreateUser:
 
         session = FakeOAuthSession(users=[existing])
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
 
         result = await _find_or_create_user(uow, _make_user_info(), settings)
 
         assert result.avatar_url == "https://example.com/avatar.png"
 
-    async def test_returns_none_when_no_default_tenant(self):
-        """If default_tenant_id is empty, returns None (provisioning disabled)."""
+    async def test_returns_none_when_no_default_tenant_slug(self):
+        """If default_tenant_slug is empty, returns None (provisioning disabled)."""
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
         settings = _make_settings("")
-
-        result = await _find_or_create_user(uow, _make_user_info(), settings)
-
-        assert result is None
-
-    async def test_returns_none_for_invalid_tenant_id(self):
-        """If default_tenant_id is not a valid UUID, returns None."""
-        session = FakeOAuthSession()
-        uow = FakeOAuthUoW(session)
-        settings = _make_settings("not-a-uuid")
 
         result = await _find_or_create_user(uow, _make_user_info(), settings)
 
@@ -197,32 +192,32 @@ class TestFindOrCreateUser:
         """If the default tenant doesn't exist in DB, auto-create it."""
         session = FakeOAuthSession(users=[], tenants=[])
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
 
         result = await _find_or_create_user(uow, _make_user_info(), settings)
 
         assert result is not None
-        assert result.tenant_id == TEST_TENANT_ID
-        # Tenant was auto-created
+        # Tenant was auto-created with slug from settings
         tenant_adds = [e for e in session._added if isinstance(e, TenantModel)]
         assert len(tenant_adds) == 1
-        assert tenant_adds[0].id == TEST_TENANT_ID
-        assert tenant_adds[0].slug == "default"
+        assert tenant_adds[0].slug == TEST_TENANT_SLUG
+        assert result.tenant_id == tenant_adds[0].id
 
     async def test_skips_tenant_creation_when_exists(self):
         """If the default tenant already exists, don't duplicate it."""
         existing_tenant = TenantModel()
         existing_tenant.id = TEST_TENANT_ID
-        existing_tenant.name = "Existing"
-        existing_tenant.slug = "existing"
+        existing_tenant.name = "Familyroots System"
+        existing_tenant.slug = TEST_TENANT_SLUG
 
         session = FakeOAuthSession(users=[], tenants=[existing_tenant])
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
 
         result = await _find_or_create_user(uow, _make_user_info(), settings)
 
         assert result is not None
+        assert result.tenant_id == TEST_TENANT_ID
         tenant_adds = [e for e in session._added if isinstance(e, TenantModel)]
         assert len(tenant_adds) == 0
 
@@ -230,7 +225,7 @@ class TestFindOrCreateUser:
         """New user gets correct email, name, avatar, and verification status."""
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
         info = _make_user_info(email="Bob.Jones@Example.COM", name="Bob Jones", given_name="Bob", family_name="Jones")
 
         result = await _find_or_create_user(uow, info, settings)
@@ -249,7 +244,7 @@ class TestFindOrCreateUser:
         """If provider says email is not verified, email_verified_at stays None."""
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
         info = OAuthUserInfo(
             provider="google",
             provider_user_id="g-456",
@@ -271,7 +266,7 @@ class TestFindOrCreateUser:
         """A single-word display name goes to given_name, family_name is empty."""
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
         info = _make_user_info(name="Madonna", given_name="Madonna", family_name="")
 
         result = await _find_or_create_user(uow, info, settings)
@@ -283,7 +278,7 @@ class TestFindOrCreateUser:
         """If provider gives no display_name, both name fields are empty."""
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
-        settings = _make_settings(str(TEST_TENANT_ID))
+        settings = _make_settings(TEST_TENANT_SLUG)
         info = OAuthUserInfo(
             provider="google",
             provider_user_id="g-789",

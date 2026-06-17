@@ -201,26 +201,24 @@ async def _find_or_create_user(
             user.avatar_url = info.avatar_url
         return user
 
-    # Auto-provision: requires default_tenant_id to be configured
-    if not settings.default_tenant_id:
+    # Auto-provision: resolve the shared tenant by slug (same as registration)
+    tenant_slug = settings.default_tenant_slug
+    if not tenant_slug:
         return None
 
-    try:
-        tenant_id = uuid.UUID(settings.default_tenant_id)
-    except ValueError:
-        return None
-
-    # Ensure the default tenant row exists before creating the user
     result = await uow._session.execute(
-        sa_select(TenantModel).where(TenantModel.id == tenant_id)
+        sa_select(TenantModel).where(TenantModel.slug == tenant_slug)
     )
-    if result.scalar_one_or_none() is None:
-        uow._session.add(TenantModel(
-            id=tenant_id,
-            name="Default",
-            slug="default",
-        ))
+    tenant = result.scalar_one_or_none()
+    if tenant is None:
+        tenant = TenantModel(
+            name=tenant_slug.replace("-", " ").title(),
+            slug=tenant_slug,
+        )
+        uow._session.add(tenant)
         await uow._session.flush()
+
+    tenant_id = tenant.id
 
     new_user = UserModel()
     new_user.id = uuid.uuid4()
