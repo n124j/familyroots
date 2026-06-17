@@ -17,6 +17,8 @@ class OAuthUserInfo:
     provider_user_id: str
     email: str
     display_name: Optional[str]
+    given_name: Optional[str]
+    family_name: Optional[str]
     avatar_url: Optional[str]
     email_verified: bool
 
@@ -113,6 +115,8 @@ class GoogleOAuthClient(OAuthClient):
             provider_user_id=data["sub"],
             email=data["email"],
             display_name=data.get("name"),
+            given_name=data.get("given_name"),
+            family_name=data.get("family_name"),
             avatar_url=data.get("picture"),
             email_verified=data.get("email_verified", False),
         )
@@ -154,11 +158,15 @@ class GitHubOAuthClient(OAuthClient):
         if not email:
             raise OAuthProviderError(self.PROVIDER, "no verified email on GitHub account")
 
+        display = user.get("name") or user.get("login") or ""
+        parts = display.strip().split(None, 1)
         return OAuthUserInfo(
             provider=self.PROVIDER,
             provider_user_id=str(user["id"]),
             email=email,
-            display_name=user.get("name") or user.get("login"),
+            display_name=display or None,
+            given_name=parts[0] if parts else None,
+            family_name=parts[1] if len(parts) > 1 else None,
             avatar_url=user.get("avatar_url"),
             email_verified=email_verified,
         )

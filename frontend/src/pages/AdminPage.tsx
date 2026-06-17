@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
+import { UserAvatar } from '@shared/components/UserAvatar';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 const PAGE_SIZE = 25;
@@ -16,6 +17,7 @@ interface AdminUser {
   email: string;
   given_name: string | null;
   family_name: string | null;
+  avatar_url: string | null;
   app_role: 'ADMIN' | 'STANDARD' | 'AUDITOR';
   email_verified: boolean;
   is_active: boolean;
@@ -1044,8 +1046,18 @@ export default function AdminPage() {
                 {data?.items.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{displayName(user)}</div>
-                      <div className="text-xs text-gray-500">{user.email}</div>
+                      <div className="flex items-center gap-3">
+                        <UserAvatar
+                          avatarUrl={user.avatar_url}
+                          displayName={displayName(user)}
+                          email={user.email}
+                          size="sm"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 truncate">{displayName(user)}</div>
+                          <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_BADGE[user.app_role]}`}>

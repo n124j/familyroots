@@ -250,6 +250,16 @@ ancestors climbing upward). Use the toolbar to switch between:
 Hovering over any wedge in the fan chart shows a tooltip with the person's full name,
 relationship label (e.g. "3× Great-grandparent"), and birth–death years.
 
+#### Profile Pictures
+
+Users can set a profile picture in **Settings → Profile**:
+
+- **OAuth users** (Google, GitHub) — avatar is synced automatically from the provider on each login. Manual upload is disabled; the Settings page shows "Synced from your Google account."
+- **Local users** (email/password) — can upload a JPEG, PNG, WEBP, or GIF image (max 5 MB) via `POST /api/v1/users/me/avatar`. The image is stored in S3 and served via presigned URLs.
+- **Remove** — local users can remove their avatar via `DELETE /api/v1/users/me/avatar`.
+
+Uploaded avatars are stored under `tenants/{tenant_id}/users/{user_id}/avatar/` in the S3 bucket.
+
 #### Admin Dashboard
 
 Accessible to ADMIN-role accounts:

@@ -94,12 +94,19 @@ def _make_settings(default_tenant_id: str = "") -> MagicMock:
     return s
 
 
-def _make_user_info(email: str = "alice@example.com", name: str = "Alice Smith") -> OAuthUserInfo:
+def _make_user_info(
+    email: str = "alice@example.com",
+    name: str = "Alice Smith",
+    given_name: str = "Alice",
+    family_name: str = "Smith",
+) -> OAuthUserInfo:
     return OAuthUserInfo(
         provider="google",
         provider_user_id="google-123",
         email=email,
         display_name=name,
+        given_name=given_name,
+        family_name=family_name,
         avatar_url="https://example.com/avatar.png",
         email_verified=True,
     )
@@ -116,6 +123,8 @@ class TestFindOrCreateUser:
         existing.id = uuid.uuid4()
         existing.tenant_id = TEST_TENANT_ID
         existing.email = "alice@example.com"
+        existing.given_name = "Alice"
+        existing.family_name = "Smith"
 
         session = FakeOAuthSession(users=[existing])
         uow = FakeOAuthUoW(session)
@@ -125,6 +134,44 @@ class TestFindOrCreateUser:
 
         assert result is existing
         assert len(session._added) == 0
+
+    async def test_backfills_names_on_existing_user(self):
+        """If an existing user has no names, backfill from provider."""
+        existing = UserModel()
+        existing.id = uuid.uuid4()
+        existing.tenant_id = TEST_TENANT_ID
+        existing.email = "alice@example.com"
+        existing.given_name = ""
+        existing.family_name = ""
+        existing.avatar_url = None
+
+        session = FakeOAuthSession(users=[existing])
+        uow = FakeOAuthUoW(session)
+        settings = _make_settings(str(TEST_TENANT_ID))
+
+        result = await _find_or_create_user(uow, _make_user_info(), settings)
+
+        assert result.given_name == "Alice"
+        assert result.family_name == "Smith"
+        assert result.avatar_url == "https://example.com/avatar.png"
+
+    async def test_updates_avatar_on_every_login(self):
+        """Avatar is always refreshed from provider, even if user already has one."""
+        existing = UserModel()
+        existing.id = uuid.uuid4()
+        existing.tenant_id = TEST_TENANT_ID
+        existing.email = "alice@example.com"
+        existing.given_name = "Alice"
+        existing.family_name = "Smith"
+        existing.avatar_url = "https://example.com/old-avatar.png"
+
+        session = FakeOAuthSession(users=[existing])
+        uow = FakeOAuthUoW(session)
+        settings = _make_settings(str(TEST_TENANT_ID))
+
+        result = await _find_or_create_user(uow, _make_user_info(), settings)
+
+        assert result.avatar_url == "https://example.com/avatar.png"
 
     async def test_returns_none_when_no_default_tenant(self):
         """If default_tenant_id is empty, returns None (provisioning disabled)."""
@@ -184,7 +231,7 @@ class TestFindOrCreateUser:
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
         settings = _make_settings(str(TEST_TENANT_ID))
-        info = _make_user_info(email="Bob.Jones@Example.COM", name="Bob Jones")
+        info = _make_user_info(email="Bob.Jones@Example.COM", name="Bob Jones", given_name="Bob", family_name="Jones")
 
         result = await _find_or_create_user(uow, info, settings)
 
@@ -208,6 +255,8 @@ class TestFindOrCreateUser:
             provider_user_id="g-456",
             email="unverified@example.com",
             display_name="Unverified User",
+            given_name="Unverified",
+            family_name="User",
             avatar_url=None,
             email_verified=False,
         )
@@ -223,7 +272,7 @@ class TestFindOrCreateUser:
         session = FakeOAuthSession()
         uow = FakeOAuthUoW(session)
         settings = _make_settings(str(TEST_TENANT_ID))
-        info = _make_user_info(name="Madonna")
+        info = _make_user_info(name="Madonna", given_name="Madonna", family_name="")
 
         result = await _find_or_create_user(uow, info, settings)
 
@@ -240,6 +289,8 @@ class TestFindOrCreateUser:
             provider_user_id="g-789",
             email="noname@example.com",
             display_name=None,
+            given_name=None,
+            family_name=None,
             avatar_url=None,
             email_verified=True,
         )

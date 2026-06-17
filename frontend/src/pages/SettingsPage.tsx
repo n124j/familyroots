@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
+import { UserAvatar } from '@shared/components/UserAvatar';
 import { usePortalThemeStore, PORTAL_PRESETS, PORTAL_PRESET_LABEL, type PortalTheme } from '@store/portalTheme.store';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -12,9 +13,11 @@ interface UserProfile {
   given_name: string | null;
   family_name: string | null;
   email: string;
+  avatar_url: string | null;
   app_role: 'ADMIN' | 'STANDARD' | 'AUDITOR';
   locale: string;
   timezone: string;
+  oauth_providers: string[];
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -679,8 +682,8 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
 function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
   const label = tab === 'notifications' ? 'Notifications' : tab.charAt(0).toUpperCase() + tab.slice(1);
   return (
-    <a
-      href={`/settings/${tab}`}
+    <Link
+      to={`/settings/${tab}`}
       className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
         active
           ? 'border-brand-500 text-brand-600'
@@ -688,7 +691,7 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
       }`}
     >
       {label}
-    </a>
+    </Link>
   );
 }
 
@@ -712,6 +715,9 @@ export default function SettingsPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg,  setProfileMsg]  = useState<{ ok: boolean; text: string } | null>(null);
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   const [currentPw,   setCurrentPw]   = useState('');
   const [newPw,       setNewPw]       = useState('');
   const [confirmPw,   setConfirmPw]   = useState('');
@@ -729,6 +735,9 @@ export default function SettingsPage() {
         setProfile(data);
         setGivenName(data.given_name ?? '');
         setFamilyName(data.family_name ?? '');
+        if (storeUser && data.avatar_url && !storeUser.avatarUrl) {
+          setUser({ ...storeUser, avatarUrl: data.avatar_url });
+        }
       })
       .finally(() => setLoading(false));
   }, [accessToken]);
@@ -761,6 +770,60 @@ export default function SettingsPage() {
       setProfileMsg({ ok: false, text: err.message });
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  async function handleAvatarUpload(file: File) {
+    setAvatarUploading(true);
+    setProfileMsg(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch(`${API_BASE}/users/me/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+        body: form,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail ?? 'Failed to upload avatar');
+      }
+      const { avatar_url } = await res.json();
+      setProfile((p) => (p ? { ...p, avatar_url } : p));
+      if (storeUser) {
+        setUser({ ...storeUser, avatarUrl: avatar_url });
+      }
+      setProfileMsg({ ok: true, text: 'Profile picture updated.' });
+    } catch (err: any) {
+      setProfileMsg({ ok: false, text: err.message });
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
+  async function handleAvatarRemove() {
+    setAvatarUploading(true);
+    setProfileMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/users/me/avatar`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail ?? 'Failed to remove avatar');
+      }
+      setProfile((p) => (p ? { ...p, avatar_url: null } : p));
+      if (storeUser) {
+        setUser({ ...storeUser, avatarUrl: undefined });
+      }
+      setProfileMsg({ ok: true, text: 'Profile picture removed.' });
+    } catch (err: any) {
+      setProfileMsg({ ok: false, text: err.message });
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
@@ -820,6 +883,56 @@ export default function SettingsPage() {
         </div>
       ) : activeTab === 'profile' ? (
         <form onSubmit={handleProfileSave} className="space-y-5">
+          {/* Profile picture */}
+          <div className="flex items-center gap-4 pb-4 border-b border-gray-100">
+            <UserAvatar
+              avatarUrl={profile?.avatar_url}
+              displayName={`${profile?.given_name ?? ''} ${profile?.family_name ?? ''}`.trim()}
+              email={profile?.email}
+              size="lg"
+            />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Profile picture</p>
+              {profile?.oauth_providers?.length ? (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Synced from your {profile.oauth_providers.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')} account
+                </p>
+              ) : (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleAvatarUpload(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={avatarUploading}
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                  >
+                    {avatarUploading ? 'Uploading…' : profile?.avatar_url ? 'Change' : 'Upload photo'}
+                  </button>
+                  {profile?.avatar_url && (
+                    <button
+                      type="button"
+                      disabled={avatarUploading}
+                      onClick={handleAvatarRemove}
+                      className="text-xs font-medium text-red-500 hover:text-red-600 disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>

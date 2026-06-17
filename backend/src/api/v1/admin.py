@@ -27,6 +27,7 @@ class AdminUserResponse(BaseModel):
     email: str
     given_name: Optional[str]
     family_name: Optional[str]
+    avatar_url: Optional[str] = None
     app_role: str
     email_verified: bool
     is_active: bool
@@ -61,12 +62,20 @@ class UpdateUserRequest(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+def _presign_avatar(url: str | None) -> str | None:
+    if url and not url.startswith("http"):
+        from src.api.v1._s3 import presign_photo
+        return presign_photo(url)
+    return url
+
+
 def _serialize(u: UserModel) -> AdminUserResponse:
     return AdminUserResponse(
         id=u.id,
         email=u.email,
         given_name=u.given_name,
         family_name=u.family_name,
+        avatar_url=_presign_avatar(getattr(u, "avatar_url", None)),
         app_role=u.app_role,
         email_verified=u.email_verified,
         is_active=u.is_active,

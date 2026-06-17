@@ -77,6 +77,7 @@ frontend/
     │   │   ├── primitives/       # Button, Input, Badge, Avatar, Spinner, …
     │   │   ├── compound/         # Modal, Dropdown, DatePicker, Toast, …
     │   │   ├── layout/           # AppShell, Sidebar, TopBar, PageHeader
+    │   │   ├── UserAvatar.tsx    # Avatar with image or initial fallback; used in AppShell, Settings, Admin, Dashboard
     │   │   └── feedback/         # EmptyState, ErrorBoundary, SkeletonCard
     │   ├── hooks/
     │   │   ├── useDebounce.ts
@@ -124,7 +125,7 @@ frontend/
     │   │   └── hooks/
     │   │
     │   └── settings/
-    │       ├── components/       # ProfileForm, PasswordForm, NotificationPrefs
+    │       ├── components/       # ProfileForm, PasswordForm, NotificationPrefs, AvatarUpload
     │       └── hooks/
     │
     └── pages/                    # Thin page shells — compose features
@@ -161,8 +162,9 @@ frontend/
     ├── /search             → SearchPage
     ├── /reports            → ReportsPage
     └── /settings           → SettingsPage
-        ├── /settings/profile
-        ├── /settings/account
+        ├── /settings/profile         (avatar upload for local users, name, email)
+        ├── /settings/security        (password change, danger zone)
+        ├── /settings/appearance
         └── /settings/notifications
 ```
 

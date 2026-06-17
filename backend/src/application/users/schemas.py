@@ -23,6 +23,7 @@ class UserProfileResponse(BaseModel):
     last_login_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    oauth_providers: list[str] = []
 
     model_config = {"from_attributes": True}
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
+import { UserAvatar } from '@shared/components/UserAvatar';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -492,11 +493,19 @@ export default function DashboardPage() {
       />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 md:mb-8">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>
-            Welcome back{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--portal-text-muted)' }}>Your family trees</p>
+        <div className="flex items-center gap-3">
+          <UserAvatar
+            avatarUrl={user?.avatarUrl}
+            displayName={user?.displayName}
+            email={user?.email}
+            size="md"
+          />
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>
+              Welcome back{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}
+            </h1>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>Your family trees</p>
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {importError && <p className="text-xs text-red-600 w-full">{importError}</p>}

@@ -236,6 +236,23 @@ cd backend && locust -f tests/performance/locustfile.py --headless -u 200 -r 20 
 | Admin create → `ADMIN_CREATE` entry | `test_admin_api.py` | Integration |
 | Admin update → `ADMIN_UPDATE` / `ADMIN_ACTIVATE` / `ADMIN_UNVERIFY` entry | `test_admin_api.py` | Integration |
 
+### User Profile Pictures
+
+| Test | File | Type |
+| --- | --- | --- |
+| `AdminUserResponse.avatar_url` defaults to `None` | `test_user_avatar.py` | Unit |
+| Admin `_serialize` presigns S3 keys, passes through HTTP URLs | `test_user_avatar.py` | Unit |
+| Users `_presign_avatar` presigns S3 keys, passes through HTTP/None | `test_user_avatar.py` | Unit |
+| `UserProfileResponse.oauth_providers` defaults to `[]` | `test_user_avatar.py` | Unit |
+| `UpdateUserRequest.avatar_url` enforces max 2048 chars | `test_user_avatar.py` | Unit |
+| Upload avatar allowed types: JPEG, PNG, WEBP, GIF only | `test_user_avatar.py` | Unit |
+| Upload avatar max size: 5 MB | `test_user_avatar.py` | Unit |
+| `POST /users/me/avatar` rejects OAuth users with 403 | `test_user_avatar.py` | Unit |
+| `DELETE /users/me/avatar` rejects OAuth users with 403 | `test_user_avatar.py` | Unit |
+| `UserAvatar` component shows initials when no URL | `UserAvatar.test.tsx` | Unit |
+| `UserAvatar` component renders img when URL provided | `UserAvatar.test.tsx` | Unit |
+| `UserAvatar` component applies correct size classes | `UserAvatar.test.tsx` | Unit |
+
 ### S3 / Media
 
 | Test | File | Type |

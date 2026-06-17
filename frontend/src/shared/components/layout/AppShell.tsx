@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { usePortalThemeStore } from '@store/portalTheme.store';
+import { UserAvatar } from '@shared/components/UserAvatar';
 import { Footer } from './Footer';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -423,11 +424,26 @@ export default function AppShell() {
         ))}
       </nav>
 
-      {/* Footer: email + sign out */}
+      {/* Footer: avatar + name/email + sign out */}
       <div className="p-3 border-t shrink-0" style={{ borderColor: 'var(--portal-sidebar-border)' }}>
-        <p className="text-xs truncate mb-2" style={{ color: 'var(--portal-nav-text)' }}>
-          {user?.email}
-        </p>
+        <div className="flex items-center gap-2.5 mb-2">
+          <UserAvatar
+            avatarUrl={user?.avatarUrl}
+            displayName={user?.displayName}
+            email={user?.email}
+            size="sm"
+          />
+          <div className="min-w-0 flex-1">
+            {user?.displayName && user.displayName !== user.email && (
+              <p className="text-xs font-medium truncate" style={{ color: 'var(--portal-nav-text)' }}>
+                {user.displayName}
+              </p>
+            )}
+            <p className="text-[11px] truncate" style={{ color: 'var(--portal-nav-text)', opacity: 0.7 }}>
+              {user?.email}
+            </p>
+          </div>
+        </div>
         <button
           disabled={loggingOut}
           onClick={async () => {

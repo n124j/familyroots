@@ -193,6 +193,12 @@ async def _find_or_create_user(
     )
     user = result.scalars().first()
     if user:
+        if info.given_name and not user.given_name:
+            user.given_name = info.given_name
+        if info.family_name and not user.family_name:
+            user.family_name = info.family_name
+        if info.avatar_url:
+            user.avatar_url = info.avatar_url
         return user
 
     # Auto-provision: requires default_tenant_id to be configured
@@ -216,16 +222,12 @@ async def _find_or_create_user(
         ))
         await uow._session.flush()
 
-    parts = (info.display_name or "").strip().split()
-    given  = parts[0] if parts else ""
-    family = " ".join(parts[1:]) if len(parts) > 1 else ""
-
     new_user = UserModel()
     new_user.id = uuid.uuid4()
     new_user.tenant_id = tenant_id
     new_user.email = info.email.lower()
-    new_user.given_name = given
-    new_user.family_name = family
+    new_user.given_name = info.given_name or ""
+    new_user.family_name = info.family_name or ""
     new_user.avatar_url = info.avatar_url
     new_user.email_verified = info.email_verified
     new_user.email_verified_at = datetime.now(timezone.utc) if info.email_verified else None

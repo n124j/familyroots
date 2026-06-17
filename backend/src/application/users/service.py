@@ -35,12 +35,27 @@ class UserService:
         self._tokens = token_store
         self._hasher = hasher
 
+    async def _oauth_providers(self, user_id: uuid.UUID) -> list[str]:
+        from sqlalchemy import select as sa_select
+        from src.infrastructure.database.models.user import UserOAuthProviderModel
+        result = await self._uow._session.execute(
+            sa_select(UserOAuthProviderModel.provider).where(
+                UserOAuthProviderModel.user_id == user_id
+            )
+        )
+        return list(result.scalars().all())
+
+    async def _to_response(self, user) -> UserProfileResponse:
+        resp = UserProfileResponse.model_validate(user)
+        resp.oauth_providers = await self._oauth_providers(user.id)
+        return resp
+
     async def get_me(self, user_id: uuid.UUID, tenant_id: uuid.UUID) -> UserProfileResponse:
         async with self._uow:
             user = await self._uow.users.get_by_id_and_tenant(user_id, tenant_id)
             if user is None:
                 raise NotFoundError(resource="user", identifier=str(user_id))
-            return UserProfileResponse.model_validate(user)
+            return await self._to_response(user)
 
     async def update_me(
         self,
@@ -59,7 +74,7 @@ class UserService:
 
             user = await self._uow.users.update(user)
             log.info("user.updated", user_id=str(user_id))
-            return UserProfileResponse.model_validate(user)
+            return await self._to_response(user)
 
     async def change_password(
         self,

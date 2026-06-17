@@ -61,7 +61,20 @@
     {tree_id}/            ← media attached to the tree itself (cover photo etc.)
       {media_id}/
         ...
+
+  users/
+    {user_id}/
+      avatar/
+        {uuid}.{ext}      ← user profile picture (local users only)
 ```
+
+### User Avatar Upload (separate from media pipeline)
+
+User profile pictures bypass the Celery media pipeline. They are uploaded
+server-side via `POST /api/v1/users/me/avatar` (multipart form) and stored
+directly in S3 without thumbnail generation. The original image is served
+via presigned URL. OAuth users (Google, GitHub) have their avatar synced from
+the provider and cannot upload manually (returns 403).
 
 ## Supported Media Types
 
