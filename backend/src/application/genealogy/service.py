@@ -68,6 +68,8 @@ class FamilyTreeApplicationService:
         if person is None:
             raise PersonNotInTreeError(person_id, tree_id)
 
+        from src.api.v1._s3 import presign_photo
+
         return PersonDetailResponse(
             id=person.id,
             tree_id=person.tree_id,
@@ -76,7 +78,7 @@ class FamilyTreeApplicationService:
             sex=person.sex.value,
             is_living=person.is_living,
             is_deceased=person.is_deceased,
-            photo_url=person.photo_url,
+            photo_url=presign_photo(person.photo_url),
             parents=graph.parents_of(person_id),
             children=graph.children_of(person_id),
             spouses=graph.spouses_of(person_id),

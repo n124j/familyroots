@@ -38,6 +38,9 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (tenantId) {
     config.headers['X-Tenant-ID'] = tenantId;
   }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 });
 
