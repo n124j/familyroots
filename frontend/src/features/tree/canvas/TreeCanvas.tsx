@@ -192,6 +192,35 @@ function ChartLegend({
         <LegendRow icon="●" label="Living"   count={stats.living} color="#22c55e"            textColor={theme.nodeText} />
         <LegendRow icon="✝" label="Deceased" count={stats.dead}   color={theme.nodeSubtext}  textColor={theme.nodeText} />
       </div>
+      {/* Line style legend */}
+      <div className="mt-2.5 pt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.nodeBorder}` }}>
+        <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: theme.nodeSubtext }}>Lines</p>
+        {/* Marriage — double solid */}
+        <div className="flex items-center gap-2">
+          <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#f59e0b" strokeWidth="1.5"/><line x1="0" y1="6" x2="24" y2="6" stroke="#f59e0b" strokeWidth="1.5"/></svg>
+          <span className="text-[10px]" style={{ color: theme.nodeText }}>Marriage</span>
+        </div>
+        {/* Divorced — double dotted gray */}
+        <div className="flex items-center gap-2">
+          <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/><line x1="0" y1="6" x2="24" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/></svg>
+          <span className="text-[10px]" style={{ color: theme.nodeText }}>Divorced</span>
+        </div>
+        {/* Biological child — solid */}
+        <div className="flex items-center gap-2">
+          <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5"/></svg>
+          <span className="text-[10px]" style={{ color: theme.nodeText }}>Biological</span>
+        </div>
+        {/* Adopted child — dashed */}
+        <div className="flex items-center gap-2">
+          <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3"/></svg>
+          <span className="text-[10px]" style={{ color: theme.nodeText }}>Adopted</span>
+        </div>
+        {/* Step child — short dash */}
+        <div className="flex items-center gap-2">
+          <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
+          <span className="text-[10px]" style={{ color: theme.nodeText }}>Step</span>
+        </div>
+      </div>
     </div>
   );
 }

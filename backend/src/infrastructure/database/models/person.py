@@ -97,6 +97,8 @@ class FamilyGroupModel(Base, TenantMixin, TimestampMixin):
     parent1_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     parent2_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
+    is_divorced: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
     members: Mapped[list["FamilyGroupMemberModel"]] = relationship(
         "FamilyGroupMemberModel", back_populates="family_group", lazy="noload",
     )

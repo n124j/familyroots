@@ -104,6 +104,8 @@ export interface UnionEdgeData {
   unionOrdinal?: number;
   /** User-defined label overriding the auto-generated ordinal label */
   customLabel?: string;
+  /** Whether this union has been marked as divorced */
+  isDivorced?: boolean;
 }
 
 /** Edge from a FamilyGroup to a Person (as a child member) */
@@ -157,6 +159,8 @@ export interface ApiFamilyGroup {
   unionType: UnionType;
   /** User-defined label overriding the auto-generated ordinal (e.g. "Church Wedding") */
   customLabel?: string;
+  /** Whether this union has been marked as divorced */
+  isDivorced?: boolean;
   parentIds: string[];
   children: Record<string, ParentageType>; // personId → parentageType
 }

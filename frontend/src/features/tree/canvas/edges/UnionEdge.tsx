@@ -65,11 +65,12 @@ function UnionEdgeComponent({
   const token       = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
 
-  const unionType  = data?.unionType ?? 'UNKNOWN';
-  const color      = selected ? '#f97316' : UNION_COLORS[unionType];
-  const dashArray  = UNION_STROKE[unionType];
-  const isSolid    = dashArray === 'solid';
-  const isMarriage = unionType === 'MARRIAGE';
+  const unionType   = data?.unionType ?? 'UNKNOWN';
+  const isDivorced  = data?.isDivorced ?? false;
+  const color       = selected ? '#f97316' : isDivorced ? '#94a3b8' : UNION_COLORS[unionType];
+  const dashArray   = UNION_STROKE[unionType];
+  const isSolid     = dashArray === 'solid';
+  const isMarriage  = unionType === 'MARRIAGE';
 
   const hl      = data?.isHighlighted;
   const opacity = selected ? 1 : hl === true ? 1 : hl === false ? 0.15 : 1;
@@ -77,9 +78,9 @@ function UnionEdgeComponent({
 
   const ordinal      = data?.unionOrdinal;
   const customLabel  = data?.customLabel;
-  // The visible label: custom takes priority, then ordinal, then nothing
+  // The visible label: custom takes priority, then ordinal (skip 1st — only show 2nd+), then nothing
   const displayLabel = customLabel ?? (
-    ordinal != null ? `${ordinalSuffix(ordinal)} ${UNION_TYPE_LABEL[unionType]}` : undefined
+    ordinal != null && ordinal >= 2 ? `${ordinalSuffix(ordinal)} ${UNION_TYPE_LABEL[unionType]}` : undefined
   );
   // Only show the label (and allow editing) when there is something to show
   const hasLabel = displayLabel != null;
@@ -191,7 +192,9 @@ function UnionEdgeComponent({
     );
   }
 
-  // ── Marriage: double line ─────────────────────────────────────────────────
+  const divorcedDash = '4 4';
+
+  // ── Marriage: double line (dotted when divorced) ─────────────────────────
   if (isMarriage) {
     const lineOffset = selected ? 2.5 : hl === true ? 2 : 1.5;
     const [pathA] = getStraightPath({ sourceX: sourceX - lineOffset, sourceY, targetX: targetX - lineOffset, targetY });
@@ -202,15 +205,15 @@ function UnionEdgeComponent({
     return (
       <>
         <g style={{ opacity, transition: 'opacity 0.25s', filter: glowFilter }}>
-          <path d={pathA} stroke={color} strokeWidth={strokeW} fill="none" style={{ transition: 'stroke-width 0.25s' }} />
-          <path d={pathB} stroke={color} strokeWidth={strokeW} fill="none" style={{ transition: 'stroke-width 0.25s' }} />
+          <path d={pathA} stroke={color} strokeWidth={strokeW} strokeDasharray={isDivorced ? divorcedDash : undefined} fill="none" style={{ transition: 'stroke-width 0.25s' }} />
+          <path d={pathB} stroke={color} strokeWidth={strokeW} strokeDasharray={isDivorced ? divorcedDash : undefined} fill="none" style={{ transition: 'stroke-width 0.25s' }} />
         </g>
         {renderLabel(midX, midY)}
       </>
     );
   }
 
-  // ── Other union types: single line ────────────────────────────────────────
+  // ── Other union types: single line (dotted when divorced) ─────────────────
   return (
     <>
       <path
@@ -218,7 +221,7 @@ function UnionEdgeComponent({
         d={edgePath}
         stroke={color}
         strokeWidth={strokeW}
-        strokeDasharray={isSolid ? undefined : dashArray}
+        strokeDasharray={isDivorced ? divorcedDash : (isSolid ? undefined : dashArray)}
         fill="none"
         style={{
           opacity,

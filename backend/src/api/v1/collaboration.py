@@ -545,7 +545,7 @@ async def get_shared_tree_graph(
     ]
 
     fg_q = text("""
-        SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label,
+        SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label, fg.is_divorced,
                fgm.person_id, fgm.role, fgm.parentage_type
         FROM family_groups fg
         LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -565,6 +565,7 @@ async def get_shared_tree_graph(
                 "treeId": str(r.tree_id),
                 "unionType": r.union_type,
                 **({"customLabel": r.custom_label} if r.custom_label else {}),
+                **({"isDivorced": True} if r.is_divorced else {}),
                 "parentIds": [],
                 "children": {},
             }
@@ -785,6 +786,7 @@ async def delete_family_group(
 
 class UpdateFamilyGroupRequest(BaseModel):
     custom_label: Optional[str] = Field(None, max_length=200)
+    is_divorced: Optional[bool] = None
 
 
 @router.patch(
@@ -810,11 +812,26 @@ async def update_family_group(
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Family group not found")
 
-    label = body.custom_label.strip() if body.custom_label else None
-    await uow._session.execute(
-        text("UPDATE family_groups SET custom_label = :label WHERE id = :fgid"),
-        {"label": label, "fgid": family_group_id},
-    )
+    updates: list[str] = []
+    params: dict = {"fgid": family_group_id}
+    audit_after: dict = {}
+
+    if body.custom_label is not None or body.custom_label is None and "custom_label" in (body.model_fields_set or set()):
+        label = body.custom_label.strip() if body.custom_label else None
+        updates.append("custom_label = :label")
+        params["label"] = label
+        audit_after["custom_label"] = label
+
+    if body.is_divorced is not None:
+        updates.append("is_divorced = :divorced")
+        params["divorced"] = body.is_divorced
+        audit_after["is_divorced"] = body.is_divorced
+
+    if updates:
+        await uow._session.execute(
+            text(f"UPDATE family_groups SET {', '.join(updates)} WHERE id = :fgid"),
+            params,
+        )
 
     actor_name = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
     await AuditLogRepository(uow._session).append(
@@ -826,11 +843,11 @@ async def update_family_group(
             action=Action.UPDATE_RELATIONSHIP,
             entity_type=AuditEntityType.FAMILY_GROUP,
             entity_id=family_group_id,
-            after={"custom_label": label},
+            after=audit_after,
         )
     )
     await uow._session.commit()
-    return {"family_group_id": str(family_group_id), "custom_label": label}
+    return {"family_group_id": str(family_group_id), **audit_after}
 
 
 @router.delete(
@@ -893,6 +910,59 @@ async def remove_family_group_member(
         )
     )
     await uow._session.commit()
+
+
+class UpdateMemberParentageRequest(BaseModel):
+    parentage_type: str = Field(..., pattern=r"^(BIOLOGICAL|ADOPTIVE|STEP|FOSTER|UNKNOWN)$")
+
+
+@router.patch(
+    "/trees/{tree_id}/family-groups/{family_group_id}/members/{person_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Update a child member's parentage type (e.g. mark as adopted)",
+)
+async def update_family_group_member(
+    tree_id: uuid.UUID,
+    family_group_id: uuid.UUID,
+    person_id: uuid.UUID,
+    body: UpdateMemberParentageRequest,
+    current_user: NotAuditorDep,
+    uow: UoWDep,
+) -> dict:
+    from sqlalchemy import text
+    from src.domain.collaboration.entities import Action, AuditEntityType
+    from src.infrastructure.repositories.collaboration import AuditLogRepository
+
+    row = (await uow._session.execute(
+        text("""SELECT fgm.id, fgm.role FROM family_group_members fgm
+                JOIN family_groups fg ON fg.id = fgm.family_group_id
+                WHERE fgm.family_group_id = :fgid AND fgm.person_id = :pid AND fg.tree_id = :tid
+                LIMIT 1"""),
+        {"fgid": family_group_id, "pid": person_id, "tid": tree_id},
+    )).first()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found in family group")
+
+    await uow._session.execute(
+        text("UPDATE family_group_members SET parentage_type = :pt WHERE family_group_id = :fgid AND person_id = :pid"),
+        {"pt": body.parentage_type, "fgid": family_group_id, "pid": person_id},
+    )
+
+    actor_name = f"{current_user.given_name or ''} {current_user.family_name or ''}".strip() or current_user.email
+    await AuditLogRepository(uow._session).append(
+        AuditEntry.create(
+            tree_id=tree_id,
+            tenant_id=current_user.tenant_id,
+            actor_id=current_user.id,
+            actor_display_name=actor_name,
+            action=Action.UPDATE_RELATIONSHIP,
+            entity_type=AuditEntityType.FAMILY_GROUP,
+            entity_id=family_group_id,
+            after={"person_id": str(person_id), "parentage_type": body.parentage_type},
+        )
+    )
+    await uow._session.commit()
+    return {"family_group_id": str(family_group_id), "person_id": str(person_id), "parentage_type": body.parentage_type}
 
 
 @router.get("/trees", response_model=list[TreeSummaryResponse], summary="List trees the current user belongs to")
@@ -1090,7 +1160,7 @@ async def get_tree_graph(
 
     # Family groups + members
     fg_q = text("""
-        SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label,
+        SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label, fg.is_divorced,
                fgm.person_id, fgm.role, fgm.parentage_type
         FROM family_groups fg
         LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -1110,6 +1180,7 @@ async def get_tree_graph(
                 "treeId": str(r.tree_id),
                 "unionType": r.union_type,
                 **({"customLabel": r.custom_label} if r.custom_label else {}),
+                **({"isDivorced": True} if r.is_divorced else {}),
                 "parentIds": [],
                 "children": {},
             }
@@ -1160,6 +1231,7 @@ class _FrtFamilyGroup(BaseModel):
     id: str
     union_type: str = "UNKNOWN"
     custom_label: Optional[str] = None
+    is_divorced: bool = False
     parent_ids: list[str] = []
     children: dict[str, str] = {}   # old_person_id → parentage_type
 
@@ -1277,14 +1349,15 @@ async def import_tree(
         p2 = parent_ids[1] if len(parent_ids) > 1 else None
 
         await uow._session.execute(text("""
-            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, parent1_id, parent2_id)
-            VALUES (:id, :tenant, :tid, :utype, :clabel, :p1, :p2)
+            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced, parent1_id, parent2_id)
+            VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced, :p1, :p2)
         """), {
             "id":     new_fg_id,
             "tenant": current_user.tenant_id,
             "tid":    new_tree_id,
             "utype":  fg.union_type if fg.union_type in _VALID_UNION_TYPES else "UNKNOWN",
             "clabel": fg.custom_label,
+            "divorced": fg.is_divorced,
             "p1":     p1,
             "p2":     p2,
         })
@@ -1783,7 +1856,7 @@ async def merge_trees(
     inserted_fg_ids: set[uuid.UUID] = set()
     for src in body.sources:
         fg_rows = (await uow._session.execute(text("""
-            SELECT fg.id AS fg_id, fg.union_type, fg.custom_label,
+            SELECT fg.id AS fg_id, fg.union_type, fg.custom_label, fg.is_divorced,
                    fgm.person_id, fgm.role, fgm.parentage_type
             FROM family_groups fg
             LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -1795,7 +1868,7 @@ async def merge_trees(
         for r in fg_rows:
             fgid = r.fg_id
             if fgid not in fg_map:
-                fg_map[fgid] = {"union_type": r.union_type, "custom_label": r.custom_label, "parent_ids": [], "children": {}}
+                fg_map[fgid] = {"union_type": r.union_type, "custom_label": r.custom_label, "is_divorced": r.is_divorced, "parent_ids": [], "children": {}}
             if r.person_id is None:
                 continue
             new_pid = id_map.get((src.tree_id, r.person_id))
@@ -1813,11 +1886,12 @@ async def merge_trees(
             p2 = parent_ids[1] if len(parent_ids) > 1 else None
 
             await uow._session.execute(text("""
-                INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, parent1_id, parent2_id)
-                VALUES (:id, :tenant, :tid, :utype, :clabel, :p1, :p2)
+                INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced, parent1_id, parent2_id)
+                VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced, :p1, :p2)
             """), {"id": new_fg_id, "tenant": tenant_id, "tid": new_tree_id,
                    "utype": fg_data["union_type"] or "UNKNOWN",
                    "clabel": fg_data.get("custom_label"),
+                   "divorced": fg_data.get("is_divorced", False),
                    "p1": p1, "p2": p2})
 
             for pid in parent_ids:

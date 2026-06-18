@@ -7,7 +7,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { SEO } from '@shared/components/SEO';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TreeCanvas, type TreeCanvasHandle } from '@features/tree/canvas/TreeCanvas';
 import { useThemeStore, THEME_PRESETS, PRESET_LABEL, type CanvasTheme } from '@store/theme.store';
 import { AVATAR_PRESETS, isPreset, presetDataUri } from '@features/tree/avatarPresets';
@@ -1750,6 +1750,9 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting,      setDeleting]      = React.useState(false);
   const [deleteError,   setDeleteError]   = React.useState('');
+  const [togglingDivorce, setTogglingDivorce] = React.useState(false);
+  const [savingParentage, setSavingParentage] = React.useState(false);
+  const queryClient = useQueryClient();
 
   if (!edge) return null;
 
@@ -1809,6 +1812,58 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
               </div>
             )}
           </div>
+
+          {canWrite && !isUnion && (
+            <div className="pt-1 border-t border-slate-100">
+              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Parentage type</label>
+              <select
+                value={edge.parentageType ?? 'BIOLOGICAL'}
+                disabled={savingParentage}
+                onChange={async (e) => {
+                  setSavingParentage(true);
+                  try {
+                    await patch(`/trees/${treeId}/family-groups/${familyGroupId}/members/${personId}`, {
+                      parentage_type: e.target.value,
+                    });
+                    queryClient.invalidateQueries({ queryKey: queryKeys.trees.detail(treeId) });
+                  } catch { /* swallow */ }
+                  finally { setSavingParentage(false); }
+                }}
+                className="w-full h-8 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+              >
+                <option value="BIOLOGICAL">Biological</option>
+                <option value="ADOPTIVE">Adopted</option>
+                <option value="STEP">Step</option>
+                <option value="FOSTER">Foster</option>
+                <option value="UNKNOWN">Unknown</option>
+              </select>
+            </div>
+          )}
+
+          {canWrite && isUnion && (
+            <div className="pt-1 border-t border-slate-100">
+              <button
+                disabled={togglingDivorce}
+                onClick={async () => {
+                  setTogglingDivorce(true);
+                  try {
+                    await patch(`/trees/${treeId}/family-groups/${familyGroupId}`, {
+                      is_divorced: !fg?.isDivorced,
+                    });
+                    queryClient.invalidateQueries({ queryKey: queryKeys.trees.detail(treeId) });
+                  } catch { /* swallow */ }
+                  finally { setTogglingDivorce(false); }
+                }}
+                className={`flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg border transition-colors ${
+                  fg?.isDivorced
+                    ? 'text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100'
+                    : 'text-slate-600 border-slate-200 hover:bg-slate-50'
+                } disabled:opacity-50`}
+              >
+                {togglingDivorce ? '…' : fg?.isDivorced ? '↩ Undo Divorced' : '💔 Mark as Divorced'}
+              </button>
+            </div>
+          )}
 
           {canWrite && (
             <>
@@ -2199,6 +2254,7 @@ function TreeTopBar({
         id: fg.id,
         union_type: fg.unionType,
         ...(fg.customLabel ? { custom_label: fg.customLabel } : {}),
+        ...(fg.isDivorced ? { is_divorced: true } : {}),
         parent_ids: fg.parentIds,
         children: fg.children,
       })),
