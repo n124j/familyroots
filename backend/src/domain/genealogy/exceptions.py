@@ -62,6 +62,18 @@ class PersonNotInTreeError(DomainError):
         )
 
 
+class BiologicalParentSexError(ValidationError):
+    def __init__(self, sex: str) -> None:
+        super().__init__(
+            message=(
+                f"Two {sex.lower()} parents cannot have a biological child. "
+                "Use Adoptive, Step, or Foster instead."
+            ),
+            field="parentage_type",
+        )
+        self.code = "BIOLOGICAL_PARENT_SEX"
+
+
 class NoRelationshipPathError(DomainError):
     def __init__(self, person1_id: uuid.UUID, person2_id: uuid.UUID) -> None:
         super().__init__(

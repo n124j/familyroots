@@ -373,21 +373,26 @@ const SEX_INITIAL_COLOR: Record<string, string> = {
 function AddRelationModal({
   mode, anchorPersonId, anchorName, treeId, token, candidates, onClose, onAdded,
 }: AddRelationModalProps) {
-  const [inputMode,  setInputMode]  = useState<'new' | 'existing'>('new');
-  const [fields,     setFields]     = useState<PersonFields>(EMPTY_FIELDS);
-  const [search,     setSearch]     = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState('');
+  const [inputMode,     setInputMode]     = useState<'new' | 'existing'>('new');
+  const [fields,        setFields]        = useState<PersonFields>(EMPTY_FIELDS);
+  const [search,        setSearch]        = useState('');
+  const [selectedId,    setSelectedId]    = useState<string | null>(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
+  const [parentageType, setParentageType] = useState('BIOLOGICAL');
 
   const cfg = RELATION_CONFIG[mode];
 
   async function link(personId: string, force = false) {
     const suffix = force ? '?force=true' : '';
+    const body = cfg.linkBody(personId);
+    if (mode === 'child') {
+      body.parentage_type = parentageType;
+    }
     try {
       await post(
         `/trees/${treeId}/persons/${anchorPersonId}/${cfg.linkPath(anchorPersonId)}${suffix}`,
-        cfg.linkBody(personId),
+        body,
       );
     } catch (err) {
       throw new Error(apiErrorMessage(err, 'Failed to link relationship'));
@@ -453,6 +458,22 @@ function AddRelationModal({
         {inputMode === 'new' ? (
           <form onSubmit={handleNewSubmit} className="space-y-3">
             <PersonFormFields values={fields} onChange={setFields} />
+            {mode === 'child' && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
+                <select
+                  value={parentageType}
+                  onChange={(e) => setParentageType(e.target.value)}
+                  className="w-full h-9 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="BIOLOGICAL">Biological</option>
+                  <option value="ADOPTIVE">Adopted</option>
+                  <option value="STEP">Step</option>
+                  <option value="FOSTER">Foster</option>
+                  <option value="UNKNOWN">Unknown</option>
+                </select>
+              </div>
+            )}
             {error && <p className="text-xs text-red-600">{error}</p>}
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
@@ -509,6 +530,22 @@ function AddRelationModal({
                 );
               })}
             </div>
+            {mode === 'child' && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
+                <select
+                  value={parentageType}
+                  onChange={(e) => setParentageType(e.target.value)}
+                  className="w-full h-9 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                >
+                  <option value="BIOLOGICAL">Biological</option>
+                  <option value="ADOPTIVE">Adopted</option>
+                  <option value="STEP">Step</option>
+                  <option value="FOSTER">Foster</option>
+                  <option value="UNKNOWN">Unknown</option>
+                </select>
+              </div>
+            )}
             {selectedCandidate?.hasParents && mode === 'child' && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 This person already has parents recorded. Linking here will replace their existing parent connection.
@@ -807,14 +844,15 @@ function AddChildToUnionModal({
   fgId, parent1Id, parent2Id, parent1Name, parent2Name,
   treeId, token, candidates, onClose, onAdded, onRemoved,
 }: AddChildToUnionModalProps) {
-  const [mode,        setMode]        = useState<'new' | 'existing'>('new');
-  const [fields,      setFields]      = useState<PersonFields>(EMPTY_FIELDS);
-  const [search,      setSearch]      = useState('');
-  const [selectedId,  setSelectedId]  = useState<string | null>(null);
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState('');
+  const [mode,          setMode]          = useState<'new' | 'existing'>('new');
+  const [fields,        setFields]        = useState<PersonFields>(EMPTY_FIELDS);
+  const [search,        setSearch]        = useState('');
+  const [selectedId,    setSelectedId]    = useState<string | null>(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState('');
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [removing,    setRemoving]    = useState(false);
+  const [removing,      setRemoving]      = useState(false);
+  const [parentageType, setParentageType] = useState('BIOLOGICAL');
 
   const unionLabel = parent2Id
     ? `${parent1Name} & ${parent2Name}`
@@ -835,7 +873,7 @@ function AddChildToUnionModal({
   async function linkChild(childId: string, force = false) {
     const body: Record<string, unknown> = {
       child_id: childId,
-      parentage_type: 'BIOLOGICAL',
+      parentage_type: parentageType,
       union_type: 'UNKNOWN',
     };
     if (parent2Id) body.other_parent_id = parent2Id;
@@ -950,6 +988,22 @@ function AddChildToUnionModal({
             </div>
           </div>
         )}
+
+        {/* Parentage type (shared across both tabs) */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
+          <select
+            value={parentageType}
+            onChange={(e) => setParentageType(e.target.value)}
+            className="w-full h-9 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+          >
+            <option value="BIOLOGICAL">Biological</option>
+            <option value="ADOPTIVE">Adopted</option>
+            <option value="STEP">Step</option>
+            <option value="FOSTER">Foster</option>
+            <option value="UNKNOWN">Unknown</option>
+          </select>
+        </div>
 
         {mode === 'new' ? (
           <form onSubmit={handleNewSubmit} className="space-y-3">
@@ -1752,6 +1806,7 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
   const [deleteError,   setDeleteError]   = React.useState('');
   const [togglingDivorce, setTogglingDivorce] = React.useState(false);
   const [savingParentage, setSavingParentage] = React.useState(false);
+  const [savingUnionType, setSavingUnionType] = React.useState(false);
   const queryClient = useQueryClient();
 
   if (!edge) return null;
@@ -1835,6 +1890,32 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
                 <option value="ADOPTIVE">Adopted</option>
                 <option value="STEP">Step</option>
                 <option value="FOSTER">Foster</option>
+                <option value="UNKNOWN">Unknown</option>
+              </select>
+            </div>
+          )}
+
+          {canWrite && isUnion && (
+            <div className="pt-1 border-t border-slate-100">
+              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Union type</label>
+              <select
+                value={fg?.unionType ?? 'MARRIAGE'}
+                disabled={savingUnionType}
+                onChange={async (e) => {
+                  setSavingUnionType(true);
+                  try {
+                    await patch(`/trees/${treeId}/family-groups/${familyGroupId}`, {
+                      union_type: e.target.value,
+                    });
+                    queryClient.invalidateQueries({ queryKey: queryKeys.trees.detail(treeId) });
+                  } catch { /* swallow */ }
+                  finally { setSavingUnionType(false); }
+                }}
+                className="w-full h-8 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+              >
+                <option value="MARRIAGE">Marriage</option>
+                <option value="PARTNERSHIP">Partnership</option>
+                <option value="COHABITATION">Cohabitation</option>
                 <option value="UNKNOWN">Unknown</option>
               </select>
             </div>
@@ -2218,12 +2299,21 @@ function TreeTopBar({
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, [moreOpen]);
 
+  const [exportPdfError, setExportPdfError] = React.useState('');
+
   async function handleExportPdf() {
     if (exportingPdf) return;
     setExportingPdf(true);
     setExportOpen(false);
-    try { await onExportPdf(); }
-    finally { setExportingPdf(false); }
+    setExportPdfError('');
+    try {
+      await onExportPdf();
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      setExportPdfError('PDF export failed. Please try again.');
+    } finally {
+      setExportingPdf(false);
+    }
   }
 
   function handleExportFrt() {
@@ -2329,6 +2419,12 @@ function TreeTopBar({
               <path d="M2 3.5l3 3 3-3" />
             </svg>
           </button>
+
+          {exportPdfError && (
+            <div className="absolute right-0 top-full mt-1.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2 z-50 whitespace-nowrap">
+              {exportPdfError}
+            </div>
+          )}
 
           {exportOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl border border-slate-200 shadow-lg z-50 overflow-hidden">
@@ -2453,9 +2549,10 @@ function TreeTopBar({
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40">
                   Export CSV
                 </button>
-                <button onClick={async () => { setMoreOpen(false); await onExportPdf(); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                  Export PDF
+                <button onClick={() => { setMoreOpen(false); handleExportPdf(); }}
+                  disabled={exportingPdf}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+                  {exportingPdf ? 'Exporting…' : 'Export PDF'}
                 </button>
               </div>
             </div>

@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import uuid
 
-from src.domain.genealogy.entities import ParentageType
+from src.domain.genealogy.entities import ParentageType, Sex
 from src.domain.genealogy.exceptions import (
+    BiologicalParentSexError,
     CircularRelationshipError,
     DuplicateRelationshipError,
     FamilyGroupFullError,
@@ -136,6 +137,25 @@ class RelationshipIntegrityValidator:
                 relation="child-in-family-group",
             )
 
+    def validate_biological_parent_sex(
+        self,
+        graph: FamilyGraph,
+        parent_ids: list[uuid.UUID],
+        parentage_type: ParentageType,
+    ) -> None:
+        """Two parents of the same sex cannot have a BIOLOGICAL child."""
+        if parentage_type != ParentageType.BIOLOGICAL:
+            return
+        if len(parent_ids) < 2:
+            return
+        sexes = []
+        for pid in parent_ids:
+            p = graph.get_person(pid)
+            if p is not None and p.sex not in (Sex.UNKNOWN, Sex.OTHER):
+                sexes.append(p.sex)
+        if len(sexes) >= 2 and len(set(sexes)) == 1:
+            raise BiologicalParentSexError(sexes[0].value)
+
     def validate_not_duplicate_spouse(
         self,
         graph: FamilyGraph,
@@ -168,10 +188,15 @@ class CompositeValidator:
         child_id: uuid.UUID,
         parent_id: uuid.UUID,
         fg_id: uuid.UUID,
+        parentage_type: ParentageType = ParentageType.BIOLOGICAL,
     ) -> None:
         self._integrity.validate_not_self(child_id, parent_id, "parent")
         self._integrity.validate_not_duplicate_parent(graph, fg_id, parent_id)
         self._circular.validate_add_parent(graph, child_id, parent_id)
+        fg = graph.get_family_group(fg_id)
+        if fg is not None:
+            all_parents = list(fg.parent_ids) + [parent_id]
+            self._integrity.validate_biological_parent_sex(graph, all_parents, parentage_type)
 
     def before_add_child(
         self,
@@ -179,13 +204,15 @@ class CompositeValidator:
         child_id: uuid.UUID,
         parent_id: uuid.UUID,
         fg_id: uuid.UUID,
+        parentage_type: ParentageType = ParentageType.BIOLOGICAL,
     ) -> None:
         self._integrity.validate_not_self(child_id, parent_id, "child")
         self._integrity.validate_child_has_no_parents(graph, child_id)
         self._integrity.validate_not_duplicate_child(graph, fg_id, child_id)
-        # Adding child_id as a child of parent_id:
-        # parent_id must not be a descendant of child_id (same as adding parent)
         self._circular.validate_add_parent(graph, child_id, parent_id)
+        fg = graph.get_family_group(fg_id)
+        if fg is not None:
+            self._integrity.validate_biological_parent_sex(graph, fg.parent_ids, parentage_type)
 
     def before_add_spouse(
         self,
@@ -204,6 +231,7 @@ class CompositeValidator:
         mother_id: uuid.UUID,
         fg_id: uuid.UUID,
         fg_exists: bool,
+        parentage_type: ParentageType = ParentageType.BIOLOGICAL,
     ) -> None:
         self._integrity.validate_not_self(child_id, father_id, "parent")
         self._integrity.validate_not_self(child_id, mother_id, "parent")
@@ -214,6 +242,7 @@ class CompositeValidator:
         self._integrity.validate_not_duplicate_child(graph, fg_id, child_id)
         self._circular.validate_add_parent(graph, child_id, father_id)
         self._circular.validate_add_parent(graph, child_id, mother_id)
+        self._integrity.validate_biological_parent_sex(graph, [father_id, mother_id], parentage_type)
 
     def before_add_sibling(
         self,

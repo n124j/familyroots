@@ -133,7 +133,7 @@ class FamilyTreeDomainService:
             fg_id = uuid.uuid4()
             existing_fg = None  # signal: create new
 
-        self._validator.before_add_parent(graph, child_id, parent_id, fg_id)
+        self._validator.before_add_parent(graph, child_id, parent_id, fg_id, parentage_type)
 
         result = MutationResult(
             description=f"Add parent {parent_id} to child {child_id}",
@@ -195,7 +195,7 @@ class FamilyTreeDomainService:
             graph, parent_id, other_parent_id
         )
 
-        self._validator.before_add_child(graph, child_id, parent_id, fg_id)
+        self._validator.before_add_child(graph, child_id, parent_id, fg_id, parentage_type)
 
         result = MutationResult(
             description=f"Add child {child_id} to parent {parent_id}",
@@ -259,7 +259,7 @@ class FamilyTreeDomainService:
         fg_id, fg_exists = self._find_or_plan_family_group(graph, father_id, mother_id)
 
         self._validator.before_add_both_parents(
-            graph, child_id, father_id, mother_id, fg_id, fg_exists
+            graph, child_id, father_id, mother_id, fg_id, fg_exists, parentage_type
         )
 
         result = MutationResult(

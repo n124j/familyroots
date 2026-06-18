@@ -78,9 +78,9 @@ function UnionEdgeComponent({
 
   const ordinal      = data?.unionOrdinal;
   const customLabel  = data?.customLabel;
-  // The visible label: custom takes priority, then ordinal (skip 1st — only show 2nd+), then nothing
+  // The visible label: custom takes priority, then ordinal (shown for all when multiple exist), then nothing
   const displayLabel = customLabel ?? (
-    ordinal != null && ordinal >= 2 ? `${ordinalSuffix(ordinal)} ${UNION_TYPE_LABEL[unionType]}` : undefined
+    ordinal != null ? `${ordinalSuffix(ordinal)} ${UNION_TYPE_LABEL[unionType]}` : undefined
   );
   // Only show the label (and allow editing) when there is something to show
   const hasLabel = displayLabel != null;
@@ -193,6 +193,9 @@ function UnionEdgeComponent({
   }
 
   const divorcedDash = '4 4';
+  const tooltip = isDivorced
+    ? `${UNION_TYPE_LABEL[unionType]} (Divorced)`
+    : UNION_TYPE_LABEL[unionType];
 
   // ── Marriage: double line (dotted when divorced) ─────────────────────────
   if (isMarriage) {
@@ -205,8 +208,11 @@ function UnionEdgeComponent({
     return (
       <>
         <g style={{ opacity, transition: 'opacity 0.25s', filter: glowFilter }}>
+          <title>{tooltip}</title>
           <path d={pathA} stroke={color} strokeWidth={strokeW} strokeDasharray={isDivorced ? divorcedDash : undefined} fill="none" style={{ transition: 'stroke-width 0.25s' }} />
           <path d={pathB} stroke={color} strokeWidth={strokeW} strokeDasharray={isDivorced ? divorcedDash : undefined} fill="none" style={{ transition: 'stroke-width 0.25s' }} />
+          {/* Wider invisible hit area for hover tooltip */}
+          <path d={edgePath} stroke="transparent" strokeWidth={Math.max(strokeW * 6, 12)} fill="none" />
         </g>
         {renderLabel(midX, midY)}
       </>
@@ -216,19 +222,23 @@ function UnionEdgeComponent({
   // ── Other union types: single line (dotted when divorced) ─────────────────
   return (
     <>
-      <path
-        id={id}
-        d={edgePath}
-        stroke={color}
-        strokeWidth={strokeW}
-        strokeDasharray={isDivorced ? divorcedDash : (isSolid ? undefined : dashArray)}
-        fill="none"
-        style={{
-          opacity,
-          transition: 'stroke-width 0.25s, opacity 0.25s',
-          filter: glowFilter,
-        }}
-      />
+      <g style={{ opacity, transition: 'opacity 0.25s' }}>
+        <title>{tooltip}</title>
+        <path
+          id={id}
+          d={edgePath}
+          stroke={color}
+          strokeWidth={strokeW}
+          strokeDasharray={isDivorced ? divorcedDash : (isSolid ? undefined : dashArray)}
+          fill="none"
+          style={{
+            transition: 'stroke-width 0.25s',
+            filter: glowFilter,
+          }}
+        />
+        {/* Wider invisible hit area for hover tooltip */}
+        <path d={edgePath} stroke="transparent" strokeWidth={Math.max(strokeW * 6, 12)} fill="none" />
+      </g>
       {renderLabel(labelX, labelY)}
     </>
   );

@@ -28,6 +28,13 @@ const UNION_COLORS: Record<FamilyGroupNodeData['unionType'], string> = {
   UNKNOWN: '#94a3b8',
 };
 
+const UNION_TOOLTIPS: Record<FamilyGroupNodeData['unionType'], string> = {
+  MARRIAGE: 'Marriage',
+  PARTNERSHIP: 'Partnership',
+  COHABITATION: 'Cohabitation',
+  UNKNOWN: 'Union',
+};
+
 function FamilyGroupNodeComponent({ data, selected }: NodeProps<FamilyGroupNodeData>) {
   const { unionType, showUnionIcon } = data;
   const color   = UNION_COLORS[unionType];
@@ -68,7 +75,7 @@ function FamilyGroupNodeComponent({ data, selected }: NodeProps<FamilyGroupNodeD
             : `0 1px 3px rgba(0,0,0,0.1)`,
           cursor: 'pointer',
         }}
-        title="Click to add a child to this union"
+        title={`${UNION_TOOLTIPS[unionType]} — click to add a child`}
       >
         {/* Normal icon */}
         <span

@@ -787,6 +787,7 @@ async def delete_family_group(
 class UpdateFamilyGroupRequest(BaseModel):
     custom_label: Optional[str] = Field(None, max_length=200)
     is_divorced: Optional[bool] = None
+    union_type: Optional[str] = None
 
 
 @router.patch(
@@ -826,6 +827,14 @@ async def update_family_group(
         updates.append("is_divorced = :divorced")
         params["divorced"] = body.is_divorced
         audit_after["is_divorced"] = body.is_divorced
+
+    if body.union_type is not None:
+        allowed = {"MARRIAGE", "PARTNERSHIP", "COHABITATION", "UNKNOWN"}
+        if body.union_type not in allowed:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid union_type: {body.union_type}")
+        updates.append("union_type = :utype")
+        params["utype"] = body.union_type
+        audit_after["union_type"] = body.union_type
 
     if updates:
         await uow._session.execute(
@@ -942,6 +951,21 @@ async def update_family_group_member(
     )).first()
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found in family group")
+
+    if body.parentage_type == "BIOLOGICAL":
+        parent_rows = (await uow._session.execute(
+            text("""SELECT p.sex FROM family_group_members fgm
+                    JOIN persons p ON p.id = fgm.person_id
+                    WHERE fgm.family_group_id = :fgid AND fgm.role = 'PARENT'"""),
+            {"fgid": family_group_id},
+        )).fetchall()
+        sexes = [r.sex for r in parent_rows if r.sex not in ("UNKNOWN", "OTHER")]
+        if len(sexes) >= 2 and len(set(sexes)) == 1:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Two {sexes[0].lower()} parents cannot have a biological child. "
+                "Use Adoptive, Step, or Foster instead.",
+            )
 
     await uow._session.execute(
         text("UPDATE family_group_members SET parentage_type = :pt WHERE family_group_id = :fgid AND person_id = :pid"),

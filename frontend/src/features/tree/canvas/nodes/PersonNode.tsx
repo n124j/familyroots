@@ -53,6 +53,7 @@ const Avatar = memo(({ photoUrl, givenName, surname, sex, size = 44 }: AvatarPro
         <img
           src={resolvedUrl}
           alt=""
+          crossOrigin="anonymous"
           className="w-full h-full object-cover object-top"
           onError={() => setImgFailed(true)}
         />

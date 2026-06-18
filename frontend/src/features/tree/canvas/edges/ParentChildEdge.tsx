@@ -24,6 +24,7 @@ const PARENTAGE_LABELS: Partial<Record<ParentChildEdgeData['parentageType'], str
   ADOPTIVE: 'adopted',
   STEP: 'step',
   FOSTER: 'foster',
+  UNKNOWN: 'unknown',
 };
 
 function ParentChildEdgeComponent({
