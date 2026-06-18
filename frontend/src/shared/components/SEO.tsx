@@ -2,12 +2,14 @@ import { Helmet } from 'react-helmet-async';
 
 const SITE_NAME    = 'FamilyRoots';
 const BASE_URL     = import.meta.env.VITE_FRONTEND_BASE_URL ?? 'https://familyroots.aipioneerlab.com';
-const OG_IMAGE     = `${BASE_URL}/og-image.png`;
+const OG_IMAGE     = `${BASE_URL}/og-image.svg`;
 const DEFAULT_DESC =
-  'Collaborative genealogy platform to build, visualise, and share your family tree ' +
-  'with fan charts, pedigree views, and relationship tools.';
+  'Free collaborative genealogy platform to build your family tree online. ' +
+  'Interactive fan charts, pedigree views, ancestry charts, and relationship mapping tools. ' +
+  'Trace 8+ generations of ancestors.';
 const DEFAULT_KW   =
-  'family tree, genealogy, ancestors, family history, pedigree, family chart, ancestor search, family records';
+  'family tree builder, free genealogy software, ancestry chart, fan chart, pedigree chart, ' +
+  'family history, ancestor search, family records, build family tree online, genealogy platform';
 
 interface SEOProps {
   title: string;

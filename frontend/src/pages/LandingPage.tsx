@@ -632,7 +632,7 @@ function CanvasMockup() {
 
 function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => void }) {
   return (
-    <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-indigo-900 pt-14">
+    <section aria-label="Build your family tree online for free" className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-indigo-900 pt-14">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-white/5" />
         <div className="absolute bottom-0 -left-20 w-72 h-72 rounded-full bg-white/5" />
@@ -646,14 +646,14 @@ function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => vo
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight mb-5">
-            Your family story,{' '}
+            Build your family tree{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-300">
-              beautifully mapped.
+              beautifully, together.
             </span>
           </h1>
 
           <p className="text-lg text-indigo-200 mb-8 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-            Build an interactive family tree, upload photos and documents, and collaborate with relatives — on a canvas that actually feels good to use.
+            Free genealogy software to trace your ancestors, create interactive fan charts, and collaborate with family — on a canvas that actually feels good to use.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-5">
@@ -1197,8 +1197,10 @@ export default function LandingPage() {
   return (
     <>
       <SEO
-        title="FamilyRoots — Build Your Interactive Family Tree"
-        description="An interactive genealogy platform for building, collaborating on, and sharing your family tree. Completely free during open beta."
+        title="Free Family Tree Builder Online — Genealogy Software"
+        description="Build your family tree online for free with FamilyRoots. Interactive ancestry fan charts up to 8 generations, pedigree views, collaborative editing, photo uploads, and relationship mapping. No download required — start tracing your ancestors today."
+        canonical="/"
+        keywords="free family tree builder, build family tree online, genealogy software free, ancestry chart maker, fan chart genealogy, pedigree chart creator, trace ancestors online, family history tool, collaborative family tree, family tree app free, heritage mapping, ancestor search, genealogy platform"
       />
 
       {/* Auth modals */}

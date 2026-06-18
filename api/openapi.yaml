@@ -615,15 +615,42 @@ components:
         displaySurname:
           type: string
           nullable: true
+        photoUrl:
+          type: string
+          nullable: true
+          description: Presigned URL for the person's profile photo
         privacyLevel:
           $ref: "#/components/schemas/PrivacyLevel"
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+          description: Full birth date (ISO 8601 YYYY-MM-DD)
+        deathDate:
+          type: string
+          format: date
+          nullable: true
+          description: Full death date (ISO 8601 YYYY-MM-DD)
         birthYear:
           type: integer
           nullable: true
-          description: Derived from BIRTH event; null if unknown
+          description: Year-only fallback when full birth date is unknown
         deathYear:
           type: integer
           nullable: true
+          description: Year-only fallback when full death date is unknown
+        facebookHandle:
+          type: string
+          nullable: true
+          description: Facebook username (without @ or URL prefix)
+        xHandle:
+          type: string
+          nullable: true
+          description: X / Twitter handle (without @ or URL prefix)
+        linkedinHandle:
+          type: string
+          nullable: true
+          description: LinkedIn username (without URL prefix)
 
     CreatePersonNameInput:
       type: object
@@ -1302,6 +1329,105 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    # ── .frt native backup format ─────────────────────────────
+    FrtPerson:
+      type: object
+      description: Person record within a .frt backup file
+      required: [id, display_given_name, display_surname, sex, is_living, is_deceased]
+      properties:
+        id:
+          type: string
+        display_given_name:
+          type: string
+        display_surname:
+          type: string
+        sex:
+          type: string
+          enum: [MALE, FEMALE, OTHER, UNKNOWN]
+        is_living:
+          type: boolean
+        is_deceased:
+          type: boolean
+        photo_url:
+          type: string
+          nullable: true
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          description: Full birth date (ISO 8601 YYYY-MM-DD)
+        death_date:
+          type: string
+          format: date
+          nullable: true
+          description: Full death date (ISO 8601 YYYY-MM-DD)
+        birth_year:
+          type: integer
+          nullable: true
+          description: Year-only fallback when full birth date is unknown
+        death_year:
+          type: integer
+          nullable: true
+          description: Year-only fallback when full death date is unknown
+        facebook_handle:
+          type: string
+          nullable: true
+        x_handle:
+          type: string
+          nullable: true
+        linkedin_handle:
+          type: string
+          nullable: true
+
+    FrtFamilyGroup:
+      type: object
+      description: Family group record within a .frt backup file
+      required: [id, union_type, parent_ids, children]
+      properties:
+        id:
+          type: string
+        union_type:
+          type: string
+          enum: [MARRIAGE, PARTNERSHIP, COHABITATION, UNKNOWN]
+        custom_label:
+          type: string
+          nullable: true
+          description: User-defined label overriding the auto-generated ordinal
+        parent_ids:
+          type: array
+          items:
+            type: string
+        children:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [BIOLOGICAL, ADOPTIVE, STEP, FOSTER, UNKNOWN]
+
+    FrtBackup:
+      type: object
+      description: Complete .frt backup file structure for export and import
+      required: [frt_version, tree_name, persons, family_groups]
+      properties:
+        frt_version:
+          type: string
+          example: "1.0"
+        exported_at:
+          type: string
+          format: date-time
+        tree_name:
+          type: string
+        tree_description:
+          type: string
+          nullable: true
+        persons:
+          type: array
+          items:
+            $ref: "#/components/schemas/FrtPerson"
+        family_groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/FrtFamilyGroup"
 
   # ──────────────────────────────────────────────────────────
   # COMMON RESPONSES
@@ -2316,6 +2442,62 @@ paths:
         "404":
           $ref: "#/components/responses/404NotFound"
 
+
+  # ── .frt native backup import ─────────────────────────────────
+  /trees/import:
+    post:
+      tags: [Trees]
+      operationId: importFrtTree
+      summary: Import a .frt backup file as a new tree
+      description: |
+        Creates a new tree from a FamilyRoots .frt backup file. All persons are
+        re-created with new UUIDs. Imported fields include life dates (birth_date,
+        death_date, birth_year, death_year), social handles (facebook_handle,
+        x_handle, linkedin_handle), and family group custom labels.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FrtBackup"
+      responses:
+        "201":
+          description: Tree imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tree_id:
+                    type: string
+                    format: uuid
+                  tree_name:
+                    type: string
+                  person_count:
+                    type: integer
+                  family_group_count:
+                    type: integer
+        "400":
+          $ref: "#/components/responses/400BadRequest"
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
+
+  /trees/{treeId}/export-log:
+    post:
+      tags: [Trees]
+      operationId: logTreeExport
+      summary: Record a tree export event in the audit log
+      parameters:
+        - $ref: "#/components/parameters/treeId"
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: Export event logged
+        "401":
+          $ref: "#/components/responses/401Unauthorized"
 
   # ============================================================
   # PERSONS

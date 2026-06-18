@@ -10,6 +10,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { TreeCanvas, type TreeCanvasHandle } from '@features/tree/canvas/TreeCanvas';
 import type { ApiTreeGraph } from '@features/tree/types';
+import { SEO } from '@shared/components/SEO';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -72,8 +73,17 @@ export default function SharedTreePage() {
 
   if (!graph) return null;
 
+  const treeName = (graph as any).treeName || 'Family Tree';
+  const personCount = (graph as any).nodes?.length ?? 0;
+
   return (
     <div className="fixed inset-0 flex flex-col bg-surface-muted">
+      <SEO
+        title={`${treeName} — Shared Family Tree`}
+        description={`Explore the ${treeName} family tree${personCount ? ` with ${personCount} family members` : ''}. View ancestors, descendants, and family connections on FamilyRoots.`}
+        keywords={`${treeName}, family tree, shared family tree, ancestry, genealogy, family history`}
+        ogType="website"
+      />
       {/* Minimal top bar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 shrink-0">
         <div className="flex items-center gap-2.5">
@@ -84,7 +94,7 @@ export default function SharedTreePage() {
             </svg>
           </Link>
           <h1 className="text-sm font-semibold text-gray-900 truncate max-w-[200px] md:max-w-xs">
-            {(graph as any).treeName || 'Family Tree'}
+            {treeName}
           </h1>
           <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
             View only

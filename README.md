@@ -6,26 +6,43 @@ A genealogy platform for building, exploring, and collaborating on family trees.
 
 ## Table of Contents
 
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Local Deployment](#local-deployment)
-  - [1. Clone and configure](#1-clone-and-configure)
-  - [2. Start core services](#2-start-core-services)
-  - [3. Run database migrations](#3-run-database-migrations)
-  - [4. Seed initial data](#4-seed-initial-data)
-  - [5. Access the app](#5-access-the-app)
-  - [6. Optional: monitoring stack](#6-optional-monitoring-stack)
-  - [Stopping the stack](#stopping-the-stack)
-  - [Running tests](#running-tests)
-- [Staging Deployment](#staging-deployment)
-- [Production Deployment](#production-deployment)
-  - [1. Configure secrets](#1-configure-secrets)
-  - [2. Build and push images](#2-build-and-push-images)
-  - [3. Deploy with Helm](#3-deploy-with-helm)
-  - [4. Verify the deployment](#4-verify-the-deployment)
-  - [Rolling back](#rolling-back)
-  - [CI/CD pipeline](#cicd-pipeline)
-- [Port Reference](#port-reference)
+- [FamilyRoots](#familyroots)
+  - [Table of Contents](#table-of-contents)
+  - [Tech Stack](#tech-stack)
+  - [Prerequisites](#prerequisites)
+    - [Local development](#local-development)
+    - [Outside Docker (optional)](#outside-docker-optional)
+    - [Staging / Production](#staging--production)
+  - [Local Deployment](#local-deployment)
+    - [1. Clone and configure](#1-clone-and-configure)
+    - [2. Start core services](#2-start-core-services)
+    - [3. Run database migrations](#3-run-database-migrations)
+    - [4. Seed initial data](#4-seed-initial-data)
+      - [System accounts](#system-accounts)
+      - [Demo family tree (optional)](#demo-family-tree-optional)
+    - [5. Access the app](#5-access-the-app)
+      - [Registration notes](#registration-notes)
+      - [Tree views](#tree-views)
+      - [Admin Dashboard](#admin-dashboard)
+    - [6. Optional: monitoring stack](#6-optional-monitoring-stack)
+    - [Stopping the stack](#stopping-the-stack)
+    - [Running tests](#running-tests)
+      - [Backend](#backend)
+      - [Frontend](#frontend)
+  - [Staging Deployment](#staging-deployment)
+    - [1. Configure staging secrets](#1-configure-staging-secrets)
+    - [2. Deploy to staging](#2-deploy-to-staging)
+    - [3. Run staging migrations](#3-run-staging-migrations)
+    - [4. Seed staging accounts](#4-seed-staging-accounts)
+  - [Production Deployment](#production-deployment)
+    - [Prerequisites](#prerequisites-1)
+    - [1. Configure secrets](#1-configure-secrets)
+    - [2. Build and push images](#2-build-and-push-images)
+    - [3. Deploy with Helm](#3-deploy-with-helm)
+    - [4. Verify the deployment](#4-verify-the-deployment)
+    - [Rolling back](#rolling-back)
+    - [CI/CD pipeline](#cicd-pipeline)
+  - [Port Reference](#port-reference)
 
 ---
 
@@ -250,15 +267,27 @@ ancestors climbing upward). Use the toolbar to switch between:
 Hovering over any wedge in the fan chart shows a tooltip with the person's full name,
 relationship label (e.g. "3× Great-grandparent"), and birth–death years.
 
-#### Profile Pictures
+#### Import / Export (.frt)
 
-Users can set a profile picture in **Settings → Profile**:
+FamilyRoots uses a native `.frt` backup format (JSON-based) for tree import and export.
+The format preserves all person data including:
 
-- **OAuth users** (Google, GitHub) — avatar is synced automatically from the provider on each login. Manual upload is disabled; the Settings page shows "Synced from your Google account."
-- **Local users** (email/password) — can upload a JPEG, PNG, WEBP, or GIF image (max 5 MB) via `POST /api/v1/users/me/avatar`. The image is stored in S3 and served via presigned URLs.
-- **Remove** — local users can remove their avatar via `DELETE /api/v1/users/me/avatar`.
+| Field | Description |
+|-------|-------------|
+| `display_given_name` / `display_surname` | Name fields |
+| `sex` | MALE, FEMALE, OTHER, UNKNOWN |
+| `is_living` / `is_deceased` | Living status |
+| `photo_url` | Profile photo URL |
+| `birth_date` / `death_date` | Full ISO dates (YYYY-MM-DD) |
+| `birth_year` / `death_year` | Year-only fallback when full date is unknown |
+| `facebook_handle` / `x_handle` / `linkedin_handle` | Social profile handles |
 
-Uploaded avatars are stored under `tenants/{tenant_id}/users/{user_id}/avatar/` in the S3 bucket.
+Family groups also preserve `custom_label` (user-defined union labels) and `union_type`.
+
+**Export:** From the tree toolbar, click **Export as .frt** to download the full tree backup.
+
+**Import:** From the dashboard, click **Import tree** and upload a `.frt` file. All persons
+are re-created with new UUIDs and the importing user becomes the tree owner.
 
 #### Admin Dashboard
 

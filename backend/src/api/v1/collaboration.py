@@ -514,7 +514,8 @@ async def get_shared_tree_graph(
     persons_q = text("""
         SELECT id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased, photo_url,
-               birth_date, death_date, birth_year, death_year
+               birth_date, death_date, birth_year, death_year,
+               facebook_handle, x_handle, linkedin_handle
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -536,6 +537,9 @@ async def get_shared_tree_graph(
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
             **({"deathYear": r.death_year} if r.death_year is not None else {}),
+            **({"facebookHandle": r.facebook_handle} if r.facebook_handle else {}),
+            **({"xHandle": r.x_handle} if r.x_handle else {}),
+            **({"linkedinHandle": r.linkedin_handle} if r.linkedin_handle else {}),
         }
         for r in person_rows
     ]
@@ -1142,11 +1146,20 @@ class _FrtPerson(BaseModel):
     sex: str = "UNKNOWN"
     is_living: bool = True
     is_deceased: bool = False
+    photo_url: Optional[str] = None
+    birth_date: Optional[str] = None
+    death_date: Optional[str] = None
+    birth_year: Optional[int] = None
+    death_year: Optional[int] = None
+    facebook_handle: Optional[str] = None
+    x_handle: Optional[str] = None
+    linkedin_handle: Optional[str] = None
 
 
 class _FrtFamilyGroup(BaseModel):
     id: str
     union_type: str = "UNKNOWN"
+    custom_label: Optional[str] = None
     parent_ids: list[str] = []
     children: dict[str, str] = {}   # old_person_id → parentage_type
 
@@ -1215,21 +1228,45 @@ async def import_tree(
     for p in body.persons:
         new_pid = uuid.uuid4()
         old_to_new[p.id] = new_pid
+        birth_date_val = None
+        if p.birth_date:
+            try:
+                birth_date_val = __import__("datetime").date.fromisoformat(p.birth_date)
+            except ValueError:
+                pass
+        death_date_val = None
+        if p.death_date:
+            try:
+                death_date_val = __import__("datetime").date.fromisoformat(p.death_date)
+            except ValueError:
+                pass
+
         await uow._session.execute(text("""
             INSERT INTO persons
               (id, tenant_id, tree_id, display_given_name, display_surname,
-               sex, is_living, is_deceased)
+               sex, is_living, is_deceased,
+               birth_date, death_date, birth_year, death_year,
+               facebook_handle, x_handle, linkedin_handle)
             VALUES
-              (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased)
+              (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased,
+               :birth_date, :death_date, :birth_year, :death_year,
+               :facebook, :x, :linkedin)
         """), {
-            "id":      new_pid,
-            "tenant":  current_user.tenant_id,
-            "tid":     new_tree_id,
-            "given":   p.display_given_name,
-            "surname": p.display_surname,
-            "sex":     p.sex if p.sex in _VALID_SEX else "UNKNOWN",
-            "living":  p.is_living,
-            "deceased": p.is_deceased,
+            "id":         new_pid,
+            "tenant":     current_user.tenant_id,
+            "tid":        new_tree_id,
+            "given":      p.display_given_name,
+            "surname":    p.display_surname,
+            "sex":        p.sex if p.sex in _VALID_SEX else "UNKNOWN",
+            "living":     p.is_living,
+            "deceased":   p.is_deceased,
+            "birth_date": birth_date_val,
+            "death_date": death_date_val,
+            "birth_year": p.birth_year,
+            "death_year": p.death_year,
+            "facebook":   p.facebook_handle,
+            "x":          p.x_handle,
+            "linkedin":   p.linkedin_handle,
         })
 
     # 4. Create family groups + members
@@ -1240,13 +1277,14 @@ async def import_tree(
         p2 = parent_ids[1] if len(parent_ids) > 1 else None
 
         await uow._session.execute(text("""
-            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, parent1_id, parent2_id)
-            VALUES (:id, :tenant, :tid, :utype, :p1, :p2)
+            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, parent1_id, parent2_id)
+            VALUES (:id, :tenant, :tid, :utype, :clabel, :p1, :p2)
         """), {
             "id":     new_fg_id,
             "tenant": current_user.tenant_id,
             "tid":    new_tree_id,
             "utype":  fg.union_type if fg.union_type in _VALID_UNION_TYPES else "UNKNOWN",
+            "clabel": fg.custom_label,
             "p1":     p1,
             "p2":     p2,
         })
