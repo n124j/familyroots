@@ -32,8 +32,7 @@ COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /build/dist /usr/share/nginx/html
 
 # Non-root nginx: bind to 8080
-RUN sed -i 's/listen\s*80/listen 8080/g' /etc/nginx/conf.d/default.conf \
-    && chown -R nginx:nginx /var/cache/nginx /var/run \
+RUN chown -R nginx:nginx /var/cache/nginx /var/run \
     && touch /var/run/nginx.pid \
     && chown nginx:nginx /var/run/nginx.pid
 
