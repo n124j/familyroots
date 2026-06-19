@@ -13,3 +13,5 @@ backend/coverage
 # Production deploy
 .env.prod
 certbot/
+.env.stg
+*.csv

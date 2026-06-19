@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import uuid
 from typing import Optional
+from urllib.parse import urlparse
+
 import boto3
 from botocore.exceptions import ClientError
 from botocore.config import Config
@@ -71,6 +73,24 @@ class S3Service:
         self._endpoint_url = endpoint_url.rstrip("/") if endpoint_url else None
         self._public_url = public_url.rstrip("/") if public_url else None
 
+        # Parse public URL into origin (scheme+host) and path prefix.
+        # When public_url is e.g. "https://domain.com/s3", the presign client
+        # must use only "https://domain.com" as its endpoint so the S3v4
+        # signature path doesn't include "/s3".  The path prefix is injected
+        # back into the URL after signing.
+        if self._public_url:
+            parsed = urlparse(self._public_url)
+            self._public_origin = f"{parsed.scheme}://{parsed.netloc}"
+            self._public_path_prefix = parsed.path.rstrip("/")
+        else:
+            self._public_origin = None
+            self._public_path_prefix = ""
+
+        _cfg = Config(
+            signature_version="s3v4",
+            retries={"max_attempts": 3, "mode": "adaptive"},
+        )
+
         session = boto3.session.Session()
         self._client = session.client(
             "s3",
@@ -78,13 +98,35 @@ class S3Service:
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
             endpoint_url=endpoint_url,
-            config=Config(
-                signature_version="s3v4",
-                retries={"max_attempts": 3, "mode": "adaptive"},
-            ),
+            config=_cfg,
         )
 
+        # Separate client for presigned URLs — uses the public origin so the
+        # signed Host header matches what the browser sends.
+        presign_endpoint = self._public_origin or endpoint_url
+        if presign_endpoint != endpoint_url:
+            self._presign_client = session.client(
+                "s3",
+                region_name=region,
+                aws_access_key_id=access_key_id,
+                aws_secret_access_key=secret_access_key,
+                endpoint_url=presign_endpoint,
+                config=_cfg,
+            )
+        else:
+            self._presign_client = self._client
+
     # ── Presigned URLs ─────────────────────────────────────────────────────────
+
+    def _inject_path_prefix(self, url: str) -> str:
+        """Re-insert the public URL's path prefix (e.g. ``/s3``) after signing."""
+        if self._public_origin and self._public_path_prefix:
+            url = url.replace(
+                self._public_origin + "/",
+                self._public_origin + self._public_path_prefix + "/",
+                1,
+            )
+        return url
 
     def presigned_upload_url(
         self,
@@ -98,7 +140,7 @@ class S3Service:
         The client must set Content-Type to match *content_type*.
         """
         try:
-            url = self._client.generate_presigned_url(
+            url = self._presign_client.generate_presigned_url(
                 "put_object",
                 Params={
                     "Bucket": self._bucket,
@@ -108,9 +150,7 @@ class S3Service:
                 ExpiresIn=expires_in,
                 HttpMethod="PUT",
             )
-            if self._public_url and self._endpoint_url:
-                url = url.replace(self._endpoint_url, self._public_url, 1)
-            return url
+            return self._inject_path_prefix(url)
         except ClientError as exc:
             raise StorageError("presign_upload", str(exc)) from exc
 
@@ -128,7 +168,7 @@ class S3Service:
         Returns { url, fields } suitable for multipart/form-data.
         """
         try:
-            result = self._client.generate_presigned_post(
+            result = self._presign_client.generate_presigned_post(
                 Bucket=self._bucket,
                 Key=key,
                 Fields={"Content-Type": content_type},
@@ -138,8 +178,7 @@ class S3Service:
                 ],
                 ExpiresIn=expires_in,
             )
-            if self._public_url and self._endpoint_url:
-                result["url"] = result["url"].replace(self._endpoint_url, self._public_url, 1)
+            result["url"] = self._inject_path_prefix(result["url"])
             return result
         except ClientError as exc:
             raise StorageError("presign_post", str(exc)) from exc
@@ -157,16 +196,12 @@ class S3Service:
                 f'attachment; filename="{filename}"'
             )
         try:
-            url = self._client.generate_presigned_url(
+            url = self._presign_client.generate_presigned_url(
                 "get_object",
                 Params=params,
                 ExpiresIn=expires_in,
             )
-            # Rewrite internal endpoint (e.g. http://minio:9000) to the
-            # browser-accessible public URL (e.g. http://localhost:7002)
-            if self._public_url and self._endpoint_url:
-                url = url.replace(self._endpoint_url, self._public_url, 1)
-            return url
+            return self._inject_path_prefix(url)
         except ClientError as exc:
             raise StorageError("presign_download", str(exc)) from exc
 
