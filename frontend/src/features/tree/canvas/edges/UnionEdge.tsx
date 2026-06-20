@@ -193,9 +193,21 @@ function UnionEdgeComponent({
   }
 
   const divorcedDash = '4 4';
-  const tooltip = isDivorced
-    ? `${UNION_TYPE_LABEL[unionType]} (Divorced)`
-    : UNION_TYPE_LABEL[unionType];
+
+  const fmtDateShort = (iso?: string) => {
+    if (!iso) return null;
+    try { return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+    catch { return iso; }
+  };
+
+  const tooltipParts: string[] = [
+    isDivorced ? `${UNION_TYPE_LABEL[unionType]} (Divorced)` : UNION_TYPE_LABEL[unionType],
+  ];
+  const startStr = fmtDateShort(data?.unionDate) ?? (data?.unionDateYear != null ? String(data.unionDateYear) : null);
+  const endStr = fmtDateShort(data?.unionEndDate) ?? (data?.unionEndDateYear != null ? String(data.unionEndDateYear) : null);
+  if (startStr) tooltipParts.push(`Since: ${startStr}`);
+  if (endStr)   tooltipParts.push(`Until: ${endStr}`);
+  const tooltip = tooltipParts.join('\n');
 
   // ── Marriage: double line (dotted when divorced) ─────────────────────────
   if (isMarriage) {

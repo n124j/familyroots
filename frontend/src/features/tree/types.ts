@@ -106,6 +106,10 @@ export interface UnionEdgeData {
   customLabel?: string;
   /** Whether this union has been marked as divorced */
   isDivorced?: boolean;
+  unionDate?: string;
+  unionDateYear?: number;
+  unionEndDate?: string;
+  unionEndDateYear?: number;
 }
 
 /** Edge from a FamilyGroup to a Person (as a child member) */
@@ -142,6 +146,8 @@ export interface ApiPerson {
   isLiving: boolean;
   isDeceased: boolean;
   photoUrl?: string;
+  city?: string;
+  country?: string;
   facebookHandle?: string;
   xHandle?: string;
   linkedinHandle?: string;
@@ -161,6 +167,14 @@ export interface ApiFamilyGroup {
   customLabel?: string;
   /** Whether this union has been marked as divorced */
   isDivorced?: boolean;
+  /** Date the union started (ISO "YYYY-MM-DD") */
+  unionDate?: string;
+  /** Year only — when full date is unknown */
+  unionDateYear?: number;
+  /** Date the union ended (ISO "YYYY-MM-DD") */
+  unionEndDate?: string;
+  /** Year only — when full date is unknown */
+  unionEndDateYear?: number;
   parentIds: string[];
   children: Record<string, ParentageType>; // personId → parentageType
 }

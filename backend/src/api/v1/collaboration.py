@@ -515,6 +515,7 @@ async def get_shared_tree_graph(
         SELECT id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased, photo_url,
                birth_date, death_date, birth_year, death_year,
+               city, country,
                facebook_handle, x_handle, linkedin_handle
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
@@ -537,6 +538,8 @@ async def get_shared_tree_graph(
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
             **({"deathYear": r.death_year} if r.death_year is not None else {}),
+            **({"city": r.city} if r.city else {}),
+            **({"country": r.country} if r.country else {}),
             **({"facebookHandle": r.facebook_handle} if r.facebook_handle else {}),
             **({"xHandle": r.x_handle} if r.x_handle else {}),
             **({"linkedinHandle": r.linkedin_handle} if r.linkedin_handle else {}),
@@ -546,6 +549,7 @@ async def get_shared_tree_graph(
 
     fg_q = text("""
         SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label, fg.is_divorced,
+               fg.union_date, fg.union_date_year, fg.union_end_date, fg.union_end_date_year,
                fgm.person_id, fgm.role, fgm.parentage_type
         FROM family_groups fg
         LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -566,6 +570,10 @@ async def get_shared_tree_graph(
                 "unionType": r.union_type,
                 **({"customLabel": r.custom_label} if r.custom_label else {}),
                 **({"isDivorced": True} if r.is_divorced else {}),
+                **({"unionDate": r.union_date.isoformat()} if r.union_date else {}),
+                **({"unionDateYear": r.union_date_year} if r.union_date_year is not None else {}),
+                **({"unionEndDate": r.union_end_date.isoformat()} if r.union_end_date else {}),
+                **({"unionEndDateYear": r.union_end_date_year} if r.union_end_date_year is not None else {}),
                 "parentIds": [],
                 "children": {},
             }
@@ -622,7 +630,7 @@ async def export_tree_zip(
 
     # Fetch all persons with photo_url
     person_rows = (await uow._session.execute(text("""
-        SELECT id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url
+        SELECT id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url, city, country
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -630,7 +638,8 @@ async def export_tree_zip(
 
     # Fetch family groups + members
     fg_rows = (await uow._session.execute(text("""
-        SELECT fg.id, fg.union_type,
+        SELECT fg.id, fg.union_type, fg.custom_label, fg.is_divorced,
+               fg.union_date, fg.union_date_year, fg.union_end_date, fg.union_end_date_year,
                fgm.person_id, fgm.role, fgm.parentage_type
         FROM family_groups fg
         LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -642,7 +651,18 @@ async def export_tree_zip(
     for r in fg_rows:
         fgid = str(r.id)
         if fgid not in fgs:
-            fgs[fgid] = {"id": fgid, "union_type": r.union_type, "parent_ids": [], "children": {}}
+            fgs[fgid] = {
+                "id": fgid,
+                "union_type": r.union_type,
+                **({"custom_label": r.custom_label} if r.custom_label else {}),
+                **({"is_divorced": True} if r.is_divorced else {}),
+                **({"union_date": r.union_date.isoformat()} if r.union_date else {}),
+                **({"union_date_year": r.union_date_year} if r.union_date_year is not None else {}),
+                **({"union_end_date": r.union_end_date.isoformat()} if r.union_end_date else {}),
+                **({"union_end_date_year": r.union_end_date_year} if r.union_end_date_year is not None else {}),
+                "parent_ids": [],
+                "children": {},
+            }
         if r.person_id is None:
             continue
         pid = str(r.person_id)
@@ -686,6 +706,8 @@ async def export_tree_zip(
             "is_living": r.is_living,
             "is_deceased": r.is_deceased,
             **({"photo_filename": photo_filename} if photo_filename else {}),
+            **({"city": r.city} if r.city else {}),
+            **({"country": r.country} if r.country else {}),
         })
 
     frt_payload = {
@@ -788,6 +810,10 @@ class UpdateFamilyGroupRequest(BaseModel):
     custom_label: Optional[str] = Field(None, max_length=200)
     is_divorced: Optional[bool] = None
     union_type: Optional[str] = None
+    union_date: Optional[str] = None
+    union_date_year: Optional[int] = Field(None, ge=1, le=9999)
+    union_end_date: Optional[str] = None
+    union_end_date_year: Optional[int] = Field(None, ge=1, le=9999)
 
 
 @router.patch(
@@ -835,6 +861,40 @@ async def update_family_group(
         updates.append("union_type = :utype")
         params["utype"] = body.union_type
         audit_after["union_type"] = body.union_type
+
+    if body.union_date is not None or "union_date" in (body.model_fields_set or set()):
+        from datetime import date as _date
+        val = None
+        if body.union_date:
+            try:
+                val = _date.fromisoformat(body.union_date)
+            except ValueError:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid union_date format (expected YYYY-MM-DD)")
+        updates.append("union_date = :udate")
+        params["udate"] = val
+        audit_after["union_date"] = body.union_date
+
+    if body.union_date_year is not None or "union_date_year" in (body.model_fields_set or set()):
+        updates.append("union_date_year = :udate_year")
+        params["udate_year"] = body.union_date_year
+        audit_after["union_date_year"] = body.union_date_year
+
+    if body.union_end_date is not None or "union_end_date" in (body.model_fields_set or set()):
+        from datetime import date as _date
+        val = None
+        if body.union_end_date:
+            try:
+                val = _date.fromisoformat(body.union_end_date)
+            except ValueError:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid union_end_date format (expected YYYY-MM-DD)")
+        updates.append("union_end_date = :uedate")
+        params["uedate"] = val
+        audit_after["union_end_date"] = body.union_end_date
+
+    if body.union_end_date_year is not None or "union_end_date_year" in (body.model_fields_set or set()):
+        updates.append("union_end_date_year = :uedate_year")
+        params["uedate_year"] = body.union_end_date_year
+        audit_after["union_end_date_year"] = body.union_end_date_year
 
     if updates:
         await uow._session.execute(
@@ -1153,6 +1213,7 @@ async def get_tree_graph(
         SELECT id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased, photo_url,
                birth_date, death_date, birth_year, death_year,
+               city, country,
                facebook_handle, x_handle, linkedin_handle
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
@@ -1175,6 +1236,8 @@ async def get_tree_graph(
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
             **({"deathYear": r.death_year} if r.death_year is not None else {}),
+            **({"city": r.city} if r.city else {}),
+            **({"country": r.country} if r.country else {}),
             **({"facebookHandle": r.facebook_handle} if r.facebook_handle else {}),
             **({"xHandle": r.x_handle} if r.x_handle else {}),
             **({"linkedinHandle": r.linkedin_handle} if r.linkedin_handle else {}),
@@ -1185,6 +1248,7 @@ async def get_tree_graph(
     # Family groups + members
     fg_q = text("""
         SELECT fg.id, fg.tree_id, fg.union_type, fg.custom_label, fg.is_divorced,
+               fg.union_date, fg.union_date_year, fg.union_end_date, fg.union_end_date_year,
                fgm.person_id, fgm.role, fgm.parentage_type
         FROM family_groups fg
         LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -1205,6 +1269,10 @@ async def get_tree_graph(
                 "unionType": r.union_type,
                 **({"customLabel": r.custom_label} if r.custom_label else {}),
                 **({"isDivorced": True} if r.is_divorced else {}),
+                **({"unionDate": r.union_date.isoformat()} if r.union_date else {}),
+                **({"unionDateYear": r.union_date_year} if r.union_date_year is not None else {}),
+                **({"unionEndDate": r.union_end_date.isoformat()} if r.union_end_date else {}),
+                **({"unionEndDateYear": r.union_end_date_year} if r.union_end_date_year is not None else {}),
                 "parentIds": [],
                 "children": {},
             }
@@ -1246,6 +1314,8 @@ class _FrtPerson(BaseModel):
     death_date: Optional[str] = None
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     facebook_handle: Optional[str] = None
     x_handle: Optional[str] = None
     linkedin_handle: Optional[str] = None
@@ -1256,6 +1326,10 @@ class _FrtFamilyGroup(BaseModel):
     union_type: str = "UNKNOWN"
     custom_label: Optional[str] = None
     is_divorced: bool = False
+    union_date: Optional[str] = None
+    union_date_year: Optional[int] = None
+    union_end_date: Optional[str] = None
+    union_end_date_year: Optional[int] = None
     parent_ids: list[str] = []
     children: dict[str, str] = {}   # old_person_id → parentage_type
 
@@ -1342,10 +1416,12 @@ async def import_tree(
               (id, tenant_id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased,
                birth_date, death_date, birth_year, death_year,
+               city, country,
                facebook_handle, x_handle, linkedin_handle)
             VALUES
               (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased,
                :birth_date, :death_date, :birth_year, :death_year,
+               :city, :country,
                :facebook, :x, :linkedin)
         """), {
             "id":         new_pid,
@@ -1360,6 +1436,8 @@ async def import_tree(
             "death_date": death_date_val,
             "birth_year": p.birth_year,
             "death_year": p.death_year,
+            "city":       p.city,
+            "country":    p.country,
             "facebook":   p.facebook_handle,
             "x":          p.x_handle,
             "linkedin":   p.linkedin_handle,
@@ -1372,9 +1450,19 @@ async def import_tree(
         p1 = parent_ids[0] if len(parent_ids) > 0 else None
         p2 = parent_ids[1] if len(parent_ids) > 1 else None
 
+        from datetime import date as _date
+        udate_val = None
+        if fg.union_date:
+            try: udate_val = _date.fromisoformat(fg.union_date)
+            except ValueError: pass
+        uedate_val = None
+        if fg.union_end_date:
+            try: uedate_val = _date.fromisoformat(fg.union_end_date)
+            except ValueError: pass
+
         await uow._session.execute(text("""
-            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced, parent1_id, parent2_id)
-            VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced, :p1, :p2)
+            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced, union_date, union_date_year, union_end_date, union_end_date_year, parent1_id, parent2_id)
+            VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced, :udate, :udate_year, :uedate, :uedate_year, :p1, :p2)
         """), {
             "id":     new_fg_id,
             "tenant": current_user.tenant_id,
@@ -1382,6 +1470,10 @@ async def import_tree(
             "utype":  fg.union_type if fg.union_type in _VALID_UNION_TYPES else "UNKNOWN",
             "clabel": fg.custom_label,
             "divorced": fg.is_divorced,
+            "udate":  udate_val,
+            "udate_year": fg.union_date_year,
+            "uedate": uedate_val,
+            "uedate_year": fg.union_end_date_year,
             "p1":     p1,
             "p2":     p2,
         })
@@ -1881,6 +1973,7 @@ async def merge_trees(
     for src in body.sources:
         fg_rows = (await uow._session.execute(text("""
             SELECT fg.id AS fg_id, fg.union_type, fg.custom_label, fg.is_divorced,
+                   fg.union_date, fg.union_date_year, fg.union_end_date, fg.union_end_date_year,
                    fgm.person_id, fgm.role, fgm.parentage_type
             FROM family_groups fg
             LEFT JOIN family_group_members fgm ON fgm.family_group_id = fg.id
@@ -1892,7 +1985,7 @@ async def merge_trees(
         for r in fg_rows:
             fgid = r.fg_id
             if fgid not in fg_map:
-                fg_map[fgid] = {"union_type": r.union_type, "custom_label": r.custom_label, "is_divorced": r.is_divorced, "parent_ids": [], "children": {}}
+                fg_map[fgid] = {"union_type": r.union_type, "custom_label": r.custom_label, "is_divorced": r.is_divorced, "union_date": r.union_date, "union_date_year": r.union_date_year, "union_end_date": r.union_end_date, "union_end_date_year": r.union_end_date_year, "parent_ids": [], "children": {}}
             if r.person_id is None:
                 continue
             new_pid = id_map.get((src.tree_id, r.person_id))
@@ -1910,12 +2003,16 @@ async def merge_trees(
             p2 = parent_ids[1] if len(parent_ids) > 1 else None
 
             await uow._session.execute(text("""
-                INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced, parent1_id, parent2_id)
-                VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced, :p1, :p2)
+                INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced, union_date, union_date_year, union_end_date, union_end_date_year, parent1_id, parent2_id)
+                VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced, :udate, :udate_year, :uedate, :uedate_year, :p1, :p2)
             """), {"id": new_fg_id, "tenant": tenant_id, "tid": new_tree_id,
                    "utype": fg_data["union_type"] or "UNKNOWN",
                    "clabel": fg_data.get("custom_label"),
                    "divorced": fg_data.get("is_divorced", False),
+                   "udate": fg_data.get("union_date"),
+                   "udate_year": fg_data.get("union_date_year"),
+                   "uedate": fg_data.get("union_end_date"),
+                   "uedate_year": fg_data.get("union_end_date_year"),
                    "p1": p1, "p2": p2})
 
             for pid in parent_ids:

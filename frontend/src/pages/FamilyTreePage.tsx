@@ -35,6 +35,9 @@ async function createPerson(
   treeId: string,
   fields: PersonFields,
 ): Promise<string> {
+  if (!fields.givenName.trim() && !fields.surname.trim()) {
+    throw new Error('Please enter at least a first name or last name.');
+  }
   const body: Record<string, unknown> = {
     given_name:  fields.givenName,
     surname:     fields.surname,
@@ -46,6 +49,8 @@ async function createPerson(
   if (fields.deathDate)      body.death_date       = fields.deathDate;
   if (fields.birthYear)      body.birth_year       = parseInt(fields.birthYear, 10);
   if (fields.deathYear)      body.death_year       = parseInt(fields.deathYear, 10);
+  if (fields.city)            body.city             = fields.city.trim();
+  if (fields.country)         body.country          = fields.country;
   if (fields.facebookHandle) body.facebook_handle  = fields.facebookHandle.trim();
   if (fields.xHandle)        body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
   if (fields.linkedinHandle) body.linkedin_handle  = fields.linkedinHandle.trim();
@@ -69,6 +74,8 @@ interface PersonFields {
   deathDate: string;
   birthYear: string;
   deathYear: string;
+  city: string;
+  country: string;
   facebookHandle: string;
   xHandle: string;
   linkedinHandle: string;
@@ -77,6 +84,7 @@ interface PersonFields {
 const EMPTY_FIELDS: PersonFields = {
   givenName: '', surname: '', sex: 'UNKNOWN', isLiving: true,
   birthDate: '', deathDate: '', birthYear: '', deathYear: '',
+  city: '', country: '',
   facebookHandle: '', xHandle: '', linkedinHandle: '',
 };
 
@@ -109,9 +117,13 @@ function validateDates(fields: {
 function PersonFormFields({
   values,
   onChange,
+  autoFocus = false,
+  givenNameRef,
 }: {
   values: PersonFields;
   onChange: (v: PersonFields) => void;
+  autoFocus?: boolean;
+  givenNameRef?: React.Ref<HTMLInputElement>;
 }) {
   const [showExtra, setShowExtra] = React.useState(false);
 
@@ -122,6 +134,8 @@ function PersonFormFields({
         <div>
           <label className="text-xs font-medium text-slate-600 mb-1 block">First name</label>
           <input
+            ref={givenNameRef}
+            autoFocus={autoFocus}
             value={values.givenName}
             onChange={(e) => onChange({ ...values, givenName: e.target.value })}
             className="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -232,6 +246,31 @@ function PersonFormFields({
               );
             })()}
 
+            {/* Location */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Location</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">City</label>
+                <input
+                  type="text"
+                  placeholder="e.g. London"
+                  value={values.city}
+                  onChange={(e) => onChange({ ...values, city: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Country</label>
+                <input
+                  type="text"
+                  placeholder="e.g. United Kingdom"
+                  value={values.country}
+                  onChange={(e) => onChange({ ...values, country: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+
             {/* Social profiles */}
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Social profiles</p>
             <div className="space-y-2">
@@ -286,6 +325,7 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
   const [fields,  setFields]  = useState<PersonFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+  const givenNameRef = React.useRef<HTMLInputElement>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -299,6 +339,7 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
       onClose();
     } catch (err) {
       setError((err as Error).message);
+      givenNameRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -312,7 +353,7 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <h2 className="font-bold text-slate-900 mb-4">Add person</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <PersonFormFields values={fields} onChange={setFields} />
+          <PersonFormFields values={fields} onChange={setFields} autoFocus givenNameRef={givenNameRef} />
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
@@ -380,6 +421,7 @@ function AddRelationModal({
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState('');
   const [parentageType, setParentageType] = useState('BIOLOGICAL');
+  const givenNameRef = React.useRef<HTMLInputElement>(null);
 
   const cfg = RELATION_CONFIG[mode];
 
@@ -408,7 +450,7 @@ function AddRelationModal({
       const newId = await createPerson(treeId, fields);
       await link(newId);
       onAdded();
-    } catch (err) { setError((err as Error).message); }
+    } catch (err) { setError((err as Error).message); givenNameRef.current?.focus(); }
     finally { setLoading(false); }
   }
 
@@ -457,7 +499,7 @@ function AddRelationModal({
 
         {inputMode === 'new' ? (
           <form onSubmit={handleNewSubmit} className="space-y-3">
-            <PersonFormFields values={fields} onChange={setFields} />
+            <PersonFormFields values={fields} onChange={setFields} autoFocus givenNameRef={givenNameRef} />
             {mode === 'child' && (
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
@@ -853,6 +895,7 @@ function AddChildToUnionModal({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing,      setRemoving]      = useState(false);
   const [parentageType, setParentageType] = useState('BIOLOGICAL');
+  const givenNameRef = React.useRef<HTMLInputElement>(null);
 
   const unionLabel = parent2Id
     ? `${parent1Name} & ${parent2Name}`
@@ -897,6 +940,7 @@ function AddChildToUnionModal({
       onAdded();
     } catch (err) {
       setError((err as Error).message);
+      givenNameRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -1007,7 +1051,7 @@ function AddChildToUnionModal({
 
         {mode === 'new' ? (
           <form onSubmit={handleNewSubmit} className="space-y-3">
-            <PersonFormFields values={fields} onChange={setFields} />
+            <PersonFormFields values={fields} onChange={setFields} autoFocus givenNameRef={givenNameRef} />
             {error && <p className="text-xs text-red-600">{error}</p>}
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
@@ -1122,6 +1166,8 @@ interface EditPersonFields {
   deathDate: string;
   birthYear: string;
   deathYear: string;
+  city: string;
+  country: string;
   facebookHandle: string;
   xHandle: string;
   linkedinHandle: string;
@@ -1142,6 +1188,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
   const [fields,       setFields]       = useState<EditPersonFields>(initial);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
+  const editGivenNameRef = React.useRef<HTMLInputElement>(null);
   const [photoUrl,     setPhotoUrl]     = useState<string | undefined>(initialPhotoUrl);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError,   setPhotoError]   = useState('');
@@ -1200,6 +1247,11 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!fields.givenName.trim() && !fields.surname.trim()) {
+      setError('Please enter at least a first name or last name.');
+      editGivenNameRef.current?.focus();
+      return;
+    }
     const dateErr = validateDates(fields);
     if (dateErr) { setError(dateErr); return; }
     setLoading(true);
@@ -1216,6 +1268,8 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
       if (fields.deathDate)       body.death_date       = fields.deathDate;
       if (fields.birthYear)       body.birth_year       = parseInt(fields.birthYear, 10);
       if (fields.deathYear)       body.death_year       = parseInt(fields.deathYear, 10);
+      if (fields.city)             body.city             = fields.city.trim();
+      if (fields.country)          body.country          = fields.country;
       if (fields.facebookHandle)  body.facebook_handle  = fields.facebookHandle.trim();
       if (fields.xHandle)         body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
       if (fields.linkedinHandle)  body.linkedin_handle  = fields.linkedinHandle.trim();
@@ -1327,6 +1381,8 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
             <div>
               <label className="text-xs font-medium text-slate-600 mb-1 block">First name</label>
               <input
+                ref={editGivenNameRef}
+                autoFocus
                 value={fields.givenName}
                 onChange={(e) => setFields((f) => ({ ...f, givenName: e.target.value }))}
                 className="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -1444,6 +1500,31 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                   );
                 })()}
 
+                {/* Location */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Location</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">City</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. London"
+                      value={fields.city}
+                      onChange={(e) => setFields((f) => ({ ...f, city: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Country</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. United Kingdom"
+                      value={fields.country}
+                      onChange={(e) => setFields((f) => ({ ...f, country: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                </div>
+
                 {/* Social */}
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Social profiles</p>
                 <div className="space-y-2">
@@ -1513,6 +1594,8 @@ interface PersonDetailFull {
   death_date?: string | null;
   birth_year?: number | null;
   death_year?: number | null;
+  city?: string | null;
+  country?: string | null;
   facebook_handle?: string | null;
   x_handle?: string | null;
   linkedin_handle?: string | null;
@@ -1598,7 +1681,7 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
     detail.parents.length + detail.spouses.length + detail.children.length + detail.siblings.length > 0
   );
 
-  function RelGroup({ ids, label }: { ids: string[]; label: string }) {
+  function RelGroup({ ids, label, showUnionDates = false }: { ids: string[]; label: string; showUnionDates?: boolean }) {
     if (!ids.length) return null;
     return (
       <div>
@@ -1608,6 +1691,15 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
           const name = nameMap[id] ?? 'Unknown';
           const photo = gp?.photoUrl;
           const aCls = PROFILE_SEX_AVATAR[gp?.sex ?? 'UNKNOWN'] ?? PROFILE_SEX_AVATAR.UNKNOWN;
+          let unionInfo: import('@features/tree/types').ApiFamilyGroup | undefined;
+          if (showUnionDates && graph) {
+            unionInfo = graph.familyGroups.find((fg) =>
+              fg.parentIds.includes(personId) && fg.parentIds.includes(id)
+            );
+          }
+          const unionDateStr = unionInfo?.unionDate ? fmtDate(unionInfo.unionDate) : unionInfo?.unionDateYear != null ? String(unionInfo.unionDateYear) : null;
+          const unionEndDateStr = unionInfo?.unionEndDate ? fmtDate(unionInfo.unionEndDate) : unionInfo?.unionEndDateYear != null ? String(unionInfo.unionEndDateYear) : null;
+          const unionLabel = unionInfo ? EDGE_UNION_LABEL[unionInfo.unionType] ?? 'Union' : null;
           return (
             <button
               key={id}
@@ -1626,7 +1718,17 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                   {name[0]?.toUpperCase() ?? '?'}
                 </span>
               )}
-              <span className="text-sm text-gray-800 group-hover:text-brand-600 transition-colors flex-1 truncate">{name}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-gray-800 group-hover:text-brand-600 transition-colors truncate block">{name}</span>
+                {unionInfo && (unionDateStr || unionEndDateStr || unionInfo.isDivorced) && (
+                  <span className="text-[10px] text-gray-400 block truncate">
+                    {unionLabel}
+                    {unionInfo.isDivorced ? ' (Divorced)' : ''}
+                    {unionDateStr ? ` · ${unionDateStr}` : ''}
+                    {unionEndDateStr ? ` – ${unionEndDateStr}` : ''}
+                  </span>
+                )}
+              </div>
               <span className="text-gray-300 group-hover:text-brand-400 text-xs">›</span>
             </button>
           );
@@ -1707,6 +1809,7 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
 
               {/* Extra details */}
               {(detail.birth_date || detail.birth_year || detail.death_date || detail.death_year ||
+                detail.city || detail.country ||
                 detail.facebook_handle || detail.x_handle || detail.linkedin_handle) && (
                 <div className="rounded-xl border border-gray-100 divide-y divide-gray-50 overflow-hidden text-sm">
                   {(detail.birth_date || detail.birth_year) && (
@@ -1725,6 +1828,13 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                       <span className="text-gray-800">
                         {detail.death_date ? fmtDate(detail.death_date) : detail.death_year ?? 'Unknown'}
                       </span>
+                    </div>
+                  )}
+                  {(detail.city || detail.country) && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-xs shrink-0">📍</span>
+                      <span className="text-xs text-gray-400 w-9 shrink-0">Lives</span>
+                      <span className="text-gray-800">{[detail.city, detail.country].filter(Boolean).join(', ')}</span>
                     </div>
                   )}
                   {detail.facebook_handle && (
@@ -1762,7 +1872,7 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                 {hasRelatives ? (
                   <div className="divide-y divide-gray-50 p-1 space-y-1">
                     <RelGroup ids={detail.parents}  label="Parents" />
-                    <RelGroup ids={detail.spouses}  label="Spouses / Partners" />
+                    <RelGroup ids={detail.spouses}  label="Spouses / Partners" showUnionDates />
                     <RelGroup ids={detail.children} label="Children" />
                     <RelGroup ids={detail.siblings} label="Siblings" />
                   </div>
@@ -1775,6 +1885,120 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Union dates sub-section (with local state for year fields) ───────────
+
+function UnionDatesSection({
+  fg, treeId, familyGroupId, savingDates, setSavingDates,
+}: {
+  fg: import('@features/tree/types').ApiFamilyGroup | undefined;
+  treeId: string;
+  familyGroupId: string;
+  savingDates: boolean;
+  setSavingDates: (v: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [startDate, setStartDate] = useState(fg?.unionDate ?? '');
+  const [startYear, setStartYear] = useState(fg?.unionDateYear != null ? String(fg.unionDateYear) : '');
+  const [endDate, setEndDate]     = useState(fg?.unionEndDate ?? '');
+  const [endYear, setEndYear]     = useState(fg?.unionEndDateYear != null ? String(fg.unionEndDateYear) : '');
+
+  React.useEffect(() => { setStartDate(fg?.unionDate ?? ''); }, [fg?.unionDate]);
+  React.useEffect(() => { setStartYear(fg?.unionDateYear != null ? String(fg.unionDateYear) : ''); }, [fg?.unionDateYear]);
+  React.useEffect(() => { setEndDate(fg?.unionEndDate ?? ''); }, [fg?.unionEndDate]);
+  React.useEffect(() => { setEndYear(fg?.unionEndDateYear != null ? String(fg.unionEndDateYear) : ''); }, [fg?.unionEndDateYear]);
+
+  async function saveField(field: string, value: string | number | null) {
+    setSavingDates(true);
+    try {
+      await patch(`/trees/${treeId}/family-groups/${familyGroupId}`, { [field]: value });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trees.detail(treeId) });
+    } catch { /* swallow */ }
+    finally { setSavingDates(false); }
+  }
+
+  const ut = fg?.unionType ?? 'UNKNOWN';
+  const [startLabel, endLabel] = UNION_DATE_LABELS[ut] ?? UNION_DATE_LABELS.UNKNOWN;
+  const startDateYear = startDate ? new Date(startDate + 'T00:00:00').getFullYear() : null;
+  const startYearNum = startYear ? parseInt(startYear, 10) : null;
+  const startMismatch = startDateYear != null && startYearNum != null && !isNaN(startYearNum) && startDateYear !== startYearNum;
+  const endDateYear = endDate ? new Date(endDate + 'T00:00:00').getFullYear() : null;
+  const endYearNum = endYear ? parseInt(endYear, 10) : null;
+  const endMismatch = endDateYear != null && endYearNum != null && !isNaN(endYearNum) && endDateYear !== endYearNum;
+
+  const inputCls = "w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50";
+
+  return (
+    <div className="pt-1 border-t border-slate-100 space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-medium text-slate-500 mb-1 block">{startLabel}</label>
+          <input
+            type="date"
+            value={startDate}
+            disabled={savingDates}
+            onChange={(e) => setStartDate(e.target.value)}
+            onBlur={() => saveField('union_date', startDate || null)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-slate-500 mb-1 block">Year only</label>
+          <input
+            type="number"
+            min={1}
+            max={9999}
+            placeholder="e.g. 1990"
+            value={startYear}
+            disabled={savingDates}
+            onChange={(e) => setStartYear(e.target.value)}
+            onBlur={() => saveField('union_date_year', startYear ? parseInt(startYear, 10) : null)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveField('union_date_year', startYear ? parseInt(startYear, 10) : null); (e.target as HTMLInputElement).blur(); } }}
+            className={inputCls}
+          />
+        </div>
+      </div>
+      {startMismatch && (
+        <p className="text-[10px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+          {startLabel} year ({startDateYear}) doesn't match "Year only" ({startYearNum}).
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-medium text-slate-500 mb-1 block">{endLabel}</label>
+          <input
+            type="date"
+            value={endDate}
+            disabled={savingDates}
+            onChange={(e) => setEndDate(e.target.value)}
+            onBlur={() => saveField('union_end_date', endDate || null)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-slate-500 mb-1 block">Year only</label>
+          <input
+            type="number"
+            min={1}
+            max={9999}
+            placeholder="e.g. 2005"
+            value={endYear}
+            disabled={savingDates}
+            onChange={(e) => setEndYear(e.target.value)}
+            onBlur={() => saveField('union_end_date_year', endYear ? parseInt(endYear, 10) : null)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveField('union_end_date_year', endYear ? parseInt(endYear, 10) : null); (e.target as HTMLInputElement).blur(); } }}
+            className={inputCls}
+          />
+        </div>
+      </div>
+      {endMismatch && (
+        <p className="text-[10px] text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+          {endLabel} year ({endDateYear}) doesn't match "Year only" ({endYearNum}).
+        </p>
+      )}
     </div>
   );
 }
@@ -1800,6 +2024,13 @@ interface EdgeSelectionPanelProps {
   onDeleted: () => void;
 }
 
+const UNION_DATE_LABELS: Record<string, [string, string]> = {
+  MARRIAGE:     ['Married Date',      'Married Until'],
+  PARTNERSHIP:  ['Partnership Date',  'Partnership Until'],
+  COHABITATION: ['Cohabitation Date', 'Cohabitation Until'],
+  UNKNOWN:      ['Union Date',        'Union Until'],
+};
+
 function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onDeleted }: EdgeSelectionPanelProps) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting,      setDeleting]      = React.useState(false);
@@ -1807,6 +2038,7 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
   const [togglingDivorce, setTogglingDivorce] = React.useState(false);
   const [savingParentage, setSavingParentage] = React.useState(false);
   const [savingUnionType, setSavingUnionType] = React.useState(false);
+  const [savingDates, setSavingDates] = React.useState(false);
   const queryClient = useQueryClient();
 
   if (!edge) return null;
@@ -1919,6 +2151,16 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
                 <option value="UNKNOWN">Unknown</option>
               </select>
             </div>
+          )}
+
+          {canWrite && isUnion && (
+            <UnionDatesSection
+              fg={fg}
+              treeId={treeId}
+              familyGroupId={familyGroupId}
+              savingDates={savingDates}
+              setSavingDates={setSavingDates}
+            />
           )}
 
           {canWrite && isUnion && (
@@ -2336,6 +2578,8 @@ function TreeTopBar({
         ...(p.deathDate ? { death_date: p.deathDate } : {}),
         ...(p.birthYear != null ? { birth_year: p.birthYear } : {}),
         ...(p.deathYear != null ? { death_year: p.deathYear } : {}),
+        ...(p.city ? { city: p.city } : {}),
+        ...(p.country ? { country: p.country } : {}),
         ...(p.facebookHandle ? { facebook_handle: p.facebookHandle } : {}),
         ...(p.xHandle ? { x_handle: p.xHandle } : {}),
         ...(p.linkedinHandle ? { linkedin_handle: p.linkedinHandle } : {}),
@@ -2975,6 +3219,8 @@ export default function FamilyTreePage() {
           deathDate:       p.deathDate ?? '',
           birthYear:       p.birthYear != null ? String(p.birthYear) : '',
           deathYear:       p.deathYear != null ? String(p.deathYear) : '',
+          city:            p.city ?? '',
+          country:         p.country ?? '',
           facebookHandle:  p.facebookHandle ?? '',
           xHandle:         p.xHandle ?? '',
           linkedinHandle:  p.linkedinHandle ?? '',

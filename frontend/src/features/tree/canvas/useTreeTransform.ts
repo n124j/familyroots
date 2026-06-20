@@ -177,6 +177,10 @@ export function transformGraphToFlow(
           unionOrdinal: i === labelIdx ? parentOrdinals[i] : undefined,
           customLabel: i === customLabelIdx ? fg.customLabel : undefined,
           isDivorced: fg.isDivorced,
+          unionDate: fg.unionDate,
+          unionDateYear: fg.unionDateYear,
+          unionEndDate: fg.unionEndDate,
+          unionEndDateYear: fg.unionEndDateYear,
         },
         animated: false,
       } as TreeEdge);

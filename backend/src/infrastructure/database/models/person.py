@@ -56,6 +56,9 @@ class PersonModel(Base, TenantMixin, TimestampMixin):
     death_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Social profile handles (stored without @ or URL prefix)
+    city: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     facebook_handle: Mapped[str | None] = mapped_column(String(200), nullable=True)
     x_handle:        Mapped[str | None] = mapped_column(String(200), nullable=True)
     linkedin_handle: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -98,6 +101,11 @@ class FamilyGroupModel(Base, TenantMixin, TimestampMixin):
     parent2_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     is_divorced: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+
+    union_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    union_date_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    union_end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    union_end_date_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     members: Mapped[list["FamilyGroupMemberModel"]] = relationship(
         "FamilyGroupMemberModel", back_populates="family_group", lazy="noload",

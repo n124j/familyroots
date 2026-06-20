@@ -36,7 +36,7 @@ import { UnionEdge } from './edges/UnionEdge';
 import { TreeControls } from './controls/TreeControls';
 import { useTreeLayout } from './useTreeLayout';
 import { useExpandCollapse } from './useExpandCollapse';
-import { ancestorSubgraphIds, descendantSubgraphIds } from './algorithms/ancestorChart';
+import { ancestorSubgraphIds } from './algorithms/ancestorChart';
 import { useCanvasStore } from '@store/canvas.store';
 import { useThemeStore } from '@store/theme.store';
 import type { ApiTreeGraph, TreeNode, TreeEdge, PersonNodeData } from '../types';
@@ -110,67 +110,51 @@ const LEGEND_TITLES: Record<LayoutMode, string> = {
   pedigree:            'Pedigree Chart',
 };
 
-// For focus-scoped modes: max generations the chart shows.
-// Absent from this map → full visible tree (vertical / horizontal).
-const FOCUS_MAX_GENS: Partial<Record<LayoutMode, number>> = {
-  fan:            8,
-  'ancestry-fan': 8,
-  pedigree:       8,
-  ancestor:       8,
-  descendant:     8,
-};
-
 function ChartLegend({
   graph,
-  focusPersonId,
   mode,
-  visiblePersonIds,
+  visibleNodeIds,
 }: {
-  graph:            ApiTreeGraph;
-  focusPersonId:    string | null;
-  mode:             LayoutMode;
-  /** IDs of persons currently rendered — used for non-focus modes. */
-  visiblePersonIds: Set<string>;
+  graph:          ApiTreeGraph;
+  mode:           LayoutMode;
+  /** IDs of all nodes currently rendered (persons + family groups). */
+  visibleNodeIds: Set<string>;
 }) {
-  const stats = useMemo(() => {
-    const maxG = FOCUS_MAX_GENS[mode];
-    let people: typeof graph.persons;
+  const { stats, unionTypes, parentageTypes } = useMemo(() => {
+    const people = graph.persons.filter((p) => visibleNodeIds.has(p.id));
+    const families = graph.familyGroups.filter((fg) => visibleNodeIds.has(fg.id));
 
-    // Resolve effective focus person — ancestry-fan uses the same fallback
-    // as AncestryFanChart when no explicit focus is set.
-    let effectiveFocus = focusPersonId;
-    if (!effectiveFocus && maxG !== undefined) {
-      const personSet = new Set(graph.persons.map((p) => p.id));
-      const childIds = new Set<string>();
-      for (const fg of graph.familyGroups)
-        for (const cId of Object.keys(fg.children))
-          if (personSet.has(cId)) childIds.add(cId);
-      effectiveFocus = (graph.persons.find((p) => childIds.has(p.id)) ?? graph.persons[0])?.id ?? null;
+    const unions = new Set<string>();
+    const parentages = new Set<string>();
+    let hasDivorced = false;
+    for (const fg of families) {
+      unions.add(fg.unionType);
+      if (fg.isDivorced) hasDivorced = true;
+      for (const pt of Object.values(fg.children)) {
+        parentages.add(pt);
+      }
     }
-
-    if (maxG !== undefined && effectiveFocus) {
-      const subIds =
-        mode === 'descendant'
-          ? descendantSubgraphIds(graph, effectiveFocus, maxG)
-          : ancestorSubgraphIds(graph, effectiveFocus, maxG);
-      people = graph.persons.filter((p) => subIds.has(p.id));
-    } else {
-      // Full-tree modes (vertical / horizontal): count every visible person.
-      people = graph.persons.filter((p) => visiblePersonIds.has(p.id));
-    }
+    if (hasDivorced) unions.add('DIVORCED');
 
     return {
-      total:   people.length,
-      male:    people.filter((p) => p.sex === 'MALE').length,
-      female:  people.filter((p) => p.sex === 'FEMALE').length,
-      living:  people.filter((p) => p.isLiving).length,
-      dead:    people.filter((p) => p.isDeceased).length,
+      stats: {
+        total:   people.length,
+        male:    people.filter((p) => p.sex === 'MALE').length,
+        female:  people.filter((p) => p.sex === 'FEMALE').length,
+        living:  people.filter((p) => p.isLiving).length,
+        dead:    people.filter((p) => p.isDeceased).length,
+      },
+      unionTypes: unions,
+      parentageTypes: parentages,
     };
-  }, [graph, focusPersonId, mode, visiblePersonIds]);
+  }, [graph, visibleNodeIds]);
 
   const theme = useThemeStore((s) => s.theme);
 
   if (stats.total === 0) return null;
+
+  const hasUnions = unionTypes.size > 0;
+  const hasChildren = parentageTypes.size > 0;
 
   return (
     <div
@@ -203,56 +187,73 @@ function ChartLegend({
         <LegendRow icon="●" label="Living"   count={stats.living} color="#22c55e"            textColor={theme.nodeText} />
         <LegendRow icon="✝" label="Deceased" count={stats.dead}   color={theme.nodeSubtext}  textColor={theme.nodeText} />
       </div>
-      {mode !== 'ancestry-fan' && (
+      {(hasUnions || hasChildren) && (
         <div className="mt-2.5 pt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.nodeBorder}` }}>
           <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: theme.nodeSubtext }}>Lines</p>
-          <p className="text-[8px] font-semibold uppercase tracking-widest mt-1 mb-0.5" style={{ color: theme.nodeSubtext }}>Unions</p>
-          {/* Marriage — double solid gold */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#f59e0b" strokeWidth="1.5"/><line x1="0" y1="6" x2="24" y2="6" stroke="#f59e0b" strokeWidth="1.5"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Marriage</span>
-          </div>
-          {/* Partnership — solid green */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke="#10b981" strokeWidth="1.5"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Partnership</span>
-          </div>
-          {/* Cohabitation — dashed indigo */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="6 6"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Cohabitation</span>
-          </div>
-          {/* Divorced — double dotted gray */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/><line x1="0" y1="6" x2="24" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Divorced</span>
-          </div>
-          <p className="text-[8px] font-semibold uppercase tracking-widest mt-1.5 mb-0.5" style={{ color: theme.nodeSubtext }}>Children</p>
-          {/* Biological child — solid */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Biological</span>
-          </div>
-          {/* Adopted child — dashed */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Adopted</span>
-          </div>
-          {/* Step child — short dash */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Step</span>
-          </div>
-          {/* Foster child — dash-dot */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3 2 3"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Foster</span>
-          </div>
-          {/* Unknown child — dotted */}
-          <div className="flex items-center gap-2">
-            <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
-            <span className="text-[10px]" style={{ color: theme.nodeText }}>Unknown</span>
-          </div>
+          {hasUnions && (
+            <>
+              <p className="text-[8px] font-semibold uppercase tracking-widest mt-1 mb-0.5" style={{ color: theme.nodeSubtext }}>Unions</p>
+              {unionTypes.has('MARRIAGE') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#f59e0b" strokeWidth="1.5"/><line x1="0" y1="6" x2="24" y2="6" stroke="#f59e0b" strokeWidth="1.5"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Marriage</span>
+                </div>
+              )}
+              {unionTypes.has('PARTNERSHIP') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke="#10b981" strokeWidth="1.5"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Partnership</span>
+                </div>
+              )}
+              {unionTypes.has('COHABITATION') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="6 6"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Cohabitation</span>
+                </div>
+              )}
+              {unionTypes.has('DIVORCED') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/><line x1="0" y1="6" x2="24" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Divorced</span>
+                </div>
+              )}
+            </>
+          )}
+          {hasChildren && (
+            <>
+              <p className="text-[8px] font-semibold uppercase tracking-widest mt-1.5 mb-0.5" style={{ color: theme.nodeSubtext }}>Children</p>
+              {parentageTypes.has('BIOLOGICAL') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Biological</span>
+                </div>
+              )}
+              {parentageTypes.has('ADOPTIVE') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Adopted</span>
+                </div>
+              )}
+              {parentageTypes.has('STEP') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Step</span>
+                </div>
+              )}
+              {parentageTypes.has('FOSTER') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3 2 3"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Foster</span>
+                </div>
+              )}
+              {parentageTypes.has('UNKNOWN') && (
+                <div className="flex items-center gap-2">
+                  <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Unknown</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -982,13 +983,12 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
         <DraggableLegend>
           <ChartLegend
             graph={graph}
-            focusPersonId={focusPersonId ?? null}
             mode={layoutMode}
-            visiblePersonIds={new Set(
-              reactFlowNodes
-                .filter((n) => n.type === 'person')
-                .map((n) => n.id)
-            )}
+            visibleNodeIds={
+              layoutMode === 'ancestry-fan' && fanNode
+                ? ancestorSubgraphIds(graph, (fanNode.data as unknown as FanNodeData).focusPersonId, 8)
+                : new Set(reactFlowNodes.map((n) => n.id))
+            }
           />
         </DraggableLegend>
       )}

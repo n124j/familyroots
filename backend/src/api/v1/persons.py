@@ -88,11 +88,13 @@ async def create_person(
                 id, tenant_id, tree_id, sex, display_given_name, display_surname,
                 is_living, is_deceased,
                 birth_date, death_date, birth_year, death_year,
+                city, country,
                 facebook_handle, x_handle, linkedin_handle
             ) VALUES (
                 :id, :tenant_id, :tree_id, :sex, :given, :surname,
                 :living, :deceased,
                 :birth_date, :death_date, :birth_year, :death_year,
+                :city, :country,
                 :facebook_handle, :x_handle, :linkedin_handle
             )
         """),
@@ -109,6 +111,8 @@ async def create_person(
             "death_date": req.death_date,
             "birth_year": req.birth_year,
             "death_year": req.death_year,
+            "city": req.city,
+            "country": req.country,
             "facebook_handle": req.facebook_handle,
             "x_handle": req.x_handle,
             "linkedin_handle": req.linkedin_handle,
@@ -132,6 +136,8 @@ async def create_person(
         death_date=req.death_date,
         birth_year=req.birth_year,
         death_year=req.death_year,
+        city=req.city,
+        country=req.country,
         facebook_handle=req.facebook_handle,
         x_handle=req.x_handle,
         linkedin_handle=req.linkedin_handle,
@@ -194,6 +200,8 @@ async def update_person(
                 death_date         = :death_date,
                 birth_year         = :birth_year,
                 death_year         = :death_year,
+                city               = :city,
+                country            = :country,
                 facebook_handle    = :facebook_handle,
                 x_handle           = :x_handle,
                 linkedin_handle    = :linkedin_handle
@@ -201,6 +209,7 @@ async def update_person(
             RETURNING id, tree_id, display_given_name, display_surname, sex,
                       is_living, is_deceased, photo_url,
                       birth_date, death_date, birth_year, death_year,
+                      city, country,
                       facebook_handle, x_handle, linkedin_handle
         """),
         {
@@ -214,6 +223,8 @@ async def update_person(
             "death_date":      req.death_date,
             "birth_year":      req.birth_year,
             "death_year":      req.death_year,
+            "city":            req.city,
+            "country":         req.country,
             "facebook_handle": req.facebook_handle,
             "x_handle":        req.x_handle,
             "linkedin_handle": req.linkedin_handle,
@@ -245,6 +256,8 @@ async def update_person(
         death_date=row.death_date,
         birth_year=row.birth_year,
         death_year=row.death_year,
+        city=row.city,
+        country=row.country,
         facebook_handle=row.facebook_handle,
         x_handle=row.x_handle,
         linkedin_handle=row.linkedin_handle,
