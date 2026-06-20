@@ -18,7 +18,7 @@ interface AdminUser {
   given_name: string | null;
   family_name: string | null;
   avatar_url: string | null;
-  app_role: 'ADMIN' | 'STANDARD' | 'AUDITOR';
+  app_role: 'SUPER_ADMIN' | 'ADMIN' | 'STANDARD' | 'AUDITOR';
   email_verified: boolean;
   is_active: boolean;
   last_login_at: string | null;
@@ -36,9 +36,10 @@ interface UsersResponse {
 const ROLE_OPTIONS = ['ADMIN', 'STANDARD', 'AUDITOR'] as const;
 
 const ROLE_BADGE: Record<string, string> = {
-  ADMIN:    'bg-purple-100 text-purple-700',
-  STANDARD: 'bg-blue-100 text-blue-700',
-  AUDITOR:  'bg-amber-100 text-amber-700',
+  SUPER_ADMIN: 'bg-red-100 text-red-700',
+  ADMIN:       'bg-purple-100 text-purple-700',
+  STANDARD:    'bg-blue-100 text-blue-700',
+  AUDITOR:     'bg-amber-100 text-amber-700',
 };
 
 // ── Permission Group types ──────────────────────────────────────────────────────
@@ -833,12 +834,644 @@ function MergeTreesPanel({ token }: { token: string | null }) {
   );
 }
 
+// ── Broadcast email panel (Super Admin only) ─────────────────────────────────
+
+interface Recipient {
+  id: string;
+  email: string;
+  given_name: string | null;
+  family_name: string | null;
+  app_role: string;
+  broadcast_unsubscribed: boolean;
+}
+
+interface BroadcastHistoryEntry {
+  id: string;
+  sender_display_name: string;
+  subject: string;
+  body: string;
+  category: string;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  recipient_emails: string[];
+  created_at: string;
+}
+
+const CATEGORY_OPTIONS = [
+  { value: 'notice',  label: 'Notice',  color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'alert',   label: 'Alert',   color: 'bg-red-100 text-red-700' },
+  { value: 'event',   label: 'Event',   color: 'bg-green-100 text-green-700' },
+  { value: 'update',  label: 'Update',  color: 'bg-amber-100 text-amber-700' },
+] as const;
+
+function BroadcastPanel({ token }: { token: string | null }) {
+  const [subject,    setSubject]    = useState('');
+  const [body,       setBody]       = useState('');
+  const [category,   setCategory]   = useState<string>('notice');
+  const [sendToAll,  setSendToAll]  = useState(true);
+  const [sending,    setSending]    = useState(false);
+  const [feedback,   setFeedback]   = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // History
+  const [history,         setHistory]         = useState<BroadcastHistoryEntry[]>([]);
+  const [historyLoading,  setHistoryLoading]  = useState(true);
+  const [historyPage,     setHistoryPage]     = useState(1);
+  const [historyTotal,    setHistoryTotal]    = useState(0);
+  const [expandedId,      setExpandedId]      = useState<string | null>(null);
+  const [deletingId,      setDeletingId]      = useState<string | null>(null);
+
+  // Recipient list
+  const [recipients,       setRecipients]       = useState<Recipient[]>([]);
+  const [recipientSearch,  setRecipientSearch]  = useState('');
+  const [loadingRecipients, setLoadingRecipients] = useState(false);
+  const [selectedIds,      setSelectedIds]      = useState<Set<string>>(new Set());
+
+  const searchRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Load recipients when switching to selective mode
+  useEffect(() => {
+    if (sendToAll || !token) return;
+    loadRecipients('');
+  }, [sendToAll, token]);
+
+  // Debounced search
+  useEffect(() => {
+    if (sendToAll) return;
+    clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => loadRecipients(recipientSearch), 350);
+    return () => clearTimeout(searchRef.current);
+  }, [recipientSearch]);
+
+  async function loadRecipients(search: string) {
+    if (!token) return;
+    setLoadingRecipients(true);
+    try {
+      const params = search ? `?search=${encodeURIComponent(search)}` : '';
+      const res = await fetch(`${API_BASE}/broadcast/recipients${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecipients(data.items);
+      }
+    } catch { /* ignore */ }
+    finally { setLoadingRecipients(false); }
+  }
+
+  function toggleRecipient(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setSelectedIds(new Set(recipients.map((r) => r.id)));
+  }
+
+  function deselectAll() {
+    setSelectedIds(new Set());
+  }
+
+  async function handleSend() {
+    if (!token || !subject.trim() || !body.trim()) return;
+    if (!sendToAll && selectedIds.size === 0) {
+      setFeedback({ type: 'error', text: 'Please select at least one recipient.' });
+      return;
+    }
+
+    setSending(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`${API_BASE}/broadcast/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          subject: subject.trim(),
+          body: body.trim(),
+          category,
+          recipient_ids: sendToAll ? [] : Array.from(selectedIds),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).detail ?? 'Failed to send');
+      }
+      const data = await res.json();
+      const failedMsg = data.failed_count > 0 ? ` (${data.failed_count} failed)` : '';
+      setFeedback({ type: 'success', text: `Sent to ${data.sent_count} recipient${data.sent_count !== 1 ? 's' : ''}${failedMsg}.` });
+      setSubject('');
+      setBody('');
+      loadHistory();
+    } catch (err) {
+      setFeedback({ type: 'error', text: (err as Error).message });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function recipientName(r: Recipient) {
+    return [r.given_name, r.family_name].filter(Boolean).join(' ') || r.email;
+  }
+
+  const loadHistory = useCallback(async () => {
+    if (!token) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/broadcast/history?page=${historyPage}&page_size=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data.items);
+        setHistoryTotal(data.total);
+      }
+    } catch { /* ignore */ }
+    finally { setHistoryLoading(false); }
+  }, [token, historyPage]);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  async function handleDeleteLog(id: string) {
+    if (!token) return;
+    setDeletingId(id);
+    try {
+      await fetch(`${API_BASE}/broadcast/history/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      setHistory((prev) => prev.filter((h) => h.id !== id));
+      setHistoryTotal((t) => Math.max(0, t - 1));
+    } catch { /* ignore */ }
+    finally { setDeletingId(null); }
+  }
+
+  return (
+    <div className="max-w-3xl">
+      <div className="rounded-xl border p-6" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
+        <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--portal-text-primary)' }}>
+          Broadcast Email
+        </h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--portal-text-muted)' }}>
+          Compose and send an email to all users or selected recipients.
+        </p>
+
+        {/* Category */}
+        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--portal-text-primary)' }}>
+          Category
+        </label>
+        <div className="flex gap-2 mb-5">
+          {CATEGORY_OPTIONS.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => setCategory(c.value)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-full border-2 transition-colors ${
+                category === c.value
+                  ? `${c.color} border-current`
+                  : 'bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Subject */}
+        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--portal-text-primary)' }}>
+          Subject
+        </label>
+        <input
+          type="text"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="e.g. Scheduled maintenance on Saturday"
+          maxLength={200}
+          className="w-full h-10 px-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 mb-4"
+          style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)', borderColor: 'var(--portal-card-border)' }}
+        />
+
+        {/* Body */}
+        <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--portal-text-primary)' }}>
+          Message
+        </label>
+        <textarea
+          rows={6}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Write your message here…"
+          maxLength={10000}
+          className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y mb-1"
+          style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)', borderColor: 'var(--portal-card-border)' }}
+        />
+        <p className="text-xs mb-5" style={{ color: 'var(--portal-text-muted)' }}>
+          Plain text. Line breaks will be preserved in the email.
+        </p>
+
+        {/* Recipients toggle */}
+        <label className="block text-sm font-medium mb-2" style={{ color: 'var(--portal-text-primary)' }}>
+          Recipients
+        </label>
+        <div className="flex gap-3 mb-4">
+          <button
+            type="button"
+            onClick={() => setSendToAll(true)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              sendToAll
+                ? 'bg-brand-50 text-brand-700 border-brand-300'
+                : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            All users
+          </button>
+          <button
+            type="button"
+            onClick={() => setSendToAll(false)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+              !sendToAll
+                ? 'bg-brand-50 text-brand-700 border-brand-300'
+                : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Select recipients
+          </button>
+        </div>
+
+        {/* Selective recipients list */}
+        {!sendToAll && (
+          <div className="border rounded-lg mb-5" style={{ borderColor: 'var(--portal-card-border)' }}>
+            {/* Search + select/deselect all */}
+            <div className="flex items-center gap-2 p-3 border-b" style={{ borderColor: 'var(--portal-card-border)' }}>
+              <input
+                type="text"
+                value={recipientSearch}
+                onChange={(e) => setRecipientSearch(e.target.value)}
+                placeholder="Search users…"
+                className="flex-1 h-8 px-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+                style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)', borderColor: 'var(--portal-card-border)' }}
+              />
+              <button type="button" onClick={selectAll}
+                className="text-xs text-brand-600 hover:text-brand-700 font-medium whitespace-nowrap">
+                Select all
+              </button>
+              <button type="button" onClick={deselectAll}
+                className="text-xs text-gray-500 hover:text-gray-700 font-medium whitespace-nowrap">
+                Clear
+              </button>
+            </div>
+
+            {/* User list */}
+            <div className="max-h-56 overflow-y-auto">
+              {loadingRecipients ? (
+                <div className="flex justify-center py-6">
+                  <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : recipients.length === 0 ? (
+                <p className="text-sm text-center py-6" style={{ color: 'var(--portal-text-muted)' }}>
+                  No users found
+                </p>
+              ) : (
+                recipients.map((r) => (
+                  <label
+                    key={r.id}
+                    className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleRecipient(r.id)}
+                      disabled={r.broadcast_unsubscribed}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 disabled:opacity-40"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate" style={{ color: r.broadcast_unsubscribed ? 'var(--portal-text-muted)' : 'var(--portal-text-primary)' }}>
+                        {recipientName(r)}
+                      </p>
+                      <p className="text-xs truncate" style={{ color: 'var(--portal-text-muted)' }}>
+                        {r.email}
+                      </p>
+                    </div>
+                    {r.broadcast_unsubscribed && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                        Unsubscribed
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${ROLE_BADGE[r.app_role] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {r.app_role}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            {/* Selected count */}
+            <div className="px-3 py-2 border-t text-xs" style={{ borderColor: 'var(--portal-card-border)', color: 'var(--portal-text-muted)' }}>
+              {selectedIds.size} of {recipients.length} selected
+            </div>
+          </div>
+        )}
+
+        {/* Send */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSend}
+            disabled={sending || !subject.trim() || !body.trim()}
+            className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+          >
+            {sending ? 'Sending…' : sendToAll ? 'Send to all users' : `Send to ${selectedIds.size} user${selectedIds.size !== 1 ? 's' : ''}`}
+          </button>
+          {feedback && (
+            <span className={`text-sm font-medium ${feedback.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+              {feedback.text}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Broadcast History ── */}
+      <div className="rounded-xl border p-6 mt-6" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
+        <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--portal-text-primary)' }}>
+          Broadcast History
+        </h2>
+
+        {historyLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : history.length === 0 ? (
+          <p className="text-sm py-6 text-center" style={{ color: 'var(--portal-text-muted)' }}>
+            No broadcasts sent yet.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {history.map((h) => {
+                const catColor = CATEGORY_OPTIONS.find((c) => c.value === h.category)?.color ?? 'bg-gray-100 text-gray-600';
+                const isExpanded = expandedId === h.id;
+                return (
+                  <div
+                    key={h.id}
+                    className="border rounded-lg overflow-hidden"
+                    style={{ borderColor: 'var(--portal-card-border)' }}
+                  >
+                    {/* Summary row */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(isExpanded ? null : h.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase ${catColor}`}>
+                        {h.category}
+                      </span>
+                      <span className="flex-1 text-sm font-medium truncate" style={{ color: 'var(--portal-text-primary)' }}>
+                        {h.subject}
+                      </span>
+                      <span className="text-xs whitespace-nowrap" style={{ color: 'var(--portal-text-muted)' }}>
+                        {h.sent_count} sent{h.failed_count > 0 ? `, ${h.failed_count} failed` : ''}
+                      </span>
+                      <span className="text-xs whitespace-nowrap" style={{ color: 'var(--portal-text-muted)' }}>
+                        {new Date(h.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t" style={{ borderColor: 'var(--portal-card-border)' }}>
+                        <div className="mt-3 text-sm whitespace-pre-line" style={{ color: 'var(--portal-text-primary)' }}>
+                          {h.body}
+                        </div>
+                        <div className="mt-3">
+                          <p className="text-xs font-medium mb-1" style={{ color: 'var(--portal-text-muted)' }}>
+                            Recipients ({h.recipient_count}):
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {h.recipient_emails.map((email) => (
+                              <span key={email} className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                {email}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-xs" style={{ color: 'var(--portal-text-muted)' }}>
+                            Sent by {h.sender_display_name}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteLog(h.id)}
+                            disabled={deletingId === h.id}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                          >
+                            {deletingId === h.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {historyTotal > 10 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <button
+                  onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
+                  disabled={historyPage <= 1}
+                  className="px-3 py-1 text-xs border rounded disabled:opacity-40"
+                  style={{ borderColor: 'var(--portal-card-border)', color: 'var(--portal-text-primary)' }}
+                >
+                  Previous
+                </button>
+                <span className="text-xs" style={{ color: 'var(--portal-text-muted)' }}>
+                  Page {historyPage} of {Math.ceil(historyTotal / 10)}
+                </span>
+                <button
+                  onClick={() => setHistoryPage((p) => p + 1)}
+                  disabled={historyPage >= Math.ceil(historyTotal / 10)}
+                  className="px-3 py-1 text-xs border rounded disabled:opacity-40"
+                  style={{ borderColor: 'var(--portal-card-border)', color: 'var(--portal-text-primary)' }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Maintenance mode panel (Super Admin only) ────────────────────────────────
+
+function MaintenancePanel({ token }: { token: string | null }) {
+  const [loading, setLoading]       = useState(true);
+  const [saving, setSaving]         = useState(false);
+  const [enabled, setEnabled]       = useState(false);
+  const [message, setMessage]       = useState('');
+  const [feedback, setFeedback]     = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/site-settings/maintenance`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEnabled(data.maintenance_mode);
+          setMessage(data.maintenance_message);
+        }
+      } catch { /* ignore */ }
+      finally { setLoading(false); }
+    })();
+  }, [token]);
+
+  async function handleSave() {
+    if (!token) return;
+    setSaving(true);
+    setFeedback('');
+    try {
+      const res = await fetch(`${API_BASE}/site-settings/maintenance`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          maintenance_mode: enabled,
+          maintenance_message: message || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).detail ?? 'Failed to update');
+      }
+      const data = await res.json();
+      setEnabled(data.maintenance_mode);
+      setMessage(data.maintenance_message);
+      setFeedback(data.maintenance_mode ? 'Site is now Under Construction' : 'Site is now Live');
+    } catch (err) {
+      setFeedback((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <div className="rounded-xl border p-6" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
+        <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--portal-text-primary)' }}>
+          Maintenance Mode
+        </h2>
+        <p className="text-sm mb-6" style={{ color: 'var(--portal-text-muted)' }}>
+          When enabled, all users except the Super Administrator will see an "Under Construction" page.
+        </p>
+
+        {/* Toggle */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={() => setEnabled(!enabled)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+              enabled ? 'bg-amber-500' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform ${
+                enabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+          <span className="text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>
+            {enabled ? (
+              <span className="text-amber-600 font-semibold">Under Construction</span>
+            ) : (
+              <span className="text-green-600 font-semibold">Live</span>
+            )}
+          </span>
+        </div>
+
+        {/* Message */}
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>
+            Maintenance message
+          </label>
+          <button
+            type="button"
+            onClick={() => setMessage('We are currently performing scheduled maintenance. Please check back soon!')}
+            className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100 transition-colors"
+            style={{ color: 'var(--portal-text-muted)' }}
+          >
+            Reset to default
+          </button>
+        </div>
+        <textarea
+          rows={4}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="We are currently performing scheduled maintenance. Please check back soon!"
+          maxLength={2000}
+          className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y"
+          style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)', borderColor: 'var(--portal-card-border)' }}
+        />
+        <p className="text-xs mt-1 mb-4" style={{ color: 'var(--portal-text-muted)' }}>
+          This message is shown to all visitors when maintenance mode is enabled.
+        </p>
+
+        {/* Save */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+          {feedback && (
+            <span className="text-sm font-medium" style={{ color: feedback.includes('Failed') ? '#ef4444' : '#22c55e' }}>
+              {feedback}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const accessToken  = useAuthStore((s) => s.accessToken);
   const currentUser  = useAuthStore((s) => s.user);
-  const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'merge'>('users');
+  const isSuperAdmin = currentUser?.appRole === 'SUPER_ADMIN';
+  const [activeTab, setActiveTab] = useState<'users' | 'permissions' | 'merge' | 'broadcast' | 'site'>('users');
 
   const [data,     setData]     = useState<UsersResponse | null>(null);
   const [loading,  setLoading]  = useState(false);
@@ -940,10 +1573,18 @@ export default function AdminPage() {
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-gray-200 mb-6">
-        {([['users', 'Users'], ['permissions', 'Permission Groups'], ['merge', 'Merge Trees']] as const).map(([key, label]) => (
+        {([
+          ['users', 'Users'],
+          ['permissions', 'Permission Groups'],
+          ['merge', 'Merge Trees'],
+          ...(isSuperAdmin ? [
+            ['broadcast', 'Broadcast'] as const,
+            ['site', 'Site Settings'] as const,
+          ] : []),
+        ] as const).map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setActiveTab(key)}
+            onClick={() => setActiveTab(key as typeof activeTab)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
               activeTab === key
                 ? 'border-brand-500 text-brand-600'
@@ -957,6 +1598,8 @@ export default function AdminPage() {
 
       {activeTab === 'permissions' && <PermissionGroupsPanel token={accessToken} />}
       {activeTab === 'merge' && <MergeTreesPanel token={accessToken} />}
+      {activeTab === 'broadcast' && isSuperAdmin && <BroadcastPanel token={accessToken} />}
+      {activeTab === 'site' && isSuperAdmin && <MaintenancePanel token={accessToken} />}
       {activeTab === 'users' && (<>
 
       {/* Users tab header actions */}
@@ -987,6 +1630,7 @@ export default function AdminPage() {
           className="h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}>
           <option value="">All roles</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
           <option value="ADMIN">Admin</option>
           <option value="STANDARD">Standard</option>
           <option value="AUDITOR">Auditor</option>

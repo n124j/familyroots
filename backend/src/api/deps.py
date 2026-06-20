@@ -140,9 +140,18 @@ NotAuditorDep = Annotated[UserModel, Depends(require_not_auditor)]
 
 
 async def require_admin(user: VerifiedUserDep) -> UserModel:
-    """Restrict endpoint to system administrators only."""
-    if user.app_role != AppRole.ADMIN:
+    """Restrict endpoint to system administrators (ADMIN or SUPER_ADMIN)."""
+    if user.app_role not in (AppRole.ADMIN, AppRole.SUPER_ADMIN):
         raise HTTPException(status_code=403, detail="Administrator access required")
     return user
 
 AdminUserDep = Annotated[UserModel, Depends(require_admin)]
+
+
+async def require_super_admin(user: VerifiedUserDep) -> UserModel:
+    """Restrict endpoint to the single Super Administrator only."""
+    if user.app_role != AppRole.SUPER_ADMIN:
+        raise HTTPException(status_code=403, detail="Super Administrator access required")
+    return user
+
+SuperAdminDep = Annotated[UserModel, Depends(require_super_admin)]

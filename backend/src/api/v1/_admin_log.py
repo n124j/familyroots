@@ -16,6 +16,8 @@ LOGIN_EVENT_TYPES = frozenset({
     "PG_CREATE", "PG_UPDATE", "PG_DELETE",
     "PG_ADD_TREE", "PG_REMOVE_TREE",
     "PG_ADD_MEMBER", "PG_REMOVE_MEMBER",
+    # Broadcast
+    "BROADCAST_SEND", "BROADCAST_DEL",
 })
 
 

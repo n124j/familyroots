@@ -12,9 +12,10 @@ from typing import Any, Optional
 # ── Enumerations ──────────────────────────────────────────────────────────────
 
 class AppRole(str, Enum):
-    ADMIN    = "ADMIN"    # System-wide superuser — bypasses all tree membership checks
-    STANDARD = "STANDARD" # Normal user (default)
-    AUDITOR  = "AUDITOR"  # Read-only access to all trees; cannot modify anything
+    SUPER_ADMIN = "SUPER_ADMIN"  # Single site-wide owner — sees all trees/users, controls maintenance mode
+    ADMIN       = "ADMIN"        # Tenant-level admin — manages users within the tenant
+    STANDARD    = "STANDARD"     # Normal user (default)
+    AUDITOR     = "AUDITOR"      # Read-only access to all trees; cannot modify anything
 
 
 class TreeRole(str, Enum):

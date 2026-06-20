@@ -423,3 +423,70 @@ def contact_form_email(
         f"Reply to this email to respond to {sender_name}."
     )
     return html, text
+
+
+def broadcast_email(
+    subject: str,
+    body: str,
+    recipient_name: str,
+    category: str = "notice",
+    unsubscribe_url: str = "",
+) -> tuple[str, str]:
+    """Email template for Super Admin broadcast messages."""
+    category_labels = {
+        "notice":  ("Notice",       "#6366f1"),
+        "alert":   ("Alert",        "#dc2626"),
+        "event":   ("Event",        "#059669"),
+        "update":  ("Update",       "#d97706"),
+    }
+    label, color = category_labels.get(category, ("Notice", "#6366f1"))
+
+    body_html = body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+    unsub_html = ""
+    unsub_text = ""
+    if unsubscribe_url:
+        unsub_html = (
+            f'<p style="color:#94a3b8;font-size:11px;margin:8px 0 0;">'
+            f'Don\'t want to receive these emails? '
+            f'<a href="{unsubscribe_url}" style="color:#6366f1;text-decoration:underline;">Unsubscribe</a>'
+            f'</p>'
+        )
+        unsub_text = f"\n\nTo unsubscribe from broadcast emails, visit: {unsubscribe_url}"
+
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:sans-serif;background:#f8fafc;margin:0;padding:32px 16px;">
+  <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e2e8f0;">
+    <div style="margin-bottom:20px;">
+      <span style="display:inline-block;background:{color};color:#fff;font-size:11px;font-weight:700;
+                   padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px;">
+        {label}
+      </span>
+    </div>
+    <h1 style="font-size:22px;font-weight:700;color:#1e293b;margin:0 0 8px;">{subject}</h1>
+    <p style="color:#64748b;margin:0 0 20px;">Hi {recipient_name},</p>
+    <div style="color:#334155;line-height:1.7;margin:0 0 24px;">
+      {body_html}
+    </div>
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="color:#94a3b8;font-size:12px;margin:0;">
+      This message was sent by the FamilyRoots administrator. You are receiving this
+      because you have an account on FamilyRoots.
+    </p>
+    {unsub_html}
+  </div>
+</body>
+</html>
+"""
+    text = (
+        f"[{label}] {subject}\n\n"
+        f"Hi {recipient_name},\n\n"
+        f"{body}\n\n"
+        f"---\n"
+        f"This message was sent by the FamilyRoots administrator."
+        f"{unsub_text}"
+    )
+    return html, text

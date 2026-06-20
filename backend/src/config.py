@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_claims_email: str = "noreply@familyroots.app"
 
+    # ── Super Admin ──────────────────────────────────────────
+    super_admin_email: str = ""
+
     # ── Sentry ───────────────────────────────────────────────
     sentry_dsn: str = ""
 

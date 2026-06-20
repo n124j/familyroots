@@ -51,6 +51,7 @@ class JWTService:
         self,
         user_id: uuid.UUID,
         tenant_id: uuid.UUID,
+        app_role: str | None = None,
     ) -> tuple[str, str]:
         """
         Returns (encoded_jwt, jti).
@@ -58,6 +59,8 @@ class JWTService:
         """
         jti = str(uuid.uuid4())
         payload = self._build_payload(user_id, tenant_id, jti, TokenType.ACCESS, self._access_expire)
+        if app_role:
+            payload["role"] = app_role
         return jwt.encode(payload, self._secret, algorithm=self._algorithm), jti
 
     def create_refresh_token(

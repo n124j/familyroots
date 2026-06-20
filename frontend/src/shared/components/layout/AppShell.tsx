@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
+import { useMaintenanceStore } from '@store/maintenance.store';
 import { usePortalThemeStore } from '@store/portalTheme.store';
 import { UserAvatar } from '@shared/components/UserAvatar';
 import { Footer } from './Footer';
@@ -110,6 +111,55 @@ function NotificationItem({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MaintenanceBanner() {
+  const isMaintenanceMode = useMaintenanceStore((s) => s.isMaintenanceMode);
+  const setMaintenance    = useMaintenanceStore((s) => s.setMaintenance);
+  const user              = useAuthStore((s) => s.user);
+  const accessToken       = useAuthStore((s) => s.accessToken);
+  const [disabling, setDisabling] = useState(false);
+
+  if (!isMaintenanceMode || user?.appRole !== 'SUPER_ADMIN') return null;
+
+  async function handleGoLive() {
+    if (!accessToken) return;
+    setDisabling(true);
+    try {
+      const res = await fetch(`${API_BASE}/site-settings/maintenance`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ maintenance_mode: false }),
+      });
+      if (res.ok) {
+        setMaintenance(false, '');
+      }
+    } catch { /* ignore */ }
+    finally { setDisabling(false); }
+  }
+
+  return (
+    <div className="bg-amber-500 text-white text-sm font-medium py-1.5 px-4 flex items-center justify-center gap-3">
+      <span>Site is currently in Under Construction mode. Only you (Super Admin) can access it.</span>
+      <button
+        onClick={handleGoLive}
+        disabled={disabling}
+        className="px-3 py-0.5 bg-white text-amber-600 text-xs font-semibold rounded-full hover:bg-amber-50 disabled:opacity-50 transition-colors"
+      >
+        {disabling ? 'Disabling…' : 'Go Live'}
+      </button>
+      <a
+        href="/admin"
+        className="px-3 py-0.5 border border-white/60 text-white text-xs font-semibold rounded-full hover:bg-white/10 transition-colors"
+      >
+        Site Settings
+      </a>
     </div>
   );
 }
@@ -370,8 +420,8 @@ export default function AppShell() {
     </div>
   );
 
-  const isElevated = user?.appRole === 'ADMIN' || user?.appRole === 'AUDITOR';
-  const isAdmin    = user?.appRole === 'ADMIN';
+  const isElevated = user?.appRole === 'ADMIN' || user?.appRole === 'AUDITOR' || user?.appRole === 'SUPER_ADMIN';
+  const isAdmin    = user?.appRole === 'ADMIN' || user?.appRole === 'SUPER_ADMIN';
 
   const nav = [
     { to: '/dashboard', label: 'Dashboard' },
@@ -522,6 +572,7 @@ export default function AppShell() {
 
         {/* Page content */}
         <main className="flex-1 flex flex-col overflow-auto" style={{ background: 'var(--portal-main-bg)' }}>
+          <MaintenanceBanner />
           <div className="flex-1">
             <Outlet />
           </div>

@@ -82,6 +82,15 @@ class AuthService:
                 )
 
             # 3. Create user — first user in a new tenant becomes ADMIN automatically
+            from src.config import get_settings
+            sa_email = get_settings().super_admin_email
+            if sa_email and req.email.lower() == sa_email.lower():
+                role = "SUPER_ADMIN"
+            elif is_new_tenant:
+                role = "ADMIN"
+            else:
+                role = "STANDARD"
+
             verification_token = secrets.token_hex(32)
             user = UserModel(
                 tenant_id=tenant.id,
@@ -91,7 +100,7 @@ class AuthService:
                 family_name=req.family_name,
                 email_verified=False,
                 email_verification_token=verification_token,
-                app_role="ADMIN" if is_new_tenant else "STANDARD",
+                app_role=role,
             )
             user = await self._uow.users.add(user)
 
@@ -130,7 +139,16 @@ class AuthService:
             if not user.email_verified:
                 raise AccountNotVerifiedError()
 
-            # 6. Reset failure counter, update last login
+            # 6. Auto-promote to SUPER_ADMIN if email matches config
+            from src.config import get_settings
+            sa_email = get_settings().super_admin_email
+            if sa_email and user.email.lower() == sa_email.lower():
+                if user.app_role != "SUPER_ADMIN":
+                    user.app_role = "SUPER_ADMIN"
+            elif user.app_role == "SUPER_ADMIN":
+                user.app_role = "ADMIN"
+
+            # 7. Reset failure counter, update last login
             user.failed_login_attempts = 0
             user.locked_until = None
             user.last_login_at = datetime.now(tz=timezone.utc)
@@ -165,7 +183,19 @@ class AuthService:
         user_id = self._jwt.extract_user_id(payload)
         tenant_id = self._jwt.extract_tenant_id(payload)
 
-        access_token, _ = self._jwt.create_access_token(user_id, tenant_id)
+        app_role: str | None = None
+        try:
+            from src.infrastructure.database.session import get_session_factory
+            factory = get_session_factory()
+            async with factory() as fresh_session:
+                user = await fresh_session.get(UserModel, user_id)
+                if user:
+                    app_role = user.app_role
+        except Exception as exc:
+            import structlog
+            structlog.get_logger(__name__).warning("refresh.role_lookup_failed", user_id=str(user_id), error=str(exc))
+
+        access_token, _ = self._jwt.create_access_token(user_id, tenant_id, app_role=app_role)
         return access_token, 900  # 15 min in seconds
 
     # ── Logout ────────────────────────────────────────────────────
@@ -307,7 +337,7 @@ class AuthService:
         The caller (API layer) is responsible for setting the refresh token as
         an HttpOnly cookie — it must NOT be included in the response body.
         """
-        access_token, _ = self._jwt.create_access_token(user.id, user.tenant_id)
+        access_token, _ = self._jwt.create_access_token(user.id, user.tenant_id, app_role=user.app_role)
         refresh_token_str, refresh_jti = self._jwt.create_refresh_token(user.id, user.tenant_id)
 
         expire_seconds = self._jwt.refresh_expire_seconds

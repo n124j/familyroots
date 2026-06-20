@@ -58,6 +58,9 @@ const ACTION_OPTIONS = [
   { value: 'PG_REMOVE_TREE', label: 'Permission group: remove tree' },
   { value: 'PG_ADD_MEMBER', label: 'Permission group: add member' },
   { value: 'PG_REMOVE_MEMBER', label: 'Permission group: remove member' },
+  // Broadcast
+  { value: 'BROADCAST_SEND', label: 'Broadcast: send email' },
+  { value: 'BROADCAST_DEL', label: 'Broadcast: delete log' },
   // Tree content
   { value: 'CREATE_PERSON', label: 'Create person' },
   { value: 'UPDATE_PERSON', label: 'Update person' },
@@ -99,13 +102,15 @@ const ADMIN_ACTION_LABELS: Record<string, string> = {
   PG_REMOVE_TREE:   'Removed tree from group',
   PG_ADD_MEMBER:    'Added member to group',
   PG_REMOVE_MEMBER: 'Removed member from group',
+  BROADCAST_SEND:   'Sent broadcast email',
+  BROADCAST_DEL:    'Deleted broadcast log',
 };
 
 function actionBadge(action: string): string {
   if (action === 'LOGIN') return 'bg-green-100 text-green-800';
   if (action === 'LOGOUT') return 'bg-gray-100 text-gray-700';
   if (action === 'FAILED_LOGIN') return 'bg-red-100 text-red-800';
-  if (action.startsWith('ADMIN_') || action.startsWith('PG_')) return 'bg-purple-100 text-purple-800';
+  if (action.startsWith('ADMIN_') || action.startsWith('PG_') || action.startsWith('BROADCAST_')) return 'bg-purple-100 text-purple-800';
   if (action.startsWith('CREATE') || action.startsWith('ADD') || action.startsWith('UPLOAD') || action.startsWith('INVITE'))
     return 'bg-blue-100 text-blue-800';
   if (action.startsWith('DELETE') || action.startsWith('REMOVE') || action === 'ADMIN_DEACTIVATE')

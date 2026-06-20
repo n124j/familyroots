@@ -4374,9 +4374,263 @@ paths:
 #     email:            { type: string, format: email }
 #     given_name:       { type: string, nullable: true }
 #     family_name:      { type: string, nullable: true }
-#     app_role:         { type: string, enum: [ADMIN, STANDARD, AUDITOR] }
+#     app_role:         { type: string, enum: [SUPER_ADMIN, ADMIN, STANDARD, AUDITOR] }
 #     email_verified:   { type: boolean }
 #     is_active:        { type: boolean }
 #     last_login_at:    { type: string, format: date-time, nullable: true }
 #     created_at:       { type: string, format: date-time }
+
+# ============================================================
+# Site Settings — Maintenance Mode
+# ============================================================
+
+  /site-settings/maintenance:
+    get:
+      tags: [Site Settings]
+      operationId: getMaintenanceStatus
+      summary: Get current maintenance mode status
+      description: |
+        Returns whether the site is in maintenance (Under Construction) mode
+        and the customisable message shown to visitors. This endpoint is public
+        and does not require authentication.
+      security: []
+      responses:
+        "200":
+          description: Current maintenance status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  maintenance_mode:    { type: boolean }
+                  maintenance_message: { type: string }
+    put:
+      tags: [Site Settings]
+      operationId: updateMaintenanceStatus
+      summary: Update maintenance mode (Super Admin only)
+      description: |
+        Toggle maintenance mode on or off and optionally update the message
+        shown to visitors. When enabled, all non-Super-Admin users see an
+        "Under Construction" page. The Super Admin can continue to use the
+        site normally.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                maintenance_mode:    { type: boolean, nullable: true }
+                maintenance_message: { type: string, nullable: true, maxLength: 2000 }
+      responses:
+        "200":
+          description: Updated maintenance status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  maintenance_mode:    { type: boolean }
+                  maintenance_message: { type: string }
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+# ============================================================
+# Broadcast Email
+# ============================================================
+
+  /broadcast/recipients:
+    get:
+      tags: [Broadcast]
+      operationId: listBroadcastRecipients
+      summary: List eligible broadcast recipients
+      description: |
+        Returns all active, verified users eligible to receive broadcast emails.
+        Users who have unsubscribed are included but flagged with
+        `broadcast_unsubscribed: true`. Super Admin only.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Filter by name or email (ILIKE)
+      responses:
+        "200":
+          description: Recipient list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:                      { type: string, format: uuid }
+                        email:                   { type: string, format: email }
+                        given_name:              { type: string, nullable: true }
+                        family_name:             { type: string, nullable: true }
+                        app_role:                { type: string }
+                        broadcast_unsubscribed:  { type: boolean }
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  /broadcast/send:
+    post:
+      tags: [Broadcast]
+      operationId: sendBroadcast
+      summary: Send a broadcast email
+      description: |
+        Compose and send an email to all active verified users or a selected
+        subset. Users who have unsubscribed are automatically excluded.
+        A log entry is saved to broadcast history and the action is recorded
+        in the activity feed. Super Admin only.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, body]
+              properties:
+                subject:       { type: string, minLength: 1, maxLength: 200 }
+                body:          { type: string, minLength: 1, maxLength: 10000 }
+                category:      { type: string, enum: [notice, alert, event, update], default: notice }
+                recipient_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                  description: Specific user IDs. Empty array = send to all.
+      responses:
+        "200":
+          description: Send result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent_count:   { type: integer }
+                  failed_count: { type: integer }
+        "400":
+          description: No eligible recipients
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  /broadcast/history:
+    get:
+      tags: [Broadcast]
+      operationId: listBroadcastHistory
+      summary: List broadcast email history
+      description: |
+        Returns a paginated list of past broadcast emails with subject, body,
+        category, recipient list, and sent/failed counts. Super Admin only.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        "200":
+          description: Broadcast history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:                   { type: string, format: uuid }
+                        sender_display_name:  { type: string }
+                        subject:              { type: string }
+                        body:                 { type: string }
+                        category:             { type: string }
+                        recipient_count:      { type: integer }
+                        sent_count:           { type: integer }
+                        failed_count:         { type: integer }
+                        recipient_emails:     { type: array, items: { type: string } }
+                        created_at:           { type: string, format: date-time }
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+  /broadcast/history/{logId}:
+    parameters:
+      - name: logId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Broadcast]
+      operationId: deleteBroadcastLog
+      summary: Delete a broadcast log entry
+      security:
+        - BearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Log entry not found
+        "403":
+          $ref: "#/components/responses/403Forbidden"
+
+# ============================================================
+# User Broadcast Subscription
+# ============================================================
+
+  /users/me/broadcast-subscription:
+    get:
+      tags: [Users]
+      operationId: getBroadcastSubscription
+      summary: Get broadcast email subscription status
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  broadcast_unsubscribed: { type: boolean }
+    put:
+      tags: [Users]
+      operationId: updateBroadcastSubscription
+      summary: Update broadcast email subscription preference
+      description: |
+        Allows users to opt out of (or back into) broadcast emails from the
+        site administrator. Unsubscribed users are excluded from future
+        broadcast sends.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unsubscribed: { type: boolean }
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  broadcast_unsubscribed: { type: boolean }
 

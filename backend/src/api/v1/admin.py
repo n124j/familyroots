@@ -55,7 +55,7 @@ class CreateUserRequest(BaseModel):
 class UpdateUserRequest(BaseModel):
     given_name: Optional[str] = Field(None, max_length=100)
     family_name: Optional[str] = Field(None, max_length=100)
-    app_role: Optional[str] = Field(None, pattern="^(ADMIN|STANDARD|AUDITOR)$")
+    app_role: Optional[str] = Field(None, pattern="^(ADMIN|STANDARD|AUDITOR|SUPER_ADMIN)$")
     is_active: Optional[bool] = None
     email_verified: Optional[bool] = None
 

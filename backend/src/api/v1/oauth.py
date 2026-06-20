@@ -149,7 +149,7 @@ async def oauth_callback(
         ))
 
         # 4. Issue JWT pair
-        jwt_access, _  = jwt_service.create_access_token(user.id, user.tenant_id)
+        jwt_access, _  = jwt_service.create_access_token(user.id, user.tenant_id, app_role=user.app_role)
         jwt_refresh, jti = jwt_service.create_refresh_token(user.id, user.tenant_id)
         await token_store.store(jti, user.id, _REFRESH_TTL)
         await uow.commit()

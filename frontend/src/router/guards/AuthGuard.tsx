@@ -6,14 +6,19 @@
  * This prevents a flash-of-login-page on hard refresh.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
+import { useMaintenanceStore } from '@store/maintenance.store';
+
+const MaintenancePage = lazy(() => import('@pages/MaintenancePage'));
 
 export function AuthGuard() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isInitialised   = useAuthStore((s) => s.isInitialised);
-  const location        = useLocation();
+  const isAuthenticated   = useAuthStore((s) => s.isAuthenticated);
+  const isInitialised     = useAuthStore((s) => s.isInitialised);
+  const user              = useAuthStore((s) => s.user);
+  const isMaintenanceMode = useMaintenanceStore((s) => s.isMaintenanceMode);
+  const location          = useLocation();
 
   // Still attempting silent token refresh — show nothing (or a spinner)
   if (!isInitialised) {
@@ -33,15 +38,27 @@ export function AuthGuard() {
     );
   }
 
+  if (isMaintenanceMode && user?.appRole !== 'SUPER_ADMIN') {
+    return (
+      <Suspense fallback={null}>
+        <MaintenancePage />
+      </Suspense>
+    );
+  }
+
   return <Outlet />;
 }
 
 /**
  * GuestGuard — redirects already-authenticated users away from /login.
+ * During maintenance, non-super-admin users see the maintenance page
+ * instead of being redirected to login.
  */
 export function GuestGuard() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isInitialised   = useAuthStore((s) => s.isInitialised);
+  const isAuthenticated   = useAuthStore((s) => s.isAuthenticated);
+  const isInitialised     = useAuthStore((s) => s.isInitialised);
+  const user              = useAuthStore((s) => s.user);
+  const isMaintenanceMode = useMaintenanceStore((s) => s.isMaintenanceMode);
 
   if (!isInitialised) {
     return (
@@ -52,7 +69,23 @@ export function GuestGuard() {
   }
 
   if (isAuthenticated) {
+    if (isMaintenanceMode && user?.appRole !== 'SUPER_ADMIN') {
+      return (
+        <Suspense fallback={null}>
+          <MaintenancePage />
+        </Suspense>
+      );
+    }
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // Show maintenance page to unauthenticated visitors during maintenance
+  if (isMaintenanceMode) {
+    return (
+      <Suspense fallback={null}>
+        <MaintenancePage />
+      </Suspense>
+    );
   }
 
   return <Outlet />;

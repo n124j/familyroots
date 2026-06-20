@@ -12,6 +12,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { useAuthStore } from '@store/auth.store';
+import { useMaintenanceStore } from '@store/maintenance.store';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -61,6 +62,12 @@ function onTokenRefreshed(token: string) {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (error.response?.status === 503 && error.response?.data?.maintenance_mode) {
+      const { maintenance_message } = error.response.data;
+      useMaintenanceStore.getState().setMaintenance(true, maintenance_message);
+      return Promise.reject(error);
+    }
+
     const originalRequest: AxiosRequestConfig & { _retry?: boolean } =
       error.config ?? {};
 
@@ -93,19 +100,29 @@ apiClient.interceptors.response.use(
         { withCredentials: true }
       );
       const newToken = res.data.access_token;
-      const user = res.data.user;
 
-      useAuthStore.getState().login(newToken, {
-        id: user.id,
-        tenantId: user.tenant_id,
-        email: user.email,
-        displayName:
-          `${user.display_given_name ?? ''} ${user.display_surname ?? ''}`.trim() ||
-          user.email,
-        avatarUrl: user.avatar_url,
-        isEmailVerified: user.is_email_verified,
-        appRole: user.app_role ?? 'STANDARD',
-      });
+      useAuthStore.getState().setAccessToken(newToken);
+
+      // Fetch updated user profile
+      try {
+        const meRes = await axios.get(`${BASE_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${newToken}` },
+          withCredentials: true,
+        });
+        const u = meRes.data;
+        useAuthStore.getState().setUser({
+          id: u.id,
+          tenantId: u.tenant_id,
+          email: u.email,
+          displayName:
+            `${u.given_name ?? ''} ${u.family_name ?? ''}`.trim() || u.email,
+          avatarUrl: u.avatar_url,
+          isEmailVerified: u.email_verified,
+          appRole: u.app_role ?? 'STANDARD',
+        });
+      } catch {
+        // Profile fetch failed — keep existing user data, token is still valid
+      }
 
       onTokenRefreshed(newToken);
 

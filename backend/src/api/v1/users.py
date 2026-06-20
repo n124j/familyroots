@@ -224,6 +224,35 @@ async def request_deletion(
     await svc.request_deletion(user.id, user.tenant_id)
 
 
+@router.put(
+    "/me/broadcast-subscription",
+    summary="Update broadcast email subscription preference",
+)
+async def update_broadcast_subscription(
+    body: dict,
+    user: VerifiedUserDep,
+    session: SessionDep,
+) -> dict:
+    from sqlalchemy import text as sa_text
+    unsubscribed = bool(body.get("unsubscribed", False))
+    await session.execute(
+        sa_text("UPDATE users SET broadcast_unsubscribed = :val WHERE id = :uid AND tenant_id = :tid"),
+        {"val": unsubscribed, "uid": user.id, "tid": user.tenant_id},
+    )
+    await session.commit()
+    return {"broadcast_unsubscribed": unsubscribed}
+
+
+@router.get(
+    "/me/broadcast-subscription",
+    summary="Get broadcast email subscription status",
+)
+async def get_broadcast_subscription(
+    user: VerifiedUserDep,
+) -> dict:
+    return {"broadcast_unsubscribed": user.broadcast_unsubscribed}
+
+
 @router.post(
     "/confirm-deletion",
     status_code=status.HTTP_204_NO_CONTENT,

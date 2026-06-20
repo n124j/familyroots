@@ -16,6 +16,7 @@ import { HelmetProvider } from 'react-helmet-async';
 
 import { AppRouter } from './router';
 import { initAuth } from './store/auth.store';
+import { checkMaintenanceStatus } from './store/maintenance.store';
 import './index.css';
 
 // ── React Query client ─────────────────────────────────────────────────────
@@ -40,8 +41,8 @@ const queryClient = new QueryClient({
 // ── Boot sequence ──────────────────────────────────────────────────────────
 
 async function boot() {
-  // Try to recover session silently before first render
-  await initAuth();
+  // Recover session + check maintenance status before first render
+  await Promise.all([initAuth(), checkMaintenanceStatus()]);
 
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

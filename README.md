@@ -122,6 +122,11 @@ SMTP_USER=<your-gmail-address>
 SMTP_PASSWORD=<your-gmail-app-password>
 EMAIL_FROM=<your-gmail-address>
 
+# ── Optional: Super Administrator ──────────────────────────────────────────
+# Set this to the email of the user who should have full site control
+# (view all trees/users, toggle maintenance mode, send broadcast emails).
+# SUPER_ADMIN_EMAIL=admin@example.com
+
 # ── Pre-filled — change only if needed ─────────────────────────────────────
 DEFAULT_TENANT_SLUG=familyroots-system
 S3_PUBLIC_URL=http://localhost:7002
@@ -144,6 +149,14 @@ shared tenant identified by this slug. Changing it after data is seeded requires
 **`S3_PUBLIC_URL`** — Presigned MinIO download URLs are rewritten to this host before being
 returned to the browser. The internal `minio:9000` hostname is unreachable outside Docker,
 so this must point to the externally reachable MinIO API port (`http://localhost:7002` locally).
+
+**`SUPER_ADMIN_EMAIL`** — (Optional) The email address of the Super Administrator.
+This user automatically receives the `SUPER_ADMIN` role on login and gets:
+
+- **Full visibility** — can see all trees and all users across the platform
+- **Maintenance mode** — can toggle the site to "Under Construction" with a custom message (Admin Dashboard → Site Settings)
+- **Broadcast email** — can compose and send emails to all users or selected recipients (Admin Dashboard → Broadcast), with full history tracking
+- Users can unsubscribe from broadcast emails in Settings → Notifications
 
 ### 2. Start core services
 

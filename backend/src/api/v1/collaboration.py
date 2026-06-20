@@ -1056,11 +1056,10 @@ async def list_my_trees(
 ) -> list[TreeSummaryResponse]:
     from sqlalchemy import text
 
-    # Only AUDITOR sees all trees across the tenant; app-level ADMIN is treated like a regular user
-    is_elevated = current_user.app_role == AppRole.AUDITOR
+    is_elevated = current_user.app_role in (AppRole.AUDITOR, AppRole.SUPER_ADMIN)
 
     if is_elevated:
-        effective_role = "VIEWER"
+        effective_role = "OWNER" if current_user.app_role == AppRole.SUPER_ADMIN else "VIEWER"
         q = text("""
             SELECT
                 ft.id,

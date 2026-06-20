@@ -18,7 +18,7 @@ export interface AuthUser {
   displayName: string;
   avatarUrl?: string;
   isEmailVerified: boolean;
-  appRole: 'ADMIN' | 'STANDARD' | 'AUDITOR';
+  appRole: 'SUPER_ADMIN' | 'ADMIN' | 'STANDARD' | 'AUDITOR';
 }
 
 interface AuthStore {
@@ -80,7 +80,10 @@ export async function initAuth(): Promise<void> {
       credentials: 'include',
     });
 
-    if (!refreshRes.ok) return; // no valid session — stay logged out
+    if (!refreshRes.ok) {
+      console.warn('[initAuth] refresh failed:', refreshRes.status, await refreshRes.text().catch(() => ''));
+      return;
+    }
 
     const { access_token } = await refreshRes.json();
     store.setAccessToken(access_token);
@@ -102,9 +105,11 @@ export async function initAuth(): Promise<void> {
         isEmailVerified: u.email_verified,
         appRole: u.app_role ?? 'STANDARD',
       });
+    } else {
+      console.warn('[initAuth] /users/me failed:', meRes.status, await meRes.text().catch(() => ''));
     }
-  } catch {
-    // Network error: stay logged out
+  } catch (err) {
+    console.error('[initAuth] network error:', err);
   } finally {
     store.setInitialised();
   }

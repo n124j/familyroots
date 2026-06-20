@@ -82,6 +82,9 @@ class UserModel(Base, TenantMixin, TimestampMixin):
     app_role: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'STANDARD'")
     )
+    broadcast_unsubscribed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     # ── Relationships ─────────────────────────────────────────────
     tenant: Mapped["TenantModel"] = relationship(

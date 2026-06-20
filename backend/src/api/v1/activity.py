@@ -24,7 +24,7 @@ _PAGE_LIMIT = 25
 
 
 def _require_elevated(user) -> None:
-    if user.app_role not in (AppRole.ADMIN, AppRole.AUDITOR):
+    if user.app_role not in (AppRole.SUPER_ADMIN, AppRole.ADMIN, AppRole.AUDITOR):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Activity log is restricted to Admin and Auditor roles")
 
 

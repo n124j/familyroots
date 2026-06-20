@@ -5,18 +5,20 @@ Middleware execution order (outermost → innermost):
     → CORS (FastAPI built-in)
     → RequestIDMiddleware      — attaches X-Request-ID to every request/response
     → LoggingMiddleware        — structured access log via structlog
+    → MaintenanceMiddleware    — returns 503 when site is under construction
     → TenantMiddleware         — validates JWT, sets tenant_id + user_id context
 """
 
 from __future__ import annotations
 
+import json
 import time
 import uuid
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 log = structlog.get_logger(__name__)
@@ -122,6 +124,125 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     pass  # let auth dependency raise 401
 
         return await call_next(request)
+
+    @staticmethod
+    def _extract_bearer(request: Request) -> str | None:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            return auth[7:]
+        return None
+
+
+class MaintenanceMiddleware(BaseHTTPMiddleware):
+    """
+    When maintenance mode is enabled in site_settings, return 503 for
+    all requests except those from the Super Administrator and a small
+    set of pass-through paths (health, auth, maintenance-status check).
+
+    Uses Redis to cache the maintenance state so the DB is not hit on
+    every request. Cache TTL = 10 seconds.
+    """
+
+    _PASSTHROUGH_PREFIXES = (
+        "/health",
+        "/api/v1/auth/",
+        "/api/v1/oauth/",
+        "/api/v1/site-settings/maintenance",
+        "/api/v1/users/me",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+    )
+
+    _CACHE_KEY = "site:maintenance"
+    _CACHE_TTL = 10  # seconds
+
+    def __init__(self, app: ASGIApp, jwt_secret: str, jwt_algorithm: str = "HS256") -> None:
+        super().__init__(app)
+        self._secret = jwt_secret
+        self._algorithm = jwt_algorithm
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        path = request.url.path
+
+        if any(path.startswith(p) for p in self._PASSTHROUGH_PREFIXES):
+            return await call_next(request)
+
+        maintenance = await self._is_maintenance_on()
+        if not maintenance["enabled"]:
+            return await call_next(request)
+
+        if self._is_super_admin_request(request):
+            return await call_next(request)
+
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "Service temporarily unavailable",
+                "maintenance_mode": True,
+                "maintenance_message": maintenance["message"],
+            },
+        )
+
+    async def _is_maintenance_on(self) -> dict:
+        from src.infrastructure.cache.redis import get_redis
+
+        redis = get_redis()
+        try:
+            cached = await redis.get(self._CACHE_KEY)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            pass
+
+        enabled = False
+        message = ""
+        try:
+            from src.infrastructure.database.session import get_session_factory
+
+            factory = get_session_factory()
+            async with factory() as session:
+                from sqlalchemy import select
+                from src.infrastructure.database.models.site_settings import SiteSettingsModel
+
+                result = await session.execute(select(SiteSettingsModel).limit(1))
+                row = result.scalars().first()
+                if row:
+                    enabled = row.maintenance_mode
+                    message = row.maintenance_message
+        except Exception:
+            pass
+
+        state = {"enabled": enabled, "message": message}
+        try:
+            await redis.set(self._CACHE_KEY, json.dumps(state), ex=self._CACHE_TTL)
+        except Exception:
+            pass
+        return state
+
+    def _is_super_admin_request(self, request: Request) -> bool:
+        user_id = getattr(request.state, "user_id", None)
+        if not user_id:
+            return False
+        from src.config import get_settings
+        settings = get_settings()
+        if not settings.super_admin_email:
+            return False
+        try:
+            from jose import jwt as jose_jwt
+            token = self._extract_bearer(request)
+            if not token:
+                return False
+            payload = jose_jwt.decode(token, self._secret, algorithms=[self._algorithm])
+            user_id_str = payload.get("sub")
+            if not user_id_str:
+                return False
+            # We can't query the DB here efficiently, so we rely on
+            # a custom claim 'role' set in the JWT at token issuance.
+            role = payload.get("role", "")
+            return role == "SUPER_ADMIN"
+        except Exception:
+            return False
 
     @staticmethod
     def _extract_bearer(request: Request) -> str | None:

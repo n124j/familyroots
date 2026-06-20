@@ -14,22 +14,24 @@ interface UserProfile {
   family_name: string | null;
   email: string;
   avatar_url: string | null;
-  app_role: 'ADMIN' | 'STANDARD' | 'AUDITOR';
+  app_role: 'SUPER_ADMIN' | 'ADMIN' | 'STANDARD' | 'AUDITOR';
   locale: string;
   timezone: string;
   oauth_providers: string[];
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  ADMIN:    'Admin',
-  STANDARD: 'Standard',
-  AUDITOR:  'Auditor',
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN:       'Admin',
+  STANDARD:    'Standard',
+  AUDITOR:     'Auditor',
 };
 
 const ROLE_BADGE: Record<string, string> = {
-  ADMIN:    'bg-purple-100 text-purple-700',
-  STANDARD: 'bg-blue-100 text-blue-700',
-  AUDITOR:  'bg-amber-100 text-amber-700',
+  SUPER_ADMIN: 'bg-red-100 text-red-700',
+  ADMIN:       'bg-purple-100 text-purple-700',
+  STANDARD:    'bg-blue-100 text-blue-700',
+  AUDITOR:     'bg-amber-100 text-amber-700',
 };
 
 // ── Appearance Tab (portal-wide theme) ────────────────────────────────────
@@ -458,6 +460,70 @@ function expiresIn(createdAt: string): string {
 
 const ITEMS_PER_PAGE = 15;
 
+function BroadcastSubscriptionToggle({ accessToken }: { accessToken: string | null }) {
+  const [unsubscribed, setUnsubscribed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    fetch(`${API_BASE}/users/me/broadcast-subscription`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    })
+      .then((r) => r.json())
+      .then((d) => setUnsubscribed(d.broadcast_unsubscribed))
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, [accessToken]);
+
+  async function toggle() {
+    if (!accessToken) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/users/me/broadcast-subscription`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+        body: JSON.stringify({ unsubscribed: !unsubscribed }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setUnsubscribed(d.broadcast_unsubscribed);
+      }
+    } catch { /* ignore */ }
+    finally { setSaving(false); }
+  }
+
+  if (!loaded) return null;
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-4 mb-4"
+      style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
+      <div>
+        <p className="text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>Broadcast emails</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>
+          Receive broadcast emails from the site administrator (notices, alerts, events).
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={!unsubscribed}
+        onClick={toggle}
+        disabled={saving}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50 ${
+          !unsubscribed ? 'bg-brand-500' : 'bg-gray-300'
+        }`}
+      >
+        <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform ${
+          !unsubscribed ? 'translate-x-5' : 'translate-x-0'
+        }`} />
+      </button>
+    </div>
+  );
+}
+
 function NotificationsTab({ accessToken }: { accessToken: string | null }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<SettingsNotification[]>([]);
@@ -536,6 +602,8 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
 
   return (
     <div className="space-y-4">
+      <BroadcastSubscriptionToggle accessToken={accessToken} />
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
           Notifications are kept for <strong>3 months</strong> then automatically removed.

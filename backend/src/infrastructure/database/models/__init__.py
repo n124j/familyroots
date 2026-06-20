@@ -19,6 +19,8 @@ from src.infrastructure.database.models.permission_group import (
     PermissionGroupTreeModel,
     PermissionGroupMemberModel,
 )
+from src.infrastructure.database.models.site_settings import SiteSettingsModel
+from src.infrastructure.database.models.broadcast_log import BroadcastLogModel
 
 __all__ = [
     "TenantModel",
@@ -35,4 +37,6 @@ __all__ = [
     "PermissionGroupAssignmentModel",
     "PermissionGroupTreeModel",
     "PermissionGroupMemberModel",
+    "SiteSettingsModel",
+    "BroadcastLogModel",
 ]

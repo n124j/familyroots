@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from src.api.exceptions import register_exception_handlers
-from src.api.middleware import RequestIDMiddleware, TenantMiddleware, LoggingMiddleware
+from src.api.middleware import MaintenanceMiddleware, RequestIDMiddleware, TenantMiddleware, LoggingMiddleware
 from src.api.v1.router import v1_router
 from src.config import get_settings
 from src.infrastructure.cache.redis import close_redis, init_redis
@@ -80,7 +80,26 @@ def create_app() -> FastAPI:
     app.openapi = _custom_openapi  # type: ignore[method-assign]
 
     # ── Middleware (order matters — outermost first) ──────────
+    # Middleware stack — last add_middleware = outermost (runs first).
+    # Execution order: CORS → RequestID → Tenant → Maintenance → Logging → GZip → Router
+    #
+    # CORS MUST be outermost so that every response (including 503 maintenance)
+    # gets Access-Control-Allow-Origin headers. Without this, the browser
+    # silently blocks cross-origin error responses and the frontend sees a
+    # network error instead of the actual status code.
     app.add_middleware(GZipMiddleware, minimum_size=1000)
+    app.add_middleware(LoggingMiddleware)
+    app.add_middleware(
+        MaintenanceMiddleware,
+        jwt_secret=settings.jwt_secret_key,
+        jwt_algorithm=settings.jwt_algorithm,
+    )
+    app.add_middleware(
+        TenantMiddleware,
+        jwt_secret=settings.jwt_secret_key,
+        jwt_algorithm=settings.jwt_algorithm,
+    )
+    app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o.rstrip('/') for o in settings.cors_origins],
@@ -90,13 +109,6 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID", "X-RateLimit-Limit",
                         "X-RateLimit-Remaining", "X-RateLimit-Reset"],
     )
-    app.add_middleware(LoggingMiddleware)
-    app.add_middleware(
-        TenantMiddleware,
-        jwt_secret=settings.jwt_secret_key,
-        jwt_algorithm=settings.jwt_algorithm,
-    )
-    app.add_middleware(RequestIDMiddleware)
 
     # ── Exception handlers ────────────────────────────────────
     register_exception_handlers(app)
