@@ -628,9 +628,12 @@ async def export_tree_zip(
     if tree_row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tree not found")
 
-    # Fetch all persons with photo_url
+    # Fetch all persons with all fields
     person_rows = (await uow._session.execute(text("""
-        SELECT id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url, city, country
+        SELECT id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url,
+               birth_date, death_date, birth_year, death_year,
+               city, country,
+               facebook_handle, x_handle, linkedin_handle
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -683,6 +686,10 @@ async def export_tree_zip(
     persons_payload = []
     photo_downloads: list[tuple[str, str, str]] = []  # (person_id, s3_key, filename_in_zip)
 
+    def _safe_slug(val):
+        import re
+        return re.sub(r'[^\w]', '_', (val or '').strip())[:40]
+
     for r in person_rows:
         photo_filename = None
         if r.photo_url:
@@ -692,13 +699,15 @@ async def export_tree_zip(
             elif url.startswith("/"):
                 s3_key = url.lstrip("/")
             else:
-                s3_key = None
+                # Bare S3 key (e.g. from import-zip)
+                s3_key = url
             if s3_key:
                 ext = s3_key.rsplit(".", 1)[-1] if "." in s3_key else "jpg"
-                photo_filename = f"photos/{r.id}.{ext}"
+                name_slug = f"{_safe_slug(r.display_given_name)}_{_safe_slug(r.display_surname)}"
+                photo_filename = f"photos/{name_slug}_{r.id}.{ext}"
                 photo_downloads.append((str(r.id), s3_key, photo_filename))
 
-        persons_payload.append({
+        person_entry = {
             "id": str(r.id),
             "display_given_name": r.display_given_name or "",
             "display_surname": r.display_surname or "",
@@ -706,9 +715,17 @@ async def export_tree_zip(
             "is_living": r.is_living,
             "is_deceased": r.is_deceased,
             **({"photo_filename": photo_filename} if photo_filename else {}),
+            **({"birth_date": r.birth_date.isoformat()} if r.birth_date else {}),
+            **({"death_date": r.death_date.isoformat()} if r.death_date else {}),
+            **({"birth_year": r.birth_year} if r.birth_year is not None else {}),
+            **({"death_year": r.death_year} if r.death_year is not None else {}),
             **({"city": r.city} if r.city else {}),
             **({"country": r.country} if r.country else {}),
-        })
+            **({"facebook_handle": r.facebook_handle} if r.facebook_handle else {}),
+            **({"x_handle": r.x_handle} if r.x_handle else {}),
+            **({"linkedin_handle": r.linkedin_handle} if r.linkedin_handle else {}),
+        }
+        persons_payload.append(person_entry)
 
     frt_payload = {
         "frt_version": "1.1",
@@ -1574,11 +1591,29 @@ async def import_tree_zip(
         old_to_new[p["id"]] = new_pid
         if p.get("photo_filename"):
             photo_filename_map[p["id"]] = p["photo_filename"]
+        birth_date_val = None
+        if p.get("birth_date"):
+            try:
+                birth_date_val = __import__("datetime").date.fromisoformat(p["birth_date"])
+            except ValueError:
+                pass
+        death_date_val = None
+        if p.get("death_date"):
+            try:
+                death_date_val = __import__("datetime").date.fromisoformat(p["death_date"])
+            except ValueError:
+                pass
         await uow._session.execute(text("""
             INSERT INTO persons
               (id, tenant_id, tree_id, display_given_name, display_surname,
-               sex, is_living, is_deceased)
-            VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased)
+               sex, is_living, is_deceased,
+               birth_date, death_date, birth_year, death_year,
+               city, country,
+               facebook_handle, x_handle, linkedin_handle)
+            VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased,
+                    :birth_date, :death_date, :birth_year, :death_year,
+                    :city, :country,
+                    :facebook, :x, :linkedin)
         """), {
             "id":      new_pid,
             "tenant":  current_user.tenant_id,
@@ -1588,6 +1623,15 @@ async def import_tree_zip(
             "sex":     p.get("sex", "UNKNOWN") if p.get("sex", "UNKNOWN") in _VALID_SEX else "UNKNOWN",
             "living":  p.get("is_living", True),
             "deceased": p.get("is_deceased", False),
+            "birth_date": birth_date_val,
+            "death_date": death_date_val,
+            "birth_year": p.get("birth_year"),
+            "death_year": p.get("death_year"),
+            "city":       p.get("city"),
+            "country":    p.get("country"),
+            "facebook":   p.get("facebook_handle"),
+            "x":          p.get("x_handle"),
+            "linkedin":   p.get("linkedin_handle"),
         })
 
     # 3. Create family groups + members
@@ -1844,10 +1888,29 @@ async def merge_trees(
     all_persons: list[dict] = []
     pivot_data: dict | None = None
 
+    _PERSON_FIELDS = [
+        "display_given_name", "display_surname", "sex",
+        "is_living", "is_deceased", "photo_url",
+        "birth_date", "death_date", "birth_year", "death_year",
+        "city", "country",
+        "facebook_handle", "x_handle", "linkedin_handle",
+    ]
+
+    def _person_dict(r, new_id, src_tree=None):
+        d = {"id": new_id}
+        for f in _PERSON_FIELDS:
+            d[f] = getattr(r, f)
+        if src_tree is not None:
+            d["_src_tree"] = src_tree
+        return d
+
     for src in body.sources:
         rows = (await uow._session.execute(text("""
             SELECT id, display_given_name, display_surname, sex,
-                   is_living, is_deceased, photo_url, birth_year
+                   is_living, is_deceased, photo_url,
+                   birth_date, death_date, birth_year, death_year,
+                   city, country,
+                   facebook_handle, x_handle, linkedin_handle
             FROM persons
             WHERE tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
         """), {"tid": src.tree_id, "tenant": tenant_id})).fetchall()
@@ -1858,28 +1921,15 @@ async def merge_trees(
                 id_map[key] = uuid.uuid4()
             is_pivot = (r.id == src.pivot_person_id)
             if is_pivot and pivot_data is None:
-                pivot_data = {
-                    "id": merged_pivot_id,
-                    "display_given_name": r.display_given_name,
-                    "display_surname": r.display_surname,
-                    "sex": r.sex,
-                    "is_living": r.is_living,
-                    "is_deceased": r.is_deceased,
-                    "photo_url": r.photo_url,
-                    "birth_year": r.birth_year,
-                }
+                pivot_data = _person_dict(r, merged_pivot_id)
+            elif is_pivot and pivot_data is not None:
+                # Enrich pivot with data from this tree's version
+                for f in _PERSON_FIELDS:
+                    val = getattr(r, f)
+                    if val is not None and val != "" and (pivot_data[f] is None or pivot_data[f] == "" or pivot_data[f] == "UNKNOWN"):
+                        pivot_data[f] = val
             elif not is_pivot:
-                all_persons.append({
-                    "id": id_map[key],
-                    "display_given_name": r.display_given_name,
-                    "display_surname": r.display_surname,
-                    "sex": r.sex,
-                    "is_living": r.is_living,
-                    "is_deceased": r.is_deceased,
-                    "photo_url": r.photo_url,
-                    "birth_year": r.birth_year,
-                    "_src_tree": src.tree_id,  # used below, not written to DB
-                })
+                all_persons.append(_person_dict(r, id_map[key], src.tree_id))
 
     # 3b. Auto-collapse persons with identical names across different source trees.
     #     Two persons match when:
@@ -1923,6 +1973,11 @@ async def merge_trees(
             if by_c is not None and by_p is not None and by_c != by_p:
                 continue
 
+            # Enrich canonical with any data the duplicate has that the canonical lacks
+            for f in _PERSON_FIELDS:
+                val = p.get(f)
+                if val is not None and val != "" and (canon.get(f) is None or canon.get(f) == "" or canon.get(f) == "UNKNOWN"):
+                    canon[f] = val
             collapse_map[p["id"]] = canon["id"]
 
         if collapse_map:
@@ -1934,19 +1989,41 @@ async def merge_trees(
                     id_map[k] = collapse_map[id_map[k]]
 
     # 4. Insert merged pivot person
+    def _insert_params(person_dict, tenant, tree):
+        return {
+            "id": person_dict["id"], "tenant": tenant, "tid": tree,
+            "given": person_dict["display_given_name"],
+            "surname": person_dict["display_surname"],
+            "sex": person_dict["sex"] or "UNKNOWN",
+            "living": person_dict["is_living"],
+            "deceased": person_dict["is_deceased"],
+            "photo_url": person_dict["photo_url"],
+            "birth_date": person_dict.get("birth_date"),
+            "death_date": person_dict.get("death_date"),
+            "birth_year": person_dict.get("birth_year"),
+            "death_year": person_dict.get("death_year"),
+            "city": person_dict.get("city"),
+            "country": person_dict.get("country"),
+            "facebook": person_dict.get("facebook_handle"),
+            "x": person_dict.get("x_handle"),
+            "linkedin": person_dict.get("linkedin_handle"),
+        }
+
+    _MERGE_INSERT_SQL = text("""
+        INSERT INTO persons (id, tenant_id, tree_id, display_given_name, display_surname,
+                             sex, is_living, is_deceased, photo_url,
+                             birth_date, death_date, birth_year, death_year,
+                             city, country,
+                             facebook_handle, x_handle, linkedin_handle)
+        VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased, :photo_url,
+                :birth_date, :death_date, :birth_year, :death_year,
+                :city, :country,
+                :facebook, :x, :linkedin)
+    """)
+
     if pivot_data:
-        await uow._session.execute(text("""
-            INSERT INTO persons (id, tenant_id, tree_id, display_given_name, display_surname,
-                                 sex, is_living, is_deceased, photo_url, birth_year)
-            VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased, :photo_url, :birth_year)
-        """), {
-            "id": pivot_data["id"], "tenant": tenant_id, "tid": new_tree_id,
-            "given": pivot_data["display_given_name"], "surname": pivot_data["display_surname"],
-            "sex": pivot_data["sex"] or "UNKNOWN",
-            "living": pivot_data["is_living"], "deceased": pivot_data["is_deceased"],
-            "photo_url": pivot_data["photo_url"],
-            "birth_year": pivot_data["birth_year"],
-        })
+        await uow._session.execute(_MERGE_INSERT_SQL,
+                                    _insert_params(pivot_data, tenant_id, new_tree_id))
 
     # 5. Insert all other persons (skip duplicates: same new_id already inserted)
     inserted_person_ids: set[uuid.UUID] = {merged_pivot_id} if pivot_data else set()
@@ -1954,18 +2031,8 @@ async def merge_trees(
         if p["id"] in inserted_person_ids:
             continue
         inserted_person_ids.add(p["id"])
-        await uow._session.execute(text("""
-            INSERT INTO persons (id, tenant_id, tree_id, display_given_name, display_surname,
-                                 sex, is_living, is_deceased, photo_url, birth_year)
-            VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased, :photo_url, :birth_year)
-        """), {
-            "id": p["id"], "tenant": tenant_id, "tid": new_tree_id,
-            "given": p["display_given_name"], "surname": p["display_surname"],
-            "sex": p["sex"] or "UNKNOWN",
-            "living": p["is_living"], "deceased": p["is_deceased"],
-            "photo_url": p["photo_url"],
-            "birth_year": p["birth_year"],
-        })
+        await uow._session.execute(_MERGE_INSERT_SQL,
+                                    _insert_params(p, tenant_id, new_tree_id))
 
     # 6. Load and insert family groups from each source tree (remapping person IDs)
     inserted_fg_ids: set[uuid.UUID] = set()
