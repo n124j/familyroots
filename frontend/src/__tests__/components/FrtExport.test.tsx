@@ -2,7 +2,7 @@
  * Unit tests for .frt export payload construction.
  *
  * Verifies that the handleExportFrt logic includes all 'more details' fields
- * (life dates, social handles, photo_url) and family group custom labels.
+ * (life dates, locations, notes, photo_url) and family group custom labels.
  */
 
 import type { ApiPerson, ApiFamilyGroup, ApiTreeGraph } from '@features/tree/types';
@@ -31,14 +31,21 @@ function buildFrtPayload(
       ...(p.deathDate ? { death_date: p.deathDate } : {}),
       ...(p.birthYear != null ? { birth_year: p.birthYear } : {}),
       ...(p.deathYear != null ? { death_year: p.deathYear } : {}),
-      ...(p.facebookHandle ? { facebook_handle: p.facebookHandle } : {}),
-      ...(p.xHandle ? { x_handle: p.xHandle } : {}),
-      ...(p.linkedinHandle ? { linkedin_handle: p.linkedinHandle } : {}),
+      ...(p.bornCity ? { born_city: p.bornCity } : {}),
+      ...(p.bornCountry ? { born_country: p.bornCountry } : {}),
+      ...(p.diedCity ? { died_city: p.diedCity } : {}),
+      ...(p.diedCountry ? { died_country: p.diedCountry } : {}),
+      ...(p.notes ? { notes: p.notes } : {}),
     })),
     family_groups: graph.familyGroups.map((fg) => ({
       id: fg.id,
       union_type: fg.unionType,
       ...(fg.customLabel ? { custom_label: fg.customLabel } : {}),
+      ...(fg.isDivorced ? { is_divorced: true } : {}),
+      ...(fg.unionDate ? { union_date: fg.unionDate } : {}),
+      ...(fg.unionDateYear != null ? { union_date_year: fg.unionDateYear } : {}),
+      ...(fg.unionEndDate ? { union_end_date: fg.unionEndDate } : {}),
+      ...(fg.unionEndDateYear != null ? { union_end_date_year: fg.unionEndDateYear } : {}),
       parent_ids: fg.parentIds,
       children: fg.children,
     })),
@@ -60,9 +67,11 @@ const fullPerson: ApiPerson = {
   deathDate: '2000-08-07',
   birthYear: 1912,
   deathYear: 2000,
-  facebookHandle: 'maryanne',
-  xHandle: 'maryanne_t',
-  linkedinHandle: 'in/maryanne',
+  bornCity: 'London',
+  bornCountry: 'United Kingdom',
+  diedCity: 'Manchester',
+  diedCountry: 'United Kingdom',
+  notes: 'A notable person',
 };
 
 const minimalPerson: ApiPerson = {
@@ -80,6 +89,9 @@ const fullFg: ApiFamilyGroup = {
   treeId: 't1',
   unionType: 'MARRIAGE',
   customLabel: 'Church Wedding',
+  isDivorced: false,
+  unionDate: '1930-06-15',
+  unionDateYear: 1930,
   parentIds: ['p1', 'p2'],
   children: { p3: 'BIOLOGICAL' },
 };
@@ -107,9 +119,11 @@ describe('.frt export payload', () => {
     expect(p.death_date).toBe('2000-08-07');
     expect(p.birth_year).toBe(1912);
     expect(p.death_year).toBe(2000);
-    expect(p.facebook_handle).toBe('maryanne');
-    expect(p.x_handle).toBe('maryanne_t');
-    expect(p.linkedin_handle).toBe('in/maryanne');
+    expect(p.born_city).toBe('London');
+    expect(p.born_country).toBe('United Kingdom');
+    expect(p.died_city).toBe('Manchester');
+    expect(p.died_country).toBe('United Kingdom');
+    expect(p.notes).toBe('A notable person');
   });
 
   it('omits optional fields when they are not set', () => {
@@ -122,26 +136,35 @@ describe('.frt export payload', () => {
     expect(p).not.toHaveProperty('death_date');
     expect(p).not.toHaveProperty('birth_year');
     expect(p).not.toHaveProperty('death_year');
-    expect(p).not.toHaveProperty('facebook_handle');
-    expect(p).not.toHaveProperty('x_handle');
-    expect(p).not.toHaveProperty('linkedin_handle');
+    expect(p).not.toHaveProperty('born_city');
+    expect(p).not.toHaveProperty('born_country');
+    expect(p).not.toHaveProperty('died_city');
+    expect(p).not.toHaveProperty('died_country');
+    expect(p).not.toHaveProperty('notes');
   });
 
-  it('includes custom_label on family groups when present', () => {
+  it('includes custom_label and union dates on family groups when present', () => {
     const graph: ApiTreeGraph = { treeId: 't1', persons: [], familyGroups: [fullFg] };
     const payload = buildFrtPayload(graph, 'Test', null);
     const fg = payload.family_groups[0];
 
     expect(fg.custom_label).toBe('Church Wedding');
     expect(fg.union_type).toBe('MARRIAGE');
+    expect(fg.union_date).toBe('1930-06-15');
+    expect(fg.union_date_year).toBe(1930);
   });
 
-  it('omits custom_label on family groups when not set', () => {
+  it('omits custom_label and union dates on family groups when not set', () => {
     const graph: ApiTreeGraph = { treeId: 't1', persons: [], familyGroups: [minimalFg] };
     const payload = buildFrtPayload(graph, 'Test', null);
     const fg = payload.family_groups[0];
 
     expect(fg).not.toHaveProperty('custom_label');
+    expect(fg).not.toHaveProperty('is_divorced');
+    expect(fg).not.toHaveProperty('union_date');
+    expect(fg).not.toHaveProperty('union_date_year');
+    expect(fg).not.toHaveProperty('union_end_date');
+    expect(fg).not.toHaveProperty('union_end_date_year');
   });
 
   it('handles a mix of full and minimal persons', () => {

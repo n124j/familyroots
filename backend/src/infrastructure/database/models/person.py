@@ -55,13 +55,14 @@ class PersonModel(Base, TenantMixin, TimestampMixin):
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     death_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # Social profile handles (stored without @ or URL prefix)
-    city: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Birth / death location
+    born_city: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    born_country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    died_city: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    died_country: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    facebook_handle: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    x_handle:        Mapped[str | None] = mapped_column(String(200), nullable=True)
-    linkedin_handle: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Free-text notes
+    notes: Mapped[str | None] = mapped_column(String(250), nullable=True)
 
     # Denormalised search vector (populated by DB trigger)
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
@@ -70,9 +71,44 @@ class PersonModel(Base, TenantMixin, TimestampMixin):
     family_group_memberships: Mapped[list["FamilyGroupMemberModel"]] = relationship(
         "FamilyGroupMemberModel", back_populates="person", lazy="noload",
     )
+    gallery_photos: Mapped[list["PersonGalleryPhotoModel"]] = relationship(
+        "PersonGalleryPhotoModel", back_populates="person", lazy="noload",
+        order_by="PersonGalleryPhotoModel.position",
+    )
 
     def __repr__(self) -> str:
         return f"<PersonModel id={self.id!s} name={self.display_given_name!r} {self.display_surname!r}>"
+
+
+class PersonGalleryPhotoModel(Base, TenantMixin, TimestampMixin):
+    """Up to 3 additional photos per person, each with an optional caption."""
+
+    __tablename__ = "person_gallery_photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    person_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("persons.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    tree_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("family_trees.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    photo_url: Mapped[str] = mapped_column(Text, nullable=False)
+    caption: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+
+    person: Mapped["PersonModel"] = relationship(
+        "PersonModel", back_populates="gallery_photos", lazy="noload",
+    )
+
+    def __repr__(self) -> str:
+        return f"<PersonGalleryPhotoModel id={self.id!s} person_id={self.person_id!s}>"
 
 
 class FamilyGroupModel(Base, TenantMixin, TimestampMixin):

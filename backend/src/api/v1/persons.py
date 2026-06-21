@@ -88,14 +88,14 @@ async def create_person(
                 id, tenant_id, tree_id, sex, display_given_name, display_surname,
                 is_living, is_deceased,
                 birth_date, death_date, birth_year, death_year,
-                city, country,
-                facebook_handle, x_handle, linkedin_handle
+                born_city, born_country, died_city, died_country,
+                notes
             ) VALUES (
                 :id, :tenant_id, :tree_id, :sex, :given, :surname,
                 :living, :deceased,
                 :birth_date, :death_date, :birth_year, :death_year,
-                :city, :country,
-                :facebook_handle, :x_handle, :linkedin_handle
+                :born_city, :born_country, :died_city, :died_country,
+                :notes
             )
         """),
         {
@@ -111,11 +111,11 @@ async def create_person(
             "death_date": req.death_date,
             "birth_year": req.birth_year,
             "death_year": req.death_year,
-            "city": req.city,
-            "country": req.country,
-            "facebook_handle": req.facebook_handle,
-            "x_handle": req.x_handle,
-            "linkedin_handle": req.linkedin_handle,
+            "born_city": req.born_city,
+            "born_country": req.born_country,
+            "died_city": req.died_city,
+            "died_country": req.died_country,
+            "notes": req.notes,
         },
     )
     from src.domain.collaboration.entities import Action, AuditEntityType
@@ -136,11 +136,11 @@ async def create_person(
         death_date=req.death_date,
         birth_year=req.birth_year,
         death_year=req.death_year,
-        city=req.city,
-        country=req.country,
-        facebook_handle=req.facebook_handle,
-        x_handle=req.x_handle,
-        linkedin_handle=req.linkedin_handle,
+        born_city=req.born_city,
+        born_country=req.born_country,
+        died_city=req.died_city,
+        died_country=req.died_country,
+        notes=req.notes,
     )
 
 
@@ -200,17 +200,17 @@ async def update_person(
                 death_date         = :death_date,
                 birth_year         = :birth_year,
                 death_year         = :death_year,
-                city               = :city,
-                country            = :country,
-                facebook_handle    = :facebook_handle,
-                x_handle           = :x_handle,
-                linkedin_handle    = :linkedin_handle
+                born_city          = :born_city,
+                born_country       = :born_country,
+                died_city          = :died_city,
+                died_country       = :died_country,
+                notes              = :notes
             WHERE id = :pid AND tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
             RETURNING id, tree_id, display_given_name, display_surname, sex,
                       is_living, is_deceased, photo_url,
                       birth_date, death_date, birth_year, death_year,
-                      city, country,
-                      facebook_handle, x_handle, linkedin_handle
+                      born_city, born_country, died_city, died_country,
+                      notes
         """),
         {
             "given":           req.given_name,
@@ -223,11 +223,11 @@ async def update_person(
             "death_date":      req.death_date,
             "birth_year":      req.birth_year,
             "death_year":      req.death_year,
-            "city":            req.city,
-            "country":         req.country,
-            "facebook_handle": req.facebook_handle,
-            "x_handle":        req.x_handle,
-            "linkedin_handle": req.linkedin_handle,
+            "born_city":       req.born_city,
+            "born_country":    req.born_country,
+            "died_city":       req.died_city,
+            "died_country":    req.died_country,
+            "notes":           req.notes,
             "pid":             person_id,
             "tid":             tree_id,
             "tenant":          user.tenant_id,
@@ -256,11 +256,11 @@ async def update_person(
         death_date=row.death_date,
         birth_year=row.birth_year,
         death_year=row.death_year,
-        city=row.city,
-        country=row.country,
-        facebook_handle=row.facebook_handle,
-        x_handle=row.x_handle,
-        linkedin_handle=row.linkedin_handle,
+        born_city=row.born_city,
+        born_country=row.born_country,
+        died_city=row.died_city,
+        died_country=row.died_country,
+        notes=row.notes,
     )
 
 
@@ -359,6 +359,173 @@ async def remove_person_photo(
     from src.domain.collaboration.entities import Action, AuditEntityType
     await _audit(session, tree_id, user, Action.DELETE_MEDIA, AuditEntityType.MEDIA,
                  entity_id=person_id, before={"had_photo": True})
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── Gallery photos (up to 3 per person) ─────────────────────────
+
+MAX_GALLERY_PHOTOS = 3
+
+
+@router.get(
+    "/{person_id}/gallery",
+    summary="List gallery photos for a person",
+)
+async def list_gallery_photos(
+    tree_id: uuid.UUID,
+    person_id: uuid.UUID,
+    user: VerifiedUserDep,
+    session: SessionDep,
+):
+    from sqlalchemy import text as sa_text
+    from src.api.v1._s3 import presign_photo
+
+    rows = (await session.execute(
+        sa_text("""
+            SELECT id, photo_url, caption, position
+            FROM person_gallery_photos
+            WHERE person_id = :pid AND tree_id = :tid AND tenant_id = :tenant
+            ORDER BY position
+        """),
+        {"pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
+    )).fetchall()
+
+    return [
+        {
+            "id": str(r.id),
+            "photoUrl": presign_photo(r.photo_url),
+            "caption": r.caption,
+            "position": r.position,
+        }
+        for r in rows
+    ]
+
+
+@router.post(
+    "/{person_id}/gallery",
+    status_code=201,
+    summary="Upload a gallery photo (max 3 per person)",
+)
+async def upload_gallery_photo(
+    tree_id: uuid.UUID,
+    person_id: uuid.UUID,
+    file: UploadFile = File(...),
+    caption: str = Query(default="", max_length=200),
+    user: NotAuditorDep = None,
+    session: SessionDep = None,
+):
+    import boto3
+    from botocore.config import Config as BotoCfg
+    from sqlalchemy import text as sa_text
+    from src.config import get_settings
+
+    settings = get_settings()
+
+    count_row = (await session.execute(
+        sa_text("SELECT count(*) AS cnt FROM person_gallery_photos WHERE person_id = :pid AND tree_id = :tid"),
+        {"pid": person_id, "tid": tree_id},
+    )).first()
+    if count_row.cnt >= MAX_GALLERY_PHOTOS:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Maximum {MAX_GALLERY_PHOTOS} gallery photos allowed")
+
+    if file.content_type not in ALLOWED_PHOTO_TYPES:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Only JPEG, PNG, WEBP or GIF images are allowed")
+
+    data = await file.read()
+    if len(data) > MAX_PHOTO_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "File exceeds 10 MB limit")
+
+    ext = (file.filename or "photo").rsplit(".", 1)[-1].lower()
+    photo_id = uuid.uuid4()
+    key = f"tenants/{user.tenant_id}/trees/{tree_id}/persons/{person_id}/gallery/{photo_id}.{ext}"
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=settings.s3_endpoint_url or None,
+        aws_access_key_id=settings.aws_access_key_id or "minioadmin",
+        aws_secret_access_key=settings.aws_secret_access_key or "minioadmin",
+        region_name=settings.aws_region,
+        config=BotoCfg(signature_version="s3v4"),
+    )
+    bucket = settings.s3_bucket or "familyroots-local"
+    s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=file.content_type)
+
+    await session.execute(
+        sa_text("""
+            INSERT INTO person_gallery_photos (id, person_id, tree_id, tenant_id, photo_url, caption, position)
+            VALUES (:id, :pid, :tid, :tenant, :url, :caption, :pos)
+        """),
+        {
+            "id": photo_id,
+            "pid": person_id,
+            "tid": tree_id,
+            "tenant": user.tenant_id,
+            "url": key,
+            "caption": caption.strip() or None,
+            "pos": count_row.cnt,
+        },
+    )
+    await session.commit()
+
+    from src.api.v1._s3 import presign_photo
+    return {"id": str(photo_id), "photoUrl": presign_photo(key), "caption": caption.strip() or None, "position": count_row.cnt}
+
+
+@router.patch(
+    "/{person_id}/gallery/{photo_id}",
+    summary="Update a gallery photo's caption",
+)
+async def update_gallery_photo(
+    tree_id: uuid.UUID,
+    person_id: uuid.UUID,
+    photo_id: uuid.UUID,
+    user: NotAuditorDep,
+    session: SessionDep,
+    caption: str = Query(default="", max_length=200),
+):
+    from sqlalchemy import text as sa_text
+
+    result = await session.execute(
+        sa_text("""
+            UPDATE person_gallery_photos SET caption = :caption
+            WHERE id = :gid AND person_id = :pid AND tree_id = :tid AND tenant_id = :tenant
+            RETURNING id
+        """),
+        {"caption": caption.strip() or None, "gid": photo_id, "pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
+    )
+    if result.first() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gallery photo not found")
+    await session.commit()
+    return {"ok": True}
+
+
+@router.delete(
+    "/{person_id}/gallery/{photo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    response_class=Response,
+    summary="Delete a gallery photo",
+)
+async def delete_gallery_photo(
+    tree_id: uuid.UUID,
+    person_id: uuid.UUID,
+    photo_id: uuid.UUID,
+    user: NotAuditorDep,
+    session: SessionDep,
+):
+    from sqlalchemy import text as sa_text
+
+    result = await session.execute(
+        sa_text("""
+            DELETE FROM person_gallery_photos
+            WHERE id = :gid AND person_id = :pid AND tree_id = :tid AND tenant_id = :tenant
+            RETURNING id
+        """),
+        {"gid": photo_id, "pid": person_id, "tid": tree_id, "tenant": user.tenant_id},
+    )
+    if result.first() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Gallery photo not found")
     await session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

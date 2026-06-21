@@ -515,8 +515,8 @@ async def get_shared_tree_graph(
         SELECT id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased, photo_url,
                birth_date, death_date, birth_year, death_year,
-               city, country,
-               facebook_handle, x_handle, linkedin_handle
+               born_city, born_country, died_city, died_country,
+               notes
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -538,11 +538,11 @@ async def get_shared_tree_graph(
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
             **({"deathYear": r.death_year} if r.death_year is not None else {}),
-            **({"city": r.city} if r.city else {}),
-            **({"country": r.country} if r.country else {}),
-            **({"facebookHandle": r.facebook_handle} if r.facebook_handle else {}),
-            **({"xHandle": r.x_handle} if r.x_handle else {}),
-            **({"linkedinHandle": r.linkedin_handle} if r.linkedin_handle else {}),
+            **({"bornCity": r.born_city} if r.born_city else {}),
+            **({"bornCountry": r.born_country} if r.born_country else {}),
+            **({"diedCity": r.died_city} if r.died_city else {}),
+            **({"diedCountry": r.died_country} if r.died_country else {}),
+            **({"notes": r.notes} if r.notes else {}),
         }
         for r in person_rows
     ]
@@ -632,8 +632,8 @@ async def export_tree_zip(
     person_rows = (await uow._session.execute(text("""
         SELECT id, display_given_name, display_surname, sex, is_living, is_deceased, photo_url,
                birth_date, death_date, birth_year, death_year,
-               city, country,
-               facebook_handle, x_handle, linkedin_handle
+               born_city, born_country, died_city, died_country,
+               notes
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -719,13 +719,41 @@ async def export_tree_zip(
             **({"death_date": r.death_date.isoformat()} if r.death_date else {}),
             **({"birth_year": r.birth_year} if r.birth_year is not None else {}),
             **({"death_year": r.death_year} if r.death_year is not None else {}),
-            **({"city": r.city} if r.city else {}),
-            **({"country": r.country} if r.country else {}),
-            **({"facebook_handle": r.facebook_handle} if r.facebook_handle else {}),
-            **({"x_handle": r.x_handle} if r.x_handle else {}),
-            **({"linkedin_handle": r.linkedin_handle} if r.linkedin_handle else {}),
+            **({"born_city": r.born_city} if r.born_city else {}),
+            **({"born_country": r.born_country} if r.born_country else {}),
+            **({"died_city": r.died_city} if r.died_city else {}),
+            **({"died_country": r.died_country} if r.died_country else {}),
+            **({"notes": r.notes} if r.notes else {}),
         }
         persons_payload.append(person_entry)
+
+    # Fetch gallery photos for all persons in this tree
+    gallery_rows = (await uow._session.execute(text("""
+        SELECT id, person_id, photo_url, caption, position
+        FROM person_gallery_photos
+        WHERE tree_id = :tid AND tenant_id = :tenant
+        ORDER BY person_id, position
+    """), {"tid": tree_id, "tenant": tenant_id})).fetchall()
+
+    gallery_by_person: dict[str, list[dict]] = {}
+    for gr in gallery_rows:
+        pid = str(gr.person_id)
+        if pid not in gallery_by_person:
+            gallery_by_person[pid] = []
+        s3_key = gr.photo_url
+        ext = s3_key.rsplit(".", 1)[-1] if "." in s3_key else "jpg"
+        gal_filename = f"gallery/{pid}_{gr.position}.{ext}"
+        photo_downloads.append((pid, s3_key, gal_filename))
+        gallery_by_person[pid].append({
+            "photo_filename": gal_filename,
+            **({"caption": gr.caption} if gr.caption else {}),
+            "position": gr.position,
+        })
+
+    for pe in persons_payload:
+        gal = gallery_by_person.get(pe["id"])
+        if gal:
+            pe["gallery_photos"] = gal
 
     frt_payload = {
         "frt_version": "1.1",
@@ -1229,8 +1257,8 @@ async def get_tree_graph(
         SELECT id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased, photo_url,
                birth_date, death_date, birth_year, death_year,
-               city, country,
-               facebook_handle, x_handle, linkedin_handle
+               born_city, born_country, died_city, died_country,
+               notes
         FROM persons
         WHERE tree_id = :tid AND is_deleted = false
         ORDER BY display_surname, display_given_name
@@ -1252,11 +1280,11 @@ async def get_tree_graph(
             **({"deathDate": r.death_date.isoformat()} if r.death_date else {}),
             **({"birthYear": r.birth_year} if r.birth_year is not None else {}),
             **({"deathYear": r.death_year} if r.death_year is not None else {}),
-            **({"city": r.city} if r.city else {}),
-            **({"country": r.country} if r.country else {}),
-            **({"facebookHandle": r.facebook_handle} if r.facebook_handle else {}),
-            **({"xHandle": r.x_handle} if r.x_handle else {}),
-            **({"linkedinHandle": r.linkedin_handle} if r.linkedin_handle else {}),
+            **({"bornCity": r.born_city} if r.born_city else {}),
+            **({"bornCountry": r.born_country} if r.born_country else {}),
+            **({"diedCity": r.died_city} if r.died_city else {}),
+            **({"diedCountry": r.died_country} if r.died_country else {}),
+            **({"notes": r.notes} if r.notes else {}),
         }
         for r in person_rows
     ]
@@ -1330,11 +1358,11 @@ class _FrtPerson(BaseModel):
     death_date: Optional[str] = None
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    facebook_handle: Optional[str] = None
-    x_handle: Optional[str] = None
-    linkedin_handle: Optional[str] = None
+    born_city: Optional[str] = None
+    born_country: Optional[str] = None
+    died_city: Optional[str] = None
+    died_country: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class _FrtFamilyGroup(BaseModel):
@@ -1432,31 +1460,31 @@ async def import_tree(
               (id, tenant_id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased,
                birth_date, death_date, birth_year, death_year,
-               city, country,
-               facebook_handle, x_handle, linkedin_handle)
+               born_city, born_country, died_city, died_country,
+               notes)
             VALUES
               (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased,
                :birth_date, :death_date, :birth_year, :death_year,
-               :city, :country,
-               :facebook, :x, :linkedin)
+               :born_city, :born_country, :died_city, :died_country,
+               :notes)
         """), {
-            "id":         new_pid,
-            "tenant":     current_user.tenant_id,
-            "tid":        new_tree_id,
-            "given":      p.display_given_name,
-            "surname":    p.display_surname,
-            "sex":        p.sex if p.sex in _VALID_SEX else "UNKNOWN",
-            "living":     p.is_living,
-            "deceased":   p.is_deceased,
-            "birth_date": birth_date_val,
-            "death_date": death_date_val,
-            "birth_year": p.birth_year,
-            "death_year": p.death_year,
-            "city":       p.city,
-            "country":    p.country,
-            "facebook":   p.facebook_handle,
-            "x":          p.x_handle,
-            "linkedin":   p.linkedin_handle,
+            "id":           new_pid,
+            "tenant":       current_user.tenant_id,
+            "tid":          new_tree_id,
+            "given":        p.display_given_name,
+            "surname":      p.display_surname,
+            "sex":          p.sex if p.sex in _VALID_SEX else "UNKNOWN",
+            "living":       p.is_living,
+            "deceased":     p.is_deceased,
+            "birth_date":   birth_date_val,
+            "death_date":   death_date_val,
+            "birth_year":   p.birth_year,
+            "death_year":   p.death_year,
+            "born_city":    p.born_city,
+            "born_country": p.born_country,
+            "died_city":    p.died_city,
+            "died_country": p.died_country,
+            "notes":        p.notes,
         })
 
     # 4. Create family groups + members
@@ -1608,30 +1636,30 @@ async def import_tree_zip(
               (id, tenant_id, tree_id, display_given_name, display_surname,
                sex, is_living, is_deceased,
                birth_date, death_date, birth_year, death_year,
-               city, country,
-               facebook_handle, x_handle, linkedin_handle)
+               born_city, born_country, died_city, died_country,
+               notes)
             VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased,
                     :birth_date, :death_date, :birth_year, :death_year,
-                    :city, :country,
-                    :facebook, :x, :linkedin)
+                    :born_city, :born_country, :died_city, :died_country,
+                    :notes)
         """), {
-            "id":      new_pid,
-            "tenant":  current_user.tenant_id,
-            "tid":     new_tree_id,
-            "given":   p.get("display_given_name", ""),
-            "surname": p.get("display_surname", ""),
-            "sex":     p.get("sex", "UNKNOWN") if p.get("sex", "UNKNOWN") in _VALID_SEX else "UNKNOWN",
-            "living":  p.get("is_living", True),
-            "deceased": p.get("is_deceased", False),
-            "birth_date": birth_date_val,
-            "death_date": death_date_val,
-            "birth_year": p.get("birth_year"),
-            "death_year": p.get("death_year"),
-            "city":       p.get("city"),
-            "country":    p.get("country"),
-            "facebook":   p.get("facebook_handle"),
-            "x":          p.get("x_handle"),
-            "linkedin":   p.get("linkedin_handle"),
+            "id":           new_pid,
+            "tenant":       current_user.tenant_id,
+            "tid":          new_tree_id,
+            "given":        p.get("display_given_name", ""),
+            "surname":      p.get("display_surname", ""),
+            "sex":          p.get("sex", "UNKNOWN") if p.get("sex", "UNKNOWN") in _VALID_SEX else "UNKNOWN",
+            "living":       p.get("is_living", True),
+            "deceased":     p.get("is_deceased", False),
+            "birth_date":   birth_date_val,
+            "death_date":   death_date_val,
+            "birth_year":   p.get("birth_year"),
+            "death_year":   p.get("death_year"),
+            "born_city":    p.get("born_city") or p.get("city"),
+            "born_country": p.get("born_country") or p.get("country"),
+            "died_city":    p.get("died_city"),
+            "died_country": p.get("died_country"),
+            "notes":        p.get("notes"),
         })
 
     # 3. Create family groups + members
@@ -1640,11 +1668,31 @@ async def import_tree_zip(
         parent_ids = [old_to_new.get(pid) for pid in fg.get("parent_ids", []) if pid in old_to_new]
         p1 = parent_ids[0] if len(parent_ids) > 0 else None
         p2 = parent_ids[1] if len(parent_ids) > 1 else None
+
+        from datetime import date as _date
+        udate_val = None
+        if fg.get("union_date"):
+            try: udate_val = _date.fromisoformat(fg["union_date"])
+            except ValueError: pass
+        uedate_val = None
+        if fg.get("union_end_date"):
+            try: uedate_val = _date.fromisoformat(fg["union_end_date"])
+            except ValueError: pass
+
         await uow._session.execute(text("""
-            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, parent1_id, parent2_id)
-            VALUES (:id, :tenant, :tid, :utype, :p1, :p2)
+            INSERT INTO family_groups (id, tenant_id, tree_id, union_type, custom_label, is_divorced,
+                                       union_date, union_date_year, union_end_date, union_end_date_year,
+                                       parent1_id, parent2_id)
+            VALUES (:id, :tenant, :tid, :utype, :clabel, :divorced,
+                    :udate, :udate_year, :uedate, :uedate_year, :p1, :p2)
         """), {"id": new_fg_id, "tenant": current_user.tenant_id, "tid": new_tree_id,
                "utype": fg.get("union_type", "UNKNOWN") if fg.get("union_type", "UNKNOWN") in _VALID_UNION_TYPES else "UNKNOWN",
+               "clabel": fg.get("custom_label"),
+               "divorced": fg.get("is_divorced", False),
+               "udate": udate_val,
+               "udate_year": fg.get("union_date_year"),
+               "uedate": uedate_val,
+               "uedate_year": fg.get("union_end_date_year"),
                "p1": p1, "p2": p2})
 
         for old_pid in fg.get("parent_ids", []):
@@ -1698,6 +1746,37 @@ async def import_tree_zip(
                 """), {"url": s3_key, "pid": new_pid})
             except Exception:
                 pass  # skip individual photo failures
+
+        # 4b. Import gallery photos
+        for p in persons_raw:
+            old_pid = p.get("id")
+            new_pid = old_to_new.get(old_pid)
+            if not new_pid:
+                continue
+            for gal in p.get("gallery_photos", []):
+                gal_zip_path = gal.get("photo_filename")
+                if not gal_zip_path or gal_zip_path not in zip_names:
+                    continue
+                try:
+                    gal_bytes = zf.read(gal_zip_path)
+                    ext = gal_zip_path.rsplit(".", 1)[-1] if "." in gal_zip_path else "jpg"
+                    content_type = {"jpg": "image/jpeg", "jpeg": "image/jpeg",
+                                    "png": "image/png", "webp": "image/webp",
+                                    "gif": "image/gif"}.get(ext.lower(), "image/jpeg")
+                    gal_id = uuid.uuid4()
+                    gal_s3_key = f"tenants/{current_user.tenant_id}/trees/{new_tree_id}/persons/{new_pid}/gallery/{gal_id}.{ext}"
+                    s3.put_object(Bucket=bucket, Key=gal_s3_key, Body=gal_bytes, ContentType=content_type)
+                    await uow._session.execute(text("""
+                        INSERT INTO person_gallery_photos (id, person_id, tree_id, tenant_id, photo_url, caption, position)
+                        VALUES (:id, :pid, :tid, :tenant, :url, :caption, :pos)
+                    """), {
+                        "id": gal_id, "pid": new_pid, "tid": new_tree_id,
+                        "tenant": current_user.tenant_id,
+                        "url": gal_s3_key, "caption": gal.get("caption"),
+                        "pos": gal.get("position", 0),
+                    })
+                except Exception:
+                    pass
 
         await uow._session.commit()
 
@@ -1892,8 +1971,8 @@ async def merge_trees(
         "display_given_name", "display_surname", "sex",
         "is_living", "is_deceased", "photo_url",
         "birth_date", "death_date", "birth_year", "death_year",
-        "city", "country",
-        "facebook_handle", "x_handle", "linkedin_handle",
+        "born_city", "born_country", "died_city", "died_country",
+        "notes",
     ]
 
     def _person_dict(r, new_id, src_tree=None):
@@ -1909,8 +1988,8 @@ async def merge_trees(
             SELECT id, display_given_name, display_surname, sex,
                    is_living, is_deceased, photo_url,
                    birth_date, death_date, birth_year, death_year,
-                   city, country,
-                   facebook_handle, x_handle, linkedin_handle
+                   born_city, born_country, died_city, died_country,
+                   notes
             FROM persons
             WHERE tree_id = :tid AND tenant_id = :tenant AND is_deleted = false
         """), {"tid": src.tree_id, "tenant": tenant_id})).fetchall()
@@ -2002,23 +2081,23 @@ async def merge_trees(
             "death_date": person_dict.get("death_date"),
             "birth_year": person_dict.get("birth_year"),
             "death_year": person_dict.get("death_year"),
-            "city": person_dict.get("city"),
-            "country": person_dict.get("country"),
-            "facebook": person_dict.get("facebook_handle"),
-            "x": person_dict.get("x_handle"),
-            "linkedin": person_dict.get("linkedin_handle"),
+            "born_city": person_dict.get("born_city"),
+            "born_country": person_dict.get("born_country"),
+            "died_city": person_dict.get("died_city"),
+            "died_country": person_dict.get("died_country"),
+            "notes": person_dict.get("notes"),
         }
 
     _MERGE_INSERT_SQL = text("""
         INSERT INTO persons (id, tenant_id, tree_id, display_given_name, display_surname,
                              sex, is_living, is_deceased, photo_url,
                              birth_date, death_date, birth_year, death_year,
-                             city, country,
-                             facebook_handle, x_handle, linkedin_handle)
+                             born_city, born_country, died_city, died_country,
+                             notes)
         VALUES (:id, :tenant, :tid, :given, :surname, :sex, :living, :deceased, :photo_url,
                 :birth_date, :death_date, :birth_year, :death_year,
-                :city, :country,
-                :facebook, :x, :linkedin)
+                :born_city, :born_country, :died_city, :died_country,
+                :notes)
     """)
 
     if pivot_data:

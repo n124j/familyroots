@@ -150,28 +150,25 @@ function DetailsPanel({ data, borderColor, bg, textColor, subtextColor, borderCs
     });
   }
 
-  if (data.facebookHandle) {
+  if (data.bornCity || data.bornCountry) {
     rows.push({
-      icon: <span style={{ color: '#1877f2', fontWeight: 700, fontSize: 11 }}>f</span>,
-      label: 'Facebook',
-      value: data.facebookHandle,
-      href: `https://facebook.com/${data.facebookHandle}`,
+      icon: <span style={{ color: '#22c55e', fontSize: 10 }}>📍</span>,
+      label: 'Born in',
+      value: [data.bornCity, data.bornCountry].filter(Boolean).join(', '),
     });
   }
-  if (data.xHandle) {
+  if (data.diedCity || data.diedCountry) {
     rows.push({
-      icon: <span style={{ color: textColor, fontWeight: 700, fontSize: 10 }}>𝕏</span>,
-      label: 'X',
-      value: `@${data.xHandle}`,
-      href: `https://x.com/${data.xHandle}`,
+      icon: <span style={{ color: subtextColor, fontSize: 10 }}>📍</span>,
+      label: 'Buried',
+      value: [data.diedCity, data.diedCountry].filter(Boolean).join(', '),
     });
   }
-  if (data.linkedinHandle) {
+  if (data.notes) {
     rows.push({
-      icon: <span style={{ color: '#0a66c2', fontWeight: 700, fontSize: 10 }}>in</span>,
-      label: 'LinkedIn',
-      value: data.linkedinHandle,
-      href: `https://linkedin.com/in/${data.linkedinHandle}`,
+      icon: <span style={{ color: subtextColor, fontSize: 10 }}>📝</span>,
+      label: 'Notes',
+      value: data.notes,
     });
   }
 
@@ -241,9 +238,11 @@ function PersonNodeComponent({ data, selected, dragging }: NodeProps<PersonNodeD
     isExpanded,
     hasHiddenChildren,
     hasHiddenParents,
-    facebookHandle,
-    xHandle,
-    linkedinHandle,
+    bornCity,
+    bornCountry,
+    diedCity,
+    diedCountry,
+    notes,
     birthDate,
     deathDate,
   } = data;
@@ -255,7 +254,7 @@ function PersonNodeComponent({ data, selected, dragging }: NodeProps<PersonNodeD
   const [hovered,     setHovered]     = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const hasDetails = !!(birthDate || deathDate || facebookHandle || xHandle || linkedinHandle
+  const hasDetails = !!(birthDate || deathDate || bornCity || bornCountry || diedCity || diedCountry || notes
     || (isDeceased && !deathYear && !deathDate));
 
   const handleExpandDown = useCallback((e: React.MouseEvent) => {

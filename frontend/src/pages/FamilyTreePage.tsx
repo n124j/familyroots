@@ -49,11 +49,11 @@ async function createPerson(
   if (fields.deathDate)      body.death_date       = fields.deathDate;
   if (fields.birthYear)      body.birth_year       = parseInt(fields.birthYear, 10);
   if (fields.deathYear)      body.death_year       = parseInt(fields.deathYear, 10);
-  if (fields.city)            body.city             = fields.city.trim();
-  if (fields.country)         body.country          = fields.country;
-  if (fields.facebookHandle) body.facebook_handle  = fields.facebookHandle.trim();
-  if (fields.xHandle)        body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
-  if (fields.linkedinHandle) body.linkedin_handle  = fields.linkedinHandle.trim();
+  if (fields.bornCity)         body.born_city        = fields.bornCity.trim();
+  if (fields.bornCountry)     body.born_country     = fields.bornCountry.trim();
+  if (fields.diedCity)         body.died_city        = fields.diedCity.trim();
+  if (fields.diedCountry)     body.died_country     = fields.diedCountry.trim();
+  if (fields.notes)           body.notes            = fields.notes.trim();
   try {
     const data = await post<{ id: string }>(`/trees/${treeId}/persons`, body);
     return data.id;
@@ -74,18 +74,18 @@ interface PersonFields {
   deathDate: string;
   birthYear: string;
   deathYear: string;
-  city: string;
-  country: string;
-  facebookHandle: string;
-  xHandle: string;
-  linkedinHandle: string;
+  bornCity: string;
+  bornCountry: string;
+  diedCity: string;
+  diedCountry: string;
+  notes: string;
 }
 
 const EMPTY_FIELDS: PersonFields = {
   givenName: '', surname: '', sex: 'UNKNOWN', isLiving: true,
   birthDate: '', deathDate: '', birthYear: '', deathYear: '',
-  city: '', country: '',
-  facebookHandle: '', xHandle: '', linkedinHandle: '',
+  bornCity: '', bornCountry: '', diedCity: '', diedCountry: '',
+  notes: '',
 };
 
 /** Returns an error message if birth or death date/year are both set but disagree, else null. */
@@ -246,64 +246,67 @@ function PersonFormFields({
               );
             })()}
 
-            {/* Location */}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Location</p>
+            {/* Born location */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Born location</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">City</label>
+                <label className="text-xs text-slate-500 mb-1 block">Born city</label>
                 <input
                   type="text"
                   placeholder="e.g. London"
-                  value={values.city}
-                  onChange={(e) => onChange({ ...values, city: e.target.value })}
+                  value={values.bornCity}
+                  onChange={(e) => onChange({ ...values, bornCity: e.target.value })}
                   className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Country</label>
+                <label className="text-xs text-slate-500 mb-1 block">Born country</label>
                 <input
                   type="text"
                   placeholder="e.g. United Kingdom"
-                  value={values.country}
-                  onChange={(e) => onChange({ ...values, country: e.target.value })}
+                  value={values.bornCountry}
+                  onChange={(e) => onChange({ ...values, bornCountry: e.target.value })}
                   className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
             </div>
 
-            {/* Social profiles */}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Social profiles</p>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] font-medium text-slate-500 shrink-0">Facebook</span>
+            {/* Died/Buried location */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Died / Buried location</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Died/Buried city</label>
                 <input
                   type="text"
-                  placeholder="username"
-                  value={values.facebookHandle}
-                  onChange={(e) => onChange({ ...values, facebookHandle: e.target.value })}
-                  className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder="e.g. Manchester"
+                  value={values.diedCity}
+                  onChange={(e) => onChange({ ...values, diedCity: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] font-medium text-slate-500 shrink-0">X / Twitter</span>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Died/Buried country</label>
                 <input
                   type="text"
-                  placeholder="@handle"
-                  value={values.xHandle}
-                  onChange={(e) => onChange({ ...values, xHandle: e.target.value })}
-                  className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder="e.g. United Kingdom"
+                  value={values.diedCountry}
+                  onChange={(e) => onChange({ ...values, diedCountry: e.target.value })}
+                  className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] font-medium text-slate-500 shrink-0">LinkedIn</span>
-                <input
-                  type="text"
-                  placeholder="in/username"
-                  value={values.linkedinHandle}
-                  onChange={(e) => onChange({ ...values, linkedinHandle: e.target.value })}
-                  className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
+            </div>
+
+            {/* Notes */}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Notes</p>
+            <div>
+              <textarea
+                placeholder="Add notes about this person (max 250 characters)"
+                maxLength={250}
+                value={values.notes}
+                onChange={(e) => onChange({ ...values, notes: e.target.value })}
+                className="w-full h-20 px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+              />
+              <p className="text-[10px] text-slate-400 text-right">{values.notes.length}/250</p>
             </div>
           </div>
         )}
@@ -1166,11 +1169,11 @@ interface EditPersonFields {
   deathDate: string;
   birthYear: string;
   deathYear: string;
-  city: string;
-  country: string;
-  facebookHandle: string;
-  xHandle: string;
-  linkedinHandle: string;
+  bornCity: string;
+  bornCountry: string;
+  diedCity: string;
+  diedCountry: string;
+  notes: string;
 }
 
 interface EditPersonModalProps {
@@ -1184,6 +1187,13 @@ interface EditPersonModalProps {
   onRefresh?: () => void;
 }
 
+interface GalleryPhoto {
+  id: string;
+  photoUrl: string;
+  caption: string | null;
+  position: number;
+}
+
 function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, onClose, onSaved, onRefresh }: EditPersonModalProps) {
   const [fields,       setFields]       = useState<EditPersonFields>(initial);
   const [loading,      setLoading]      = useState(false);
@@ -1195,6 +1205,69 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
   const [showPresets,  setShowPresets]  = useState(false);
   const [showExtra,    setShowExtra]    = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Gallery photos state
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const [galleryError, setGalleryError] = useState('');
+  const [hoveredGallery, setHoveredGallery] = useState<string | null>(null);
+  const [editingCaption, setEditingCaption] = useState<string | null>(null);
+  const [captionDraft, setCaptionDraft] = useState('');
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const photos = await get<GalleryPhoto[]>(`/trees/${treeId}/persons/${personId}/gallery`);
+        if (!cancelled) setGalleryPhotos(photos);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [treeId, personId]);
+
+  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setGalleryError('Please select an image file.'); return; }
+    if (galleryPhotos.length >= 3) { setGalleryError('Maximum 3 gallery photos allowed.'); return; }
+
+    setGalleryLoading(true);
+    setGalleryError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const data = await post<GalleryPhoto>(`/trees/${treeId}/persons/${personId}/gallery?caption=`, form);
+      setGalleryPhotos((prev) => [...prev, data]);
+    } catch (err) {
+      setGalleryError(apiErrorMessage(err, 'Upload failed'));
+    } finally {
+      setGalleryLoading(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  }
+
+  async function handleGalleryDelete(photoId: string) {
+    setGalleryLoading(true);
+    try {
+      await del(`/trees/${treeId}/persons/${personId}/gallery/${photoId}`);
+      setGalleryPhotos((prev) => prev.filter((p) => p.id !== photoId));
+    } catch (err) {
+      setGalleryError(apiErrorMessage(err, 'Delete failed'));
+    } finally {
+      setGalleryLoading(false);
+    }
+  }
+
+  async function handleCaptionSave(photoId: string) {
+    try {
+      await patch(`/trees/${treeId}/persons/${personId}/gallery/${photoId}?caption=${encodeURIComponent(captionDraft)}`, {});
+      setGalleryPhotos((prev) => prev.map((p) => p.id === photoId ? { ...p, caption: captionDraft.trim() || null } : p));
+      setEditingCaption(null);
+    } catch (err) {
+      setGalleryError(apiErrorMessage(err, 'Failed to save caption'));
+    }
+  }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1268,11 +1341,11 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
       if (fields.deathDate)       body.death_date       = fields.deathDate;
       if (fields.birthYear)       body.birth_year       = parseInt(fields.birthYear, 10);
       if (fields.deathYear)       body.death_year       = parseInt(fields.deathYear, 10);
-      if (fields.city)             body.city             = fields.city.trim();
-      if (fields.country)          body.country          = fields.country;
-      if (fields.facebookHandle)  body.facebook_handle  = fields.facebookHandle.trim();
-      if (fields.xHandle)         body.x_handle         = fields.xHandle.trim().replace(/^@/, '');
-      if (fields.linkedinHandle)  body.linkedin_handle  = fields.linkedinHandle.trim();
+      if (fields.bornCity)          body.born_city        = fields.bornCity.trim();
+      if (fields.bornCountry)      body.born_country     = fields.bornCountry.trim();
+      if (fields.diedCity)          body.died_city        = fields.diedCity.trim();
+      if (fields.diedCountry)      body.died_country     = fields.diedCountry.trim();
+      if (fields.notes)            body.notes            = fields.notes.trim();
       await patch(`/trees/${treeId}/persons/${personId}`, body);
       onSaved();
     } catch (err) {
@@ -1374,6 +1447,93 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
               ))}
             </div>
           )}
+
+          {/* Gallery photos */}
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium text-slate-600">Photos <span className="text-slate-400 font-normal">({galleryPhotos.length}/3)</span></p>
+              {galleryPhotos.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={galleryLoading}
+                  className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                >
+                  + Add photo
+                </button>
+              )}
+            </div>
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleGalleryUpload}
+            />
+            {galleryPhotos.length > 0 && (
+              <div className="flex gap-2">
+                {galleryPhotos.map((gp) => (
+                  <div key={gp.id} className="relative group">
+                    <div
+                      className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 cursor-pointer relative"
+                      onMouseEnter={() => setHoveredGallery(gp.id)}
+                      onMouseLeave={() => setHoveredGallery(null)}
+                    >
+                      <img src={gp.photoUrl} alt={gp.caption || 'Gallery'} className="w-full h-full object-cover" />
+                      {/* Hover overlay with enlarged view */}
+                      {hoveredGallery === gp.id && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+                          <div className="bg-white rounded-xl shadow-2xl p-2 max-w-xs pointer-events-auto">
+                            <img src={gp.photoUrl} alt={gp.caption || 'Gallery'} className="w-64 h-64 object-cover rounded-lg" />
+                            {gp.caption && (
+                              <p className="text-xs text-slate-600 mt-1.5 px-1 text-center">{gp.caption}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {/* Delete button */}
+                    <button
+                      type="button"
+                      onClick={() => handleGalleryDelete(gp.id)}
+                      disabled={galleryLoading}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 shadow"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                    {/* Caption */}
+                    {editingCaption === gp.id ? (
+                      <div className="mt-1">
+                        <input
+                          type="text"
+                          maxLength={200}
+                          value={captionDraft}
+                          onChange={(e) => setCaptionDraft(e.target.value)}
+                          onBlur={() => handleCaptionSave(gp.id)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleCaptionSave(gp.id); }}
+                          autoFocus
+                          className="w-16 h-5 px-1 text-[9px] border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          placeholder="Caption"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingCaption(gp.id); setCaptionDraft(gp.caption || ''); }}
+                        className="mt-1 w-16 text-[9px] text-slate-400 hover:text-slate-600 truncate block text-center"
+                        title={gp.caption || 'Add caption'}
+                      >
+                        {gp.caption || 'caption'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {galleryLoading && <p className="text-xs text-slate-400 mt-1">Uploading...</p>}
+            {galleryError && <p className="text-xs text-red-600 mt-1">{galleryError}</p>}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -1500,64 +1660,67 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                   );
                 })()}
 
-                {/* Location */}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Location</p>
+                {/* Born location */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Born location</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">City</label>
+                    <label className="text-xs text-slate-500 mb-1 block">Born city</label>
                     <input
                       type="text"
                       placeholder="e.g. London"
-                      value={fields.city}
-                      onChange={(e) => setFields((f) => ({ ...f, city: e.target.value }))}
+                      value={fields.bornCity}
+                      onChange={(e) => setFields((f) => ({ ...f, bornCity: e.target.value }))}
                       className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Country</label>
+                    <label className="text-xs text-slate-500 mb-1 block">Born country</label>
                     <input
                       type="text"
                       placeholder="e.g. United Kingdom"
-                      value={fields.country}
-                      onChange={(e) => setFields((f) => ({ ...f, country: e.target.value }))}
+                      value={fields.bornCountry}
+                      onChange={(e) => setFields((f) => ({ ...f, bornCountry: e.target.value }))}
                       className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
                 </div>
 
-                {/* Social */}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Social profiles</p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 text-[10px] font-medium text-slate-500 shrink-0">Facebook</span>
+                {/* Died/Buried location */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Died / Buried location</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Died/Buried city</label>
                     <input
                       type="text"
-                      placeholder="username"
-                      value={fields.facebookHandle}
-                      onChange={(e) => setFields((f) => ({ ...f, facebookHandle: e.target.value }))}
-                      className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      placeholder="e.g. Manchester"
+                      value={fields.diedCity}
+                      onChange={(e) => setFields((f) => ({ ...f, diedCity: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 text-[10px] font-medium text-slate-500 shrink-0">X / Twitter</span>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Died/Buried country</label>
                     <input
                       type="text"
-                      placeholder="@handle"
-                      value={fields.xHandle}
-                      onChange={(e) => setFields((f) => ({ ...f, xHandle: e.target.value }))}
-                      className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      placeholder="e.g. United Kingdom"
+                      value={fields.diedCountry}
+                      onChange={(e) => setFields((f) => ({ ...f, diedCountry: e.target.value }))}
+                      className="w-full h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-14 text-[10px] font-medium text-slate-500 shrink-0">LinkedIn</span>
-                    <input
-                      type="text"
-                      placeholder="in/username"
-                      value={fields.linkedinHandle}
-                      onChange={(e) => setFields((f) => ({ ...f, linkedinHandle: e.target.value }))}
-                      className="flex-1 h-8 px-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-                    />
-                  </div>
+                </div>
+
+                {/* Notes */}
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Notes</p>
+                <div>
+                  <textarea
+                    placeholder="Add notes about this person (max 250 characters)"
+                    maxLength={250}
+                    value={fields.notes}
+                    onChange={(e) => setFields((f) => ({ ...f, notes: e.target.value }))}
+                    className="w-full h-20 px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                  />
+                  <p className="text-[10px] text-slate-400 text-right">{fields.notes.length}/250</p>
                 </div>
               </div>
             )}
@@ -1594,11 +1757,11 @@ interface PersonDetailFull {
   death_date?: string | null;
   birth_year?: number | null;
   death_year?: number | null;
-  city?: string | null;
-  country?: string | null;
-  facebook_handle?: string | null;
-  x_handle?: string | null;
-  linkedin_handle?: string | null;
+  born_city?: string | null;
+  born_country?: string | null;
+  died_city?: string | null;
+  died_country?: string | null;
+  notes?: string | null;
   parents: string[];
   children: string[];
   spouses: string[];
@@ -1642,15 +1805,21 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
   const [detail,  setDetail]  = useState<PersonDetailFull | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetchErr, setFetchErr] = useState('');
+  const [profileGallery, setProfileGallery] = useState<GalleryPhoto[]>([]);
+  const [profileHoveredGallery, setProfileHoveredGallery] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setFetchErr('');
     setDetail(null);
+    setProfileGallery([]);
     get<PersonDetailFull>(`/trees/${treeId}/persons/${personId}`)
       .then(setDetail)
       .catch(() => setFetchErr('Failed to load profile'))
       .finally(() => setLoading(false));
+    get<GalleryPhoto[]>(`/trees/${treeId}/persons/${personId}/gallery`)
+      .then(setProfileGallery)
+      .catch(() => {});
   }, [personId, treeId]);
 
   // Build name + photo maps from the already-loaded graph (zero extra requests)
@@ -1807,58 +1976,80 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                 </div>
               </div>
 
+              {/* Gallery photos */}
+              {profileGallery.length > 0 && (
+                <div className="flex gap-2">
+                  {profileGallery.map((gp) => (
+                    <div
+                      key={gp.id}
+                      className="relative"
+                      onMouseEnter={() => setProfileHoveredGallery(gp.id)}
+                      onMouseLeave={() => setProfileHoveredGallery(null)}
+                    >
+                      <img
+                        src={gp.photoUrl}
+                        alt={gp.caption || 'Gallery'}
+                        className="w-14 h-14 rounded-lg object-cover cursor-pointer"
+                      />
+                      {profileHoveredGallery === gp.id && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
+                          <div className="bg-white rounded-xl shadow-2xl p-2 max-w-xs pointer-events-auto">
+                            <img src={gp.photoUrl} alt={gp.caption || 'Gallery'} className="w-64 h-64 object-cover rounded-lg" />
+                            {gp.caption && (
+                              <p className="text-xs text-slate-600 mt-1.5 px-1 text-center">{gp.caption}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {gp.caption && (
+                        <p className="text-[9px] text-gray-400 text-center mt-0.5 w-14 truncate">{gp.caption}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Extra details */}
               {(detail.birth_date || detail.birth_year || detail.death_date || detail.death_year ||
-                detail.city || detail.country ||
-                detail.facebook_handle || detail.x_handle || detail.linkedin_handle) && (
+                detail.born_city || detail.born_country || detail.died_city || detail.died_country || detail.notes) && (
                 <div className="rounded-xl border border-gray-100 divide-y divide-gray-50 overflow-hidden text-sm">
                   {(detail.birth_date || detail.birth_year) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-green-500 shrink-0">●</span>
-                      <span className="text-xs text-gray-400 w-9 shrink-0">Born</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">Born</span>
                       <span className="text-gray-800">
                         {detail.birth_date ? fmtDate(detail.birth_date) : detail.birth_year}
                       </span>
                     </div>
                   )}
+                  {(detail.born_city || detail.born_country) && (
+                    <div className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="text-xs shrink-0">📍</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">Born in</span>
+                      <span className="text-gray-800">{[detail.born_city, detail.born_country].filter(Boolean).join(', ')}</span>
+                    </div>
+                  )}
                   {(detail.is_deceased || detail.death_date || detail.death_year) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-gray-400 text-xs shrink-0">✝</span>
-                      <span className="text-xs text-gray-400 w-9 shrink-0">Died</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">Died</span>
                       <span className="text-gray-800">
                         {detail.death_date ? fmtDate(detail.death_date) : detail.death_year ?? 'Unknown'}
                       </span>
                     </div>
                   )}
-                  {(detail.city || detail.country) && (
+                  {(detail.died_city || detail.died_country) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-xs shrink-0">📍</span>
-                      <span className="text-xs text-gray-400 w-9 shrink-0">Lives</span>
-                      <span className="text-gray-800">{[detail.city, detail.country].filter(Boolean).join(', ')}</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">Buried</span>
+                      <span className="text-gray-800">{[detail.died_city, detail.died_country].filter(Boolean).join(', ')}</span>
                     </div>
                   )}
-                  {detail.facebook_handle && (
-                    <div className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="text-[#1877f2] font-bold text-xs shrink-0">f</span>
-                      <span className="text-xs text-gray-400 w-9 shrink-0">FB</span>
-                      <a href={`https://facebook.com/${detail.facebook_handle}`} target="_blank" rel="noopener noreferrer"
-                        className="text-brand-600 hover:underline truncate">{detail.facebook_handle}</a>
-                    </div>
-                  )}
-                  {detail.x_handle && (
-                    <div className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="font-bold text-xs shrink-0">𝕏</span>
-                      <span className="text-xs text-gray-400 w-9 shrink-0">X</span>
-                      <a href={`https://x.com/${detail.x_handle}`} target="_blank" rel="noopener noreferrer"
-                        className="text-brand-600 hover:underline truncate">@{detail.x_handle}</a>
-                    </div>
-                  )}
-                  {detail.linkedin_handle && (
-                    <div className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="text-[#0a66c2] font-bold text-xs shrink-0">in</span>
-                      <span className="text-xs text-gray-400 w-9 shrink-0">LinkedIn</span>
-                      <a href={`https://linkedin.com/in/${detail.linkedin_handle}`} target="_blank" rel="noopener noreferrer"
-                        className="text-brand-600 hover:underline truncate">{detail.linkedin_handle}</a>
+                  {detail.notes && (
+                    <div className="flex items-start gap-3 px-4 py-2.5">
+                      <span className="text-xs shrink-0 mt-0.5">📝</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0 mt-0.5">Notes</span>
+                      <span className="text-gray-800 text-xs whitespace-pre-wrap">{detail.notes}</span>
                     </div>
                   )}
                 </div>
@@ -2578,17 +2769,21 @@ function TreeTopBar({
         ...(p.deathDate ? { death_date: p.deathDate } : {}),
         ...(p.birthYear != null ? { birth_year: p.birthYear } : {}),
         ...(p.deathYear != null ? { death_year: p.deathYear } : {}),
-        ...(p.city ? { city: p.city } : {}),
-        ...(p.country ? { country: p.country } : {}),
-        ...(p.facebookHandle ? { facebook_handle: p.facebookHandle } : {}),
-        ...(p.xHandle ? { x_handle: p.xHandle } : {}),
-        ...(p.linkedinHandle ? { linkedin_handle: p.linkedinHandle } : {}),
+        ...(p.bornCity ? { born_city: p.bornCity } : {}),
+        ...(p.bornCountry ? { born_country: p.bornCountry } : {}),
+        ...(p.diedCity ? { died_city: p.diedCity } : {}),
+        ...(p.diedCountry ? { died_country: p.diedCountry } : {}),
+        ...(p.notes ? { notes: p.notes } : {}),
       })),
       family_groups: graph.familyGroups.map((fg) => ({
         id: fg.id,
         union_type: fg.unionType,
         ...(fg.customLabel ? { custom_label: fg.customLabel } : {}),
         ...(fg.isDivorced ? { is_divorced: true } : {}),
+        ...(fg.unionDate ? { union_date: fg.unionDate } : {}),
+        ...(fg.unionDateYear != null ? { union_date_year: fg.unionDateYear } : {}),
+        ...(fg.unionEndDate ? { union_end_date: fg.unionEndDate } : {}),
+        ...(fg.unionEndDateYear != null ? { union_end_date_year: fg.unionEndDateYear } : {}),
         parent_ids: fg.parentIds,
         children: fg.children,
       })),
@@ -3219,11 +3414,11 @@ export default function FamilyTreePage() {
           deathDate:       p.deathDate ?? '',
           birthYear:       p.birthYear != null ? String(p.birthYear) : '',
           deathYear:       p.deathYear != null ? String(p.deathYear) : '',
-          city:            p.city ?? '',
-          country:         p.country ?? '',
-          facebookHandle:  p.facebookHandle ?? '',
-          xHandle:         p.xHandle ?? '',
-          linkedinHandle:  p.linkedinHandle ?? '',
+          bornCity:        p.bornCity ?? '',
+          bornCountry:     p.bornCountry ?? '',
+          diedCity:        p.diedCity ?? '',
+          diedCountry:     p.diedCountry ?? '',
+          notes:           p.notes ?? '',
         };
         return (
           <EditPersonModal

@@ -92,9 +92,11 @@ class PersonNode:
     is_deceased: bool = False
     is_deleted: bool = False
     photo_url: Optional[str] = None
-    facebook_handle: Optional[str] = None
-    x_handle: Optional[str] = None
-    linkedin_handle: Optional[str] = None
+    born_city: Optional[str] = None
+    born_country: Optional[str] = None
+    died_city: Optional[str] = None
+    died_country: Optional[str] = None
+    notes: Optional[str] = None
 
     @property
     def display_name(self) -> str:

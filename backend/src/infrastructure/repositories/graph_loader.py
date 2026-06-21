@@ -76,9 +76,11 @@ class GraphLoader:
                 is_deceased=row.is_deceased,
                 is_deleted=row.is_deleted,
                 photo_url=row.photo_url,
-                facebook_handle=row.facebook_handle,
-                x_handle=row.x_handle,
-                linkedin_handle=row.linkedin_handle,
+                born_city=row.born_city,
+                born_country=row.born_country,
+                died_city=row.died_city,
+                died_country=row.died_country,
+                notes=row.notes,
             )
             graph.add_person(node)
 

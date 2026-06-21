@@ -73,9 +73,11 @@ export interface PersonNodeData {
 
   birthDate?: string;
   deathDate?: string;
-  facebookHandle?: string;
-  xHandle?: string;
-  linkedinHandle?: string;
+  bornCity?: string;
+  bornCountry?: string;
+  diedCity?: string;
+  diedCountry?: string;
+  notes?: string;
 }
 
 export interface FamilyGroupNodeData {
@@ -146,11 +148,11 @@ export interface ApiPerson {
   isLiving: boolean;
   isDeceased: boolean;
   photoUrl?: string;
-  city?: string;
-  country?: string;
-  facebookHandle?: string;
-  xHandle?: string;
-  linkedinHandle?: string;
+  bornCity?: string;
+  bornCountry?: string;
+  diedCity?: string;
+  diedCountry?: string;
+  notes?: string;
 }
 
 export interface ApiMembership {

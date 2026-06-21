@@ -28,11 +28,11 @@ class CreatePersonRequest(BaseModel):
     death_year: Optional[int] = Field(default=None, ge=1, le=9999)
     is_living: bool = True
     is_deceased: bool = False
-    city: Optional[str] = Field(default=None, max_length=200)
-    country: Optional[str] = Field(default=None, max_length=100)
-    facebook_handle: Optional[str] = Field(default=None, max_length=200)
-    x_handle: Optional[str] = Field(default=None, max_length=200)
-    linkedin_handle: Optional[str] = Field(default=None, max_length=200)
+    born_city: Optional[str] = Field(default=None, max_length=200)
+    born_country: Optional[str] = Field(default=None, max_length=100)
+    died_city: Optional[str] = Field(default=None, max_length=200)
+    died_country: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=250)
 
 
 class UpdatePersonRequest(BaseModel):
@@ -46,11 +46,11 @@ class UpdatePersonRequest(BaseModel):
     is_living: bool = True
     is_deceased: bool = False
     photo_url: Optional[str] = Field(default=None, max_length=2048)
-    city: Optional[str] = Field(default=None, max_length=200)
-    country: Optional[str] = Field(default=None, max_length=100)
-    facebook_handle: Optional[str] = Field(default=None, max_length=200)
-    x_handle: Optional[str] = Field(default=None, max_length=200)
-    linkedin_handle: Optional[str] = Field(default=None, max_length=200)
+    born_city: Optional[str] = Field(default=None, max_length=200)
+    born_country: Optional[str] = Field(default=None, max_length=100)
+    died_city: Optional[str] = Field(default=None, max_length=200)
+    died_country: Optional[str] = Field(default=None, max_length=100)
+    notes: Optional[str] = Field(default=None, max_length=250)
 
 
 class PersonResponse(BaseModel):
@@ -66,11 +66,11 @@ class PersonResponse(BaseModel):
     death_date: Optional[date] = None
     birth_year: Optional[int] = None
     death_year: Optional[int] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    facebook_handle: Optional[str] = None
-    x_handle: Optional[str] = None
-    linkedin_handle: Optional[str] = None
+    born_city: Optional[str] = None
+    born_country: Optional[str] = None
+    died_city: Optional[str] = None
+    died_country: Optional[str] = None
+    notes: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

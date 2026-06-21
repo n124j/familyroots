@@ -69,9 +69,11 @@ export function transformGraphToFlow(
       hasHiddenChildren: personHasChildren.has(person.id) && !isExpanded,
       hasHiddenParents: personHasParents.has(person.id) && !isExpanded,
       generation: 0, // patched by layout
-      facebookHandle: person.facebookHandle,
-      xHandle: person.xHandle,
-      linkedinHandle: person.linkedinHandle,
+      bornCity: person.bornCity,
+      bornCountry: person.bornCountry,
+      diedCity: person.diedCity,
+      diedCountry: person.diedCountry,
+      notes: person.notes,
     };
 
     return {
