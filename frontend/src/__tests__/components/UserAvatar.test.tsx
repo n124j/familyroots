@@ -28,7 +28,7 @@ describe('UserAvatar', () => {
 
   it('renders an img when avatarUrl is provided', () => {
     render(<UserAvatar avatarUrl="https://example.com/pic.jpg" displayName="Alice" />);
-    const img = screen.getByRole('img');
+    const img = screen.getByRole('presentation');
     expect(img).toHaveAttribute('src', 'https://example.com/pic.jpg');
     expect(img).toHaveAttribute('referrerPolicy', 'no-referrer');
   });
