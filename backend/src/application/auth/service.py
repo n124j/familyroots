@@ -62,7 +62,8 @@ class AuthService:
 
     async def register(self, req: RegisterRequest) -> None:
         from src.config import get_settings
-        tenant_slug = get_settings().default_tenant_slug
+        settings = get_settings()
+        tenant_slug = settings.default_tenant_slug
         async with self._uow:
             # 1. Create or fetch the single shared tenant
             tenant = await self._uow.tenants.get_by_slug(tenant_slug)
@@ -82,14 +83,15 @@ class AuthService:
                 )
 
             # 3. Create user — first user in a new tenant becomes ADMIN automatically
-            from src.config import get_settings
-            sa_email = get_settings().super_admin_email
+            sa_email = settings.super_admin_email
             if sa_email and req.email.lower() == sa_email.lower():
                 role = "SUPER_ADMIN"
             elif is_new_tenant:
                 role = "ADMIN"
             else:
                 role = "STANDARD"
+
+            auto_verify = settings.auto_verify_email
 
             verification_token = secrets.token_hex(32)
             user = UserModel(
@@ -98,8 +100,8 @@ class AuthService:
                 password_hash=self._hasher.hash(req.password),
                 given_name=req.given_name,
                 family_name=req.family_name,
-                email_verified=False,
-                email_verification_token=verification_token,
+                email_verified=auto_verify,
+                email_verification_token=None if auto_verify else verification_token,
                 app_role=role,
                 is_active=True,
                 failed_login_attempts=0,
@@ -108,8 +110,8 @@ class AuthService:
 
         log.info("user.registered", user_id=str(user.id), tenant_id=str(tenant.id))
 
-        # Send verification email — user must verify before they can log in
-        await self._send_verification_email(user.email, user.full_name, verification_token)
+        if not auto_verify:
+            await self._send_verification_email(user.email, user.full_name, verification_token)
 
     # ── Login ─────────────────────────────────────────────────────
 

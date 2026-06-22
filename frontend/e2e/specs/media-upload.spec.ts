@@ -13,14 +13,18 @@ test.describe('Media upload', () => {
   let personId: string;
 
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    // Create a tree and person for media upload
+    const token = await page.evaluate(() => (window as any).__e2e_api_token__ ?? '');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
     const treeRes = await page.request.post('/api/v1/trees', {
       data: { name: `Media E2E ${Date.now()}` },
+      headers,
     });
     if (treeRes.ok()) {
       treeId = (await treeRes.json()).id;
       const personRes = await page.request.post(`/api/v1/trees/${treeId}/persons`, {
         data: { given_name: 'Upload', surname: 'Test', sex: 'U' },
+        headers,
       });
       if (personRes.ok()) {
         personId = (await personRes.json()).id;
@@ -57,14 +61,12 @@ test.describe('Media upload', () => {
     await page.goto(`/trees/${treeId}/persons/${personId}`);
     const fileInput = page.locator('input[type="file"]');
 
-    // Use a real fixture file or create a minimal one
     try {
       await fileInput.setInputFiles(FIXTURE_JPG);
       await expect(
         page.locator('[class*="queue"], [class*="upload"]').getByText(/\.jpg/i)
       ).toBeVisible({ timeout: 5_000 });
     } catch {
-      // Skip if fixture file doesn't exist
       test.skip();
     }
   });
@@ -73,7 +75,6 @@ test.describe('Media upload', () => {
     if (!treeId || !personId) test.skip();
 
     await page.goto(`/trees/${treeId}/persons/${personId}`);
-    // Empty gallery state OR loaded gallery
     await expect(
       page.getByText(/no media yet|upload photos/i).or(
         page.locator('[class*="gallery"], [class*="masonry"]')

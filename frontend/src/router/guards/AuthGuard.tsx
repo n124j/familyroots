@@ -7,7 +7,7 @@
  */
 
 import React, { lazy, Suspense } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { useMaintenanceStore } from '@store/maintenance.store';
 
@@ -59,6 +59,7 @@ export function GuestGuard() {
   const isInitialised     = useAuthStore((s) => s.isInitialised);
   const user              = useAuthStore((s) => s.user);
   const isMaintenanceMode = useMaintenanceStore((s) => s.isMaintenanceMode);
+  const [searchParams]    = useSearchParams();
 
   if (!isInitialised) {
     return (
@@ -76,7 +77,8 @@ export function GuestGuard() {
         </Suspense>
       );
     }
-    return <Navigate to="/dashboard" replace />;
+    const next = searchParams.get('next') || '/dashboard';
+    return <Navigate to={next} replace />;
   }
 
   // Show maintenance page to unauthenticated visitors during maintenance

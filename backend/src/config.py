@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_claims_email: str = "noreply@familyroots.app"
 
+    # ── Email verification ───────────────────────────────────
+    auto_verify_email: bool = False
+
     # ── Super Admin ──────────────────────────────────────────
     super_admin_email: str = ""
 

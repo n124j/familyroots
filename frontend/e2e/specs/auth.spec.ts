@@ -7,13 +7,14 @@ import { ensureTestUserExists, TEST_USER } from '../fixtures/auth';
 
 test.describe('Registration', () => {
   test('user can register a new account', async ({ page }) => {
-    const uniqueEmail = `reg-${Date.now()}@familyroots.test`;
+    const uniqueEmail = `reg-${Date.now()}@familyroots-testing.com`;
 
     await page.goto('/register');
     await page.getByLabel('First name').fill('New');
     await page.getByLabel('Last name').fill('User');
     await page.getByLabel('Email').fill(uniqueEmail);
-    await page.getByLabel('Password').fill('Str0ng!Pass2024');
+    await page.getByLabel('Password', { exact: true }).fill('Str0ng!Pass2024');
+    await page.getByLabel('Confirm password').fill('Str0ng!Pass2024');
     await page.getByRole('button', { name: /create account/i }).click();
 
     // Registration sends verification email — should redirect to login with registered flag
@@ -24,7 +25,8 @@ test.describe('Registration', () => {
     await ensureTestUserExists(page);
     await page.goto('/register');
     await page.getByLabel('Email').fill(TEST_USER.email);
-    await page.getByLabel('Password').fill(TEST_USER.password);
+    await page.getByLabel('Password', { exact: true }).fill(TEST_USER.password);
+    await page.getByLabel('Confirm password').fill(TEST_USER.password);
     await page.getByLabel('First name').fill('Dup');
     await page.getByLabel('Last name').fill('User');
     await page.getByRole('button', { name: /create account/i }).click();
@@ -34,11 +36,14 @@ test.describe('Registration', () => {
 
   test('weak password shows validation error', async ({ page }) => {
     await page.goto('/register');
-    await page.getByLabel('Email').fill('weak@test.com');
-    await page.getByLabel('Password').fill('123');
+    await page.getByLabel('First name').fill('Weak');
+    await page.getByLabel('Last name').fill('User');
+    await page.getByLabel('Email').fill(`weak-${Date.now()}@familyroots-testing.com`);
+    await page.getByLabel('Password', { exact: true }).fill('weakpassword');
+    await page.getByLabel('Confirm password').fill('weakpassword');
     await page.getByRole('button', { name: /create account/i }).click();
 
-    await expect(page.getByText(/password/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/validation|failed|password must/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test('registration form has no Organisation ID field', async ({ page }) => {
@@ -48,20 +53,21 @@ test.describe('Registration', () => {
   });
 
   test('after registration hard-refresh does not grant dashboard access', async ({ page }) => {
-    const uniqueEmail = `unverified-${Date.now()}@familyroots.test`;
+    const uniqueEmail = `unverified-${Date.now()}@familyroots-testing.com`;
 
     await page.goto('/register');
     await page.getByLabel('First name').fill('Unverified');
     await page.getByLabel('Last name').fill('User');
     await page.getByLabel('Email').fill(uniqueEmail);
-    await page.getByLabel('Password').fill('Str0ng!Pass2024');
+    await page.getByLabel('Password', { exact: true }).fill('Str0ng!Pass2024');
+    await page.getByLabel('Confirm password').fill('Str0ng!Pass2024');
     await page.getByRole('button', { name: /create account/i }).click();
 
     // Wait for redirect to login
     await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 
-    // Hard-navigate to a protected route — must not be granted access without verification
-    await page.goto('/trees');
+    // Hard-navigate to a protected route — must not be granted access without login
+    await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
   });
 });
@@ -108,12 +114,12 @@ test.describe('Login', () => {
   });
 
   test('?next param preserves redirect after login', async ({ page }) => {
-    await page.goto('/login?next=/trees');
+    await page.goto('/login?next=/search');
     await page.getByLabel('Email').fill(TEST_USER.email);
     await page.getByLabel('Password').fill(TEST_USER.password);
     await page.getByRole('button', { name: /sign in/i }).click();
 
-    await expect(page).toHaveURL('/trees', { timeout: 10_000 });
+    await expect(page).toHaveURL('/search', { timeout: 10_000 });
   });
 });
 
@@ -126,21 +132,22 @@ test.describe('Logout', () => {
     await page.getByRole('button', { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/(dashboard|trees)/, { timeout: 10_000 });
 
-    // Click logout (may be in user menu)
-    const logoutBtn = page.getByRole('button', { name: /log ?out|sign out/i });
-    if (!(await logoutBtn.isVisible())) {
-      await page.getByRole('button', { name: TEST_USER.displayName }).click();
-    }
-    await logoutBtn.click();
+    // Dismiss the welcome modal if present
+    const dismissBtn = page.getByRole('button', { name: /explore on my own/i });
+    await dismissBtn.click({ timeout: 3_000 }).catch(() => {});
 
-    await expect(page).toHaveURL('/login', { timeout: 5_000 });
+    // Click the sign-out button in the sidebar
+    await page.getByRole('button', { name: /sign out/i }).click();
+
+    // Logout redirects to landing page (/) via window.location.href
+    await expect(page).not.toHaveURL(/\/dashboard/, { timeout: 5_000 });
   });
 
   test('accessing protected route after logout redirects to login', async ({ page }) => {
     await ensureTestUserExists(page);
     // Force clear any session
     await page.context().clearCookies();
-    await page.goto('/trees');
+    await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
   });
 });

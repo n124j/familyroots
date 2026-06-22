@@ -8,6 +8,8 @@ __pycache__/
 backend/.env
 backend/*.env
 frontend/node_modules
+frontend/test-results
+frontend/e2e/report
 backend/coverage
 
 # Production deploy

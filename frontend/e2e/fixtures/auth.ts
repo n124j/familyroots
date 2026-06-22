@@ -10,7 +10,7 @@ export interface AuthFixtures {
 }
 
 export const TEST_USER = {
-  email:       'e2e-test@familyroots.test',
+  email:       'e2e-test@familyroots-testing.com',
   password:    'E2eStr0ng!Pass2024',
   givenName:   'E2E',
   surname:     'Tester',
@@ -19,7 +19,6 @@ export const TEST_USER = {
 
 /**
  * Log in via the UI and return the page in an authenticated state.
- * Caches auth in localStorage so subsequent tests skip the login step.
  */
 export async function loginViaUI(page: Page): Promise<void> {
   await page.goto('/login');
@@ -44,7 +43,8 @@ export async function ensureTestUserExists(page: Page): Promise<void> {
   });
   // 204 = created, 409 = already exists — both OK
   if (res.status() !== 204 && res.status() !== 409) {
-    throw new Error(`Unexpected registration response: ${res.status()}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`Unexpected registration response: ${res.status()} ${body}`);
   }
 }
 
@@ -53,9 +53,46 @@ export const test = base.extend<AuthFixtures>({
     await use(TEST_USER);
   },
 
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page, playwright }, use) => {
     await ensureTestUserExists(page);
     await loginViaUI(page);
+
+    // Get API token using a separate request context (avoids leaking cookies into browser)
+    let apiToken = '';
+    let userId = '';
+    const baseURL = 'http://localhost:5173';
+    const apiCtx = await playwright.request.newContext({ baseURL });
+    try {
+      const loginRes = await apiCtx.post('/api/v1/auth/login', {
+        data: { email: TEST_USER.email, password: TEST_USER.password },
+      });
+      if (loginRes.ok()) {
+        const data = await loginRes.json();
+        apiToken = data.access_token ?? '';
+        userId = data.user_id ?? '';
+      }
+    } finally {
+      await apiCtx.dispose();
+    }
+
+    // Set token and suppress welcome modal on the CURRENT page
+    await page.evaluate(({ userId, apiToken }) => {
+      if (userId) localStorage.setItem(`welcome_seen_${userId}`, '1');
+      if (apiToken) (window as any).__e2e_api_token__ = apiToken;
+    }, { userId, apiToken });
+
+    // Also set up an init script for FUTURE navigations
+    if (userId || apiToken) {
+      await page.context().addInitScript(({ userId, apiToken }) => {
+        if (userId) localStorage.setItem(`welcome_seen_${userId}`, '1');
+        if (apiToken) (window as any).__e2e_api_token__ = apiToken;
+      }, { userId, apiToken });
+    }
+
+    // Dismiss welcome modal if currently showing
+    const dismissBtn = page.getByRole('button', { name: /explore on my own/i });
+    await dismissBtn.click({ timeout: 2_000 }).catch(() => {});
+
     await use(page);
   },
 });
