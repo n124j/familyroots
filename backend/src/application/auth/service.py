@@ -101,6 +101,8 @@ class AuthService:
                 email_verified=False,
                 email_verification_token=verification_token,
                 app_role=role,
+                is_active=True,
+                failed_login_attempts=0,
             )
             user = await self._uow.users.add(user)
 

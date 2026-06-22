@@ -187,8 +187,8 @@ class MaintenanceMiddleware(BaseHTTPMiddleware):
     async def _is_maintenance_on(self) -> dict:
         from src.infrastructure.cache.redis import get_redis
 
-        redis = get_redis()
         try:
+            redis = get_redis()
             cached = await redis.get(self._CACHE_KEY)
             if cached:
                 return json.loads(cached)
