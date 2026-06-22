@@ -1,0 +1,1161 @@
+<testsuites id="" name="" tests="36" failures="0" skipped="0" errors="29" time="34.905729">
+<testsuite name="auth.spec.ts" timestamp="2026-06-22T17:10:35.415Z" hostname="chromium" tests="18" failures="0" skipped="0" time="117.905" errors="11">
+<testcase name="Registration › user can register a new account" classname="auth.spec.ts" time="32.203">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Registration-user-can-register-a-new-account-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-user-can-register-a-new-account-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-user-can-register-a-new-account-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Test timeout of 30000ms exceeded." type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:9:7 › Registration › user can register a new account ───────────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByLabel('First name')
+
+
+      11 |
+      12 |     await page.goto('/register');
+    > 13 |     await page.getByLabel('First name').fill('New');
+         |                                         ^
+      14 |     await page.getByLabel('Last name').fill('User');
+      15 |     await page.getByLabel('Email').fill(uniqueEmail);
+      16 |     await page.getByLabel('Password').fill('Str0ng!Pass2024');
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:13:41
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-user-can-register-a-new-account-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-user-can-register-a-new-account-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Registration-user-can-register-a-new-account-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Registration › duplicate email shows error" classname="auth.spec.ts" time="1.086">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Registration-duplicate-email-shows-error-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-duplicate-email-shows-error-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-duplicate-email-shows-error-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:23:7 › Registration › duplicate email shows error ──────────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:24:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-duplicate-email-shows-error-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-duplicate-email-shows-error-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Registration-duplicate-email-shows-error-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Registration › weak password shows validation error" classname="auth.spec.ts" time="32.288">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Registration-weak-password-shows-validation-error-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-weak-password-shows-validation-error-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-weak-password-shows-validation-error-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Test timeout of 30000ms exceeded." type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:35:7 › Registration › weak password shows validation error ─────────────
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Email')
+
+
+      35 |   test('weak password shows validation error', async ({ page }) => {
+      36 |     await page.goto('/register');
+    > 37 |     await page.getByLabel('Email').fill('weak@test.com');
+         |                                    ^
+      38 |     await page.getByLabel('Password').fill('123');
+      39 |     await page.getByRole('button', { name: /create account/i }).click();
+      40 |
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:37:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-weak-password-shows-validation-error-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-weak-password-shows-validation-error-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Registration-weak-password-shows-validation-error-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Registration › registration form has no Organisation ID field" classname="auth.spec.ts" time="1.424">
+</testcase>
+<testcase name="Registration › after registration hard-refresh does not grant dashboard access" classname="auth.spec.ts" time="32.279">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Registration-after-re-3afb9--not-grant-dashboard-access-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-after-re-3afb9--not-grant-dashboard-access-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Registration-after-re-3afb9--not-grant-dashboard-access-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Test timeout of 30000ms exceeded." type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:50:7 › Registration › after registration hard-refresh does not grant dashboard access 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.fill: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByLabel('First name')
+
+
+      52 |
+      53 |     await page.goto('/register');
+    > 54 |     await page.getByLabel('First name').fill('Unverified');
+         |                                         ^
+      55 |     await page.getByLabel('Last name').fill('User');
+      56 |     await page.getByLabel('Email').fill(uniqueEmail);
+      57 |     await page.getByLabel('Password').fill('Str0ng!Pass2024');
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:54:41
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-after-re-3afb9--not-grant-dashboard-access-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Registration-after-re-3afb9--not-grant-dashboard-access-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Registration-after-re-3afb9--not-grant-dashboard-access-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Login › valid credentials redirect to dashboard" classname="auth.spec.ts" time="1.112">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Login-valid-credentials-redirect-to-dashboard-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Login-valid-credentials-redirect-to-dashboard-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Login-valid-credentials-redirect-to-dashboard-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:74:7 › Login › valid credentials redirect to dashboard ─────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:71:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-valid-credentials-redirect-to-dashboard-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-valid-credentials-redirect-to-dashboard-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Login-valid-credentials-redirect-to-dashboard-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Login › wrong password shows error message" classname="auth.spec.ts" time="1.195">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Login-wrong-password-shows-error-message-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Login-wrong-password-shows-error-message-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Login-wrong-password-shows-error-message-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:83:7 › Login › wrong password shows error message ──────────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:71:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-wrong-password-shows-error-message-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-wrong-password-shows-error-message-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Login-wrong-password-shows-error-message-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Login › access token is NOT stored in localStorage" classname="auth.spec.ts" time="1.161">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Login-access-token-is-NOT-stored-in-localStorage-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Login-access-token-is-NOT-stored-in-localStorage-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Login-access-token-is-NOT-stored-in-localStorage-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:94:7 › Login › access token is NOT stored in localStorage ──────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:71:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-access-token-is-NOT-stored-in-localStorage-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-access-token-is-NOT-stored-in-localStorage-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Login-access-token-is-NOT-stored-in-localStorage-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Login › ?next param preserves redirect after login" classname="auth.spec.ts" time="1.149">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Login-next-param-preserves-redirect-after-login-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Login-next-param-preserves-redirect-after-login-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Login-next-param-preserves-redirect-after-login-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:110:7 › Login › ?next param preserves redirect after login ─────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:71:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-next-param-preserves-redirect-after-login-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Login-next-param-preserves-redirect-after-login-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Login-next-param-preserves-redirect-after-login-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Logout › logout clears session and redirects to login" classname="auth.spec.ts" time="1.237">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Logout-logout-clears-session-and-redirects-to-login-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Logout-logout-clears-session-and-redirects-to-login-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Logout-logout-clears-session-and-redirects-to-login-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:121:7 › Logout › logout clears session and redirects to login ──────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:122:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Logout-logout-clears-session-and-redirects-to-login-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Logout-logout-clears-session-and-redirects-to-login-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Logout-logout-clears-session-and-redirects-to-login-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Logout › accessing protected route after logout redirects to login" classname="auth.spec.ts" time="1.205">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Logout-accessing-prot-4e163-r-logout-redirects-to-login-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Logout-accessing-prot-4e163-r-logout-redirects-to-login-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Logout-accessing-prot-4e163-r-logout-redirects-to-login-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:139:7 › Logout › accessing protected route after logout redirects to login 
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:140:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Logout-accessing-prot-4e163-r-logout-redirects-to-login-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Logout-accessing-prot-4e163-r-logout-redirects-to-login-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Logout-accessing-prot-4e163-r-logout-redirects-to-login-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Session persistence › hard refresh preserves authenticated state via silent refresh" classname="auth.spec.ts" time="1.184">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\auth-Session-persistence-h-37fab-ed-state-via-silent-refresh-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\auth-Session-persistence-h-37fab-ed-state-via-silent-refresh-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\auth-Session-persistence-h-37fab-ed-state-via-silent-refresh-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › auth.spec.ts:149:7 › Session persistence › hard refresh preserves authenticated state via silent refresh 
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\specs\auth.spec.ts:150:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Session-persistence-h-37fab-ed-state-via-silent-refresh-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\auth-Session-persistence-h-37fab-ed-state-via-silent-refresh-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\auth-Session-persistence-h-37fab-ed-state-via-silent-refresh-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="OAuth — Google › login page shows Google sign-in button" classname="auth.spec.ts" time="1.543">
+</testcase>
+<testcase name="OAuth — Google › clicking Google button redirects to backend OAuth endpoint" classname="auth.spec.ts" time="2.444">
+</testcase>
+<testcase name="OAuth — Google › OAuth callback with error redirects to login with message" classname="auth.spec.ts" time="1.632">
+</testcase>
+<testcase name="OAuth — Google › OAuth callback without token redirects to login" classname="auth.spec.ts" time="1.636">
+</testcase>
+<testcase name="OAuth — Google › login page shows error banner for OAuth state mismatch" classname="auth.spec.ts" time="1.553">
+</testcase>
+<testcase name="OAuth — Google › login page shows generic error banner for OAuth provider error" classname="auth.spec.ts" time="1.574">
+</testcase>
+</testsuite>
+<testsuite name="media-upload.spec.ts" timestamp="2026-06-22T17:10:35.415Z" hostname="chromium" tests="4" failures="0" skipped="0" time="2.754" errors="4">
+<testcase name="Media upload › MediaUploader drop zone is visible on person page" classname="media-upload.spec.ts" time="0.818">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--f4f3e-e-is-visible-on-person-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--f4f3e-e-is-visible-on-person-page-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--f4f3e-e-is-visible-on-person-page-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › media-upload.spec.ts:31:7 › Media upload › MediaUploader drop zone is visible on person page 
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload--f4f3e-e-is-visible-on-person-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload--f4f3e-e-is-visible-on-person-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\media-upload-Media-upload--f4f3e-e-is-visible-on-person-page-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Media upload › file input accepts image MIME types" classname="media-upload.spec.ts" time="0.801">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--9c7c8-ut-accepts-image-MIME-types-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--9c7c8-ut-accepts-image-MIME-types-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--9c7c8-ut-accepts-image-MIME-types-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › media-upload.spec.ts:42:7 › Media upload › file input accepts image MIME types ──────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload--9c7c8-ut-accepts-image-MIME-types-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload--9c7c8-ut-accepts-image-MIME-types-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\media-upload-Media-upload--9c7c8-ut-accepts-image-MIME-types-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Media upload › uploading an image shows it in the progress queue" classname="media-upload.spec.ts" time="0.545">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--24542-ws-it-in-the-progress-queue-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--24542-ws-it-in-the-progress-queue-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload--24542-ws-it-in-the-progress-queue-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › media-upload.spec.ts:52:7 › Media upload › uploading an image shows it in the progress queue 
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload--24542-ws-it-in-the-progress-queue-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload--24542-ws-it-in-the-progress-queue-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\media-upload-Media-upload--24542-ws-it-in-the-progress-queue-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Media upload › gallery is visible on person page" classname="media-upload.spec.ts" time="0.59">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\media-upload-Media-upload-gallery-is-visible-on-person-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload-gallery-is-visible-on-person-page-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\media-upload-Media-upload-gallery-is-visible-on-person-page-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › media-upload.spec.ts:72:7 › Media upload › gallery is visible on person page ────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload-gallery-is-visible-on-person-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\media-upload-Media-upload-gallery-is-visible-on-person-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\media-upload-Media-upload-gallery-is-visible-on-person-page-chromium\error-context.md
+]]>
+</error>
+</testcase>
+</testsuite>
+<testsuite name="search.spec.ts" timestamp="2026-06-22T17:10:35.415Z" hostname="chromium" tests="8" failures="0" skipped="0" time="3.247" errors="8">
+<testcase name="Global search › search bar is present in navigation" classname="search.spec.ts" time="0.401">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Global-search-search-bar-is-present-in-navigation-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-search-bar-is-present-in-navigation-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-search-bar-is-present-in-navigation-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:7:7 › Global search › search bar is present in navigation ────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-search-bar-is-present-in-navigation-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-search-bar-is-present-in-navigation-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Global-search-search-bar-is-present-in-navigation-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Global search › typing in search bar shows dropdown" classname="search.spec.ts" time="0.4">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Global-search-typing-in-search-bar-shows-dropdown-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-typing-in-search-bar-shows-dropdown-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-typing-in-search-bar-shows-dropdown-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:13:7 › Global search › typing in search bar shows dropdown ───────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-typing-in-search-bar-shows-dropdown-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-typing-in-search-bar-shows-dropdown-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Global-search-typing-in-search-bar-shows-dropdown-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Global search › search shows &quot;No results&quot; for nonsense query" classname="search.spec.ts" time="0.438">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Global-search-searc-a8013--results-for-nonsense-query-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-searc-a8013--results-for-nonsense-query-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-searc-a8013--results-for-nonsense-query-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:24:7 › Global search › search shows "No results" for nonsense query ──
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-searc-a8013--results-for-nonsense-query-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-searc-a8013--results-for-nonsense-query-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Global-search-searc-a8013--results-for-nonsense-query-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Global search › Enter key navigates to full results page" classname="search.spec.ts" time="0.403">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Global-search-Enter-03892-igates-to-full-results-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-Enter-03892-igates-to-full-results-page-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Global-search-Enter-03892-igates-to-full-results-page-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:33:7 › Global search › Enter key navigates to full results page ──────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-Enter-03892-igates-to-full-results-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Global-search-Enter-03892-igates-to-full-results-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Global-search-Enter-03892-igates-to-full-results-page-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Results page › search results page renders" classname="search.spec.ts" time="0.394">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Results-page-search-results-page-renders-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Results-page-search-results-page-renders-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Results-page-search-results-page-renders-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:44:7 › Results page › search results page renders ────────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Results-page-search-results-page-renders-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Results-page-search-results-page-renders-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Results-page-search-results-page-renders-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Results page › sort dropdown changes sort order" classname="search.spec.ts" time="0.409">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Results-page-sort-dropdown-changes-sort-order-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Results-page-sort-dropdown-changes-sort-order-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Results-page-sort-dropdown-changes-sort-order-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:49:7 › Results page › sort dropdown changes sort order ───────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Results-page-sort-dropdown-changes-sort-order-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Results-page-sort-dropdown-changes-sort-order-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Results-page-sort-dropdown-changes-sort-order-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Results page › birth year filter works" classname="search.spec.ts" time="0.386">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Results-page-birth-year-filter-works-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Results-page-birth-year-filter-works-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Results-page-birth-year-filter-works-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:57:7 › Results page › birth year filter works ────────────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Results-page-birth-year-filter-works-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Results-page-birth-year-filter-works-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Results-page-birth-year-filter-works-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Relationship finder › relationship finder panel renders on tree page" classname="search.spec.ts" time="0.416">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\search-Relationship-finder-881c7--panel-renders-on-tree-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\search-Relationship-finder-881c7--panel-renders-on-tree-page-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\search-Relationship-finder-881c7--panel-renders-on-tree-page-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › search.spec.ts:68:7 › Relationship finder › relationship finder panel renders on tree page 
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\search-Relationship-finder-881c7--panel-renders-on-tree-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\search-Relationship-finder-881c7--panel-renders-on-tree-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\search-Relationship-finder-881c7--panel-renders-on-tree-page-chromium\error-context.md
+]]>
+</error>
+</testcase>
+</testsuite>
+<testsuite name="tree-management.spec.ts" timestamp="2026-06-22T17:10:35.415Z" hostname="chromium" tests="6" failures="0" skipped="0" time="2.712" errors="6">
+<testcase name="Tree creation › can create a new family tree" classname="tree-management.spec.ts" time="0.545">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\tree-management-Tree-creation-can-create-a-new-family-tree-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\tree-management-Tree-creation-can-create-a-new-family-tree-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\tree-management-Tree-creation-can-create-a-new-family-tree-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › tree-management.spec.ts:7:7 › Tree creation › can create a new family tree ──────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Tree-creation-can-create-a-new-family-tree-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Tree-creation-can-create-a-new-family-tree-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\tree-management-Tree-creation-can-create-a-new-family-tree-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Tree creation › tree name is required" classname="tree-management.spec.ts" time="0.474">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\tree-management-Tree-creation-tree-name-is-required-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\tree-management-Tree-creation-tree-name-is-required-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\tree-management-Tree-creation-tree-name-is-required-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › tree-management.spec.ts:18:7 › Tree creation › tree name is required ────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Tree-creation-tree-name-is-required-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Tree-creation-tree-name-is-required-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\tree-management-Tree-creation-tree-name-is-required-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Person management › can add a person to the tree" classname="tree-management.spec.ts" time="0.439">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\tree-management-Person-man-5be7a-an-add-a-person-to-the-tree-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-man-5be7a-an-add-a-person-to-the-tree-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-man-5be7a-an-add-a-person-to-the-tree-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › tree-management.spec.ts:39:7 › Person management › can add a person to the tree ─────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-man-5be7a-an-add-a-person-to-the-tree-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-man-5be7a-an-add-a-person-to-the-tree-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\tree-management-Person-man-5be7a-an-add-a-person-to-the-tree-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Person management › can edit a person" classname="tree-management.spec.ts" time="0.435">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\tree-management-Person-management-can-edit-a-person-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-management-can-edit-a-person-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-management-can-edit-a-person-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › tree-management.spec.ts:51:7 › Person management › can edit a person ────────────────
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-management-can-edit-a-person-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-management-can-edit-a-person-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\tree-management-Person-management-can-edit-a-person-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Person management › tree canvas renders on tree page" classname="tree-management.spec.ts" time="0.432">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\tree-management-Person-man-14e54-canvas-renders-on-tree-page-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-man-14e54-canvas-renders-on-tree-page-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-man-14e54-canvas-renders-on-tree-page-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › tree-management.spec.ts:71:7 › Person management › tree canvas renders on tree page ─
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-man-14e54-canvas-renders-on-tree-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-man-14e54-canvas-renders-on-tree-page-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\tree-management-Person-man-14e54-canvas-renders-on-tree-page-chromium\error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="Person management › layout toggle buttons are visible" classname="tree-management.spec.ts" time="0.387">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|..\test-results\tree-management-Person-man-fa7c7--toggle-buttons-are-visible-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-man-fa7c7--toggle-buttons-are-visible-chromium\video.webm]]
+
+[[ATTACHMENT|..\test-results\tree-management-Person-man-fa7c7--toggle-buttons-are-visible-chromium\error-context.md]]
+]]>
+</system-out>
+<error message="Unexpected registration response: 404" type="Error">
+<![CDATA[  [chromium] › tree-management.spec.ts:77:7 › Person management › layout toggle buttons are visible 
+
+    Error: Unexpected registration response: 404
+
+       at ..\fixtures\auth.ts:47
+
+      45 |   // 201 = created, 409 = already exists — both OK
+      46 |   if (res.status() !== 201 && res.status() !== 409) {
+    > 47 |     throw new Error(`Unexpected registration response: ${res.status()}`);
+         |           ^
+      48 |   }
+      49 | }
+      50 |
+        at ensureTestUserExists (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:47:11)
+        at Object.authenticatedPage (C:\Users\newro\Documents\codes\claude\coworks\familyroots\frontend\e2e\fixtures\auth.ts:57:5)
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-man-fa7c7--toggle-buttons-are-visible-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\..\test-results\tree-management-Person-man-fa7c7--toggle-buttons-are-visible-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\..\test-results\tree-management-Person-man-fa7c7--toggle-buttons-are-visible-chromium\error-context.md
+]]>
+</error>
+</testcase>
+</testsuite>
+</testsuites>

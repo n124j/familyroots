@@ -133,10 +133,11 @@ export default function LoginPage() {
           {/* Email/password form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Email
               </label>
               <input
+                id="login-email"
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -149,7 +150,7 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-slate-700">Password</label>
+                <label htmlFor="login-password" className="text-sm font-medium text-slate-700">Password</label>
                 <Link
                   to="/forgot-password"
                   className="text-xs text-brand-600 hover:text-brand-700"
@@ -158,6 +159,7 @@ export default function LoginPage() {
                 </Link>
               </div>
               <input
+                id="login-password"
                 type="password"
                 autoComplete="current-password"
                 value={password}

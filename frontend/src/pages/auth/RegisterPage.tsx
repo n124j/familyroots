@@ -97,10 +97,11 @@ export default function RegisterPage() {
             {/* Name row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="reg-given-name" className="block text-sm font-medium text-slate-700 mb-1.5">
                   First name
                 </label>
                 <input
+                  id="reg-given-name"
                   type="text"
                   autoComplete="given-name"
                   value={givenName}
@@ -111,10 +112,11 @@ export default function RegisterPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                <label htmlFor="reg-family-name" className="block text-sm font-medium text-slate-700 mb-1.5">
                   Last name
                 </label>
                 <input
+                  id="reg-family-name"
                   type="text"
                   autoComplete="family-name"
                   value={familyName}
@@ -128,10 +130,11 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="reg-email" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Email
               </label>
               <input
+                id="reg-email"
                 type="email"
                 autoComplete="email"
                 value={email}
@@ -144,10 +147,11 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="reg-password" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Password
               </label>
               <input
+                id="reg-password"
                 type="password"
                 autoComplete="new-password"
                 value={password}
@@ -161,10 +165,11 @@ export default function RegisterPage() {
 
             {/* Confirm password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="reg-confirm" className="block text-sm font-medium text-slate-700 mb-1.5">
                 Confirm password
               </label>
               <input
+                id="reg-confirm"
                 type="password"
                 autoComplete="new-password"
                 value={confirm}

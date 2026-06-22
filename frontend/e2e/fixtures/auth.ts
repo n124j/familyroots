@@ -39,11 +39,11 @@ export async function ensureTestUserExists(page: Page): Promise<void> {
       email:       TEST_USER.email,
       password:    TEST_USER.password,
       given_name:  TEST_USER.givenName,
-      surname:     TEST_USER.surname,
+      family_name: TEST_USER.surname,
     },
   });
-  // 201 = created, 409 = already exists — both OK
-  if (res.status() !== 201 && res.status() !== 409) {
+  // 204 = created, 409 = already exists — both OK
+  if (res.status() !== 204 && res.status() !== 409) {
     throw new Error(`Unexpected registration response: ${res.status()}`);
   }
 }
