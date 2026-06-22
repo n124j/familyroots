@@ -114,6 +114,7 @@ ACTION_MIN_ROLE: dict[Action, TreeRole] = {
     Action.UPDATE_PERSON:       TreeRole.EDITOR,
     Action.DELETE_PERSON:       TreeRole.EDITOR,
     Action.ADD_RELATIONSHIP:    TreeRole.EDITOR,
+    Action.UPDATE_RELATIONSHIP: TreeRole.EDITOR,
     Action.REMOVE_RELATIONSHIP: TreeRole.EDITOR,
     Action.CREATE_EVENT:        TreeRole.EDITOR,
     Action.UPDATE_EVENT:        TreeRole.EDITOR,

@@ -1363,6 +1363,9 @@ class _FrtPerson(BaseModel):
     died_city: Optional[str] = None
     died_country: Optional[str] = None
     notes: Optional[str] = None
+    facebook_handle: Optional[str] = None
+    x_handle: Optional[str] = None
+    linkedin_handle: Optional[str] = None
 
 
 class _FrtFamilyGroup(BaseModel):
