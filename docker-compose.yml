@@ -36,6 +36,7 @@ x-backend-env: &backend-env
     GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
     GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+    DEBUG: ${DEBUG:-false}
     AUTO_VERIFY_EMAIL: ${AUTO_VERIFY_EMAIL:-true}
     SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
 
@@ -191,6 +192,8 @@ services:
         restart: unless-stopped
         environment:
             VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:7004/api/v1}
+            GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+            GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
             VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-}
         ports:
             - '7006:5173'

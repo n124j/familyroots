@@ -73,7 +73,7 @@ class OAuthClient:
         data = resp.json()
         token = data.get("access_token")
         if not token:
-            raise OAuthProviderError(self.PROVIDER, "no access_token in response")
+            raise OAuthProviderError(self.PROVIDER, f"no access_token in response: {data}")
         return token
 
     async def get_user_info(self, access_token: str) -> OAuthUserInfo:

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
-import { OAuthButtons } from '@features/auth/components/OAuthButtons';
+import { OAuthButtons, hasOAuthProviders } from '@features/auth/components/OAuthButtons';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
@@ -88,13 +88,16 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
         </div>
       )}
 
-      <OAuthButtons dividerLabel="" next="/?auth=login" />
-
-      <div className="relative flex items-center gap-3 my-5">
-        <div className="flex-1 h-px bg-slate-200" />
-        <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
-        <div className="flex-1 h-px bg-slate-200" />
-      </div>
+      {hasOAuthProviders && (
+        <>
+          <OAuthButtons dividerLabel="" next="/?auth=login" />
+          <div className="relative flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+        </>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -247,13 +250,16 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
         </div>
       )}
 
-      <OAuthButtons dividerLabel="" next="/?auth=register" />
-
-      <div className="relative flex items-center gap-3 my-5">
-        <div className="flex-1 h-px bg-slate-200" />
-        <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
-        <div className="flex-1 h-px bg-slate-200" />
-      </div>
+      {hasOAuthProviders && (
+        <>
+          <OAuthButtons dividerLabel="" next="/?auth=register" />
+          <div className="relative flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+        </>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">

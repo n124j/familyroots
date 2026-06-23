@@ -18,6 +18,15 @@ const allowedHosts: true | string[] | undefined =
 
 export default defineConfig({
   plugins: [react()],
+  envDir: resolve(__dirname, '..'),
+  define: {
+    'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(
+      process.env.VITE_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
+    ),
+    'import.meta.env.VITE_GITHUB_CLIENT_ID': JSON.stringify(
+      process.env.VITE_GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_ID || '',
+    ),
+  },
   resolve: {
     alias: {
       '@pages':    resolve(__dirname, 'src/pages'),

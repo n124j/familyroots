@@ -6,6 +6,7 @@ Flow:
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated
@@ -22,6 +23,7 @@ from src.infrastructure.database.models.tenant import TenantModel
 from src.infrastructure.database.models.user import UserModel
 from src.infrastructure.security.oauth import OAuthUserInfo, get_oauth_client
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth/oauth", tags=["oauth"])
 
 SUPPORTED_PROVIDERS = {"google", "github"}
@@ -98,61 +100,66 @@ async def oauth_callback(
         access_token = await client.exchange_code(code)
         user_info: OAuthUserInfo = await client.get_user_info(access_token)
     except Exception:
+        log.exception("OAuth %s callback failed during token exchange or user-info fetch", provider)
         return _redirect_error(settings, provider, next_path, "oauth_provider_error")
 
-    async with uow:
-        # 1. Find or provision user
-        user = await _find_or_create_user(uow, user_info, settings)
-        if user is None:
-            return _redirect_error(settings, provider, next_path, "oauth_provisioning_disabled")
+    try:
+        async with uow:
+            # 1. Find or provision user
+            user = await _find_or_create_user(uow, user_info, settings)
+            if user is None:
+                return _redirect_error(settings, provider, next_path, "oauth_provisioning_disabled")
 
-        # Flush so a brand-new user row exists before the FK-dependent
-        # oauth_connections insert below — UserModel/OAuthConnectionModel have
-        # no ORM relationship() linking them, so autoflush ordering can't be
-        # relied on to insert the user first.
-        await uow._session.flush()
+            # Flush so a brand-new user row exists before the FK-dependent
+            # oauth_connections insert below — UserModel/OAuthConnectionModel have
+            # no ORM relationship() linking them, so autoflush ordering can't be
+            # relied on to insert the user first.
+            await uow._session.flush()
 
-        # 2. Upsert OAuth connection record
-        result = await uow._session.execute(
-            select(OAuthConnectionModel).where(
-                OAuthConnectionModel.provider == provider,
-                OAuthConnectionModel.provider_user_id == user_info.provider_user_id,
+            # 2. Upsert OAuth connection record
+            result = await uow._session.execute(
+                select(OAuthConnectionModel).where(
+                    OAuthConnectionModel.provider == provider,
+                    OAuthConnectionModel.provider_user_id == user_info.provider_user_id,
+                )
             )
-        )
-        conn = result.scalar_one_or_none()
-        if conn:
-            conn.last_used_at = datetime.now(timezone.utc)
-            conn.avatar_url = user_info.avatar_url
-        else:
-            uow._session.add(OAuthConnectionModel(
-                id=uuid.uuid4(),
-                user_id=user.id,
+            conn = result.scalar_one_or_none()
+            if conn:
+                conn.last_used_at = datetime.now(timezone.utc)
+                conn.avatar_url = user_info.avatar_url
+            else:
+                uow._session.add(OAuthConnectionModel(
+                    id=uuid.uuid4(),
+                    user_id=user.id,
+                    tenant_id=user.tenant_id,
+                    provider=provider,
+                    provider_user_id=user_info.provider_user_id,
+                    email=user_info.email,
+                    display_name=user_info.display_name,
+                    avatar_url=user_info.avatar_url,
+                ))
+
+            # 3. Update last login + record login event (mirrors password-login bookkeeping)
+            ip_address = request.client.host if request.client else None
+            user.last_login_at = datetime.now(timezone.utc)
+            uow._session.add(LoginEventModel(
                 tenant_id=user.tenant_id,
-                provider=provider,
-                provider_user_id=user_info.provider_user_id,
-                email=user_info.email,
-                display_name=user_info.display_name,
-                avatar_url=user_info.avatar_url,
+                user_id=user.id,
+                user_display_name=user.full_name,
+                user_email=user.email,
+                event_type="LOGIN",
+                success=True,
+                ip_address=ip_address,
             ))
 
-        # 3. Update last login + record login event (mirrors password-login bookkeeping)
-        ip_address = request.client.host if request.client else None
-        user.last_login_at = datetime.now(timezone.utc)
-        uow._session.add(LoginEventModel(
-            tenant_id=user.tenant_id,
-            user_id=user.id,
-            user_display_name=user.full_name,
-            user_email=user.email,
-            event_type="LOGIN",
-            success=True,
-            ip_address=ip_address,
-        ))
-
-        # 4. Issue JWT pair
-        jwt_access, _  = jwt_service.create_access_token(user.id, user.tenant_id, app_role=user.app_role)
-        jwt_refresh, jti = jwt_service.create_refresh_token(user.id, user.tenant_id)
-        await token_store.store(jti, user.id, _REFRESH_TTL)
-        await uow.commit()
+            # 4. Issue JWT pair
+            jwt_access, _  = jwt_service.create_access_token(user.id, user.tenant_id, app_role=user.app_role)
+            jwt_refresh, jti = jwt_service.create_refresh_token(user.id, user.tenant_id)
+            await token_store.store(jti, user.id, _REFRESH_TTL)
+            await uow.commit()
+    except Exception:
+        log.exception("OAuth %s callback failed during user provisioning / DB commit", provider)
+        return _redirect_error(settings, provider, next_path, "oauth_db_error")
 
     # 5. Redirect frontend with token in query param (frontend moves it to memory)
     frontend_url = (
