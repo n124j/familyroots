@@ -66,6 +66,13 @@ class Action(str, Enum):
     MERGE_TREES         = "MERGE_TREES"
     # Photo
     UPDATE_PHOTO        = "UPDATE_PHOTO"
+    # Access / merge requests
+    REQUEST_ACCESS      = "REQUEST_ACCESS"
+    APPROVE_ACCESS      = "APPROVE_ACCESS"
+    DENY_ACCESS         = "DENY_ACCESS"
+    REQUEST_MERGE       = "REQUEST_MERGE"
+    APPROVE_MERGE       = "APPROVE_MERGE"
+    DENY_MERGE          = "DENY_MERGE"
 
 
 class InvitationStatus(str, Enum):
@@ -83,8 +90,10 @@ class AuditEntityType(str, Enum):
     EVENT         = "EVENT"
     MEDIA         = "MEDIA"
     MEMBER        = "MEMBER"
-    INVITATION    = "INVITATION"
-    REPORT        = "REPORT"
+    INVITATION      = "INVITATION"
+    REPORT          = "REPORT"
+    ACCESS_REQUEST  = "ACCESS_REQUEST"
+    MERGE_REQUEST   = "MERGE_REQUEST"
 
 
 # ── Permission matrix ─────────────────────────────────────────────────────────
@@ -133,6 +142,13 @@ ACTION_MIN_ROLE: dict[Action, TreeRole] = {
     Action.UPDATE_PHOTO:        TreeRole.EDITOR,
     # App-admin only — mapped to OWNER so is_permitted() returns False for all tree roles
     Action.MERGE_TREES:         TreeRole.OWNER,
+    # Access / merge requests
+    Action.REQUEST_ACCESS:      TreeRole.VIEWER,
+    Action.APPROVE_ACCESS:      TreeRole.OWNER,
+    Action.DENY_ACCESS:         TreeRole.OWNER,
+    Action.REQUEST_MERGE:       TreeRole.VIEWER,
+    Action.APPROVE_MERGE:       TreeRole.OWNER,
+    Action.DENY_MERGE:          TreeRole.OWNER,
 }
 
 
@@ -287,6 +303,40 @@ class PersonVersion:
     def is_current(self) -> bool:
         """True if this is the latest version (determined externally)."""
         return False  # set by repository / service
+
+
+@dataclass
+class AccessRequest:
+    """A request from a non-member to gain a role on a searchable tree."""
+    id: uuid.UUID
+    tree_id: uuid.UUID
+    requester_id: uuid.UUID
+    tenant_id: uuid.UUID
+    requested_role: TreeRole
+    message: Optional[str]
+    status: str
+    resolved_by_id: Optional[uuid.UUID] = None
+    resolved_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@dataclass
+class MergeRequest:
+    """A request to merge one tree into another searchable tree."""
+    id: uuid.UUID
+    target_tree_id: uuid.UUID
+    source_tree_id: uuid.UUID
+    requester_id: uuid.UUID
+    tenant_id: uuid.UUID
+    target_pivot_person_id: uuid.UUID
+    source_pivot_person_id: uuid.UUID
+    new_tree_name: str
+    message: Optional[str]
+    status: str
+    resolved_by_id: Optional[uuid.UUID] = None
+    resolved_at: Optional[datetime] = None
+    merged_tree_id: Optional[uuid.UUID] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass

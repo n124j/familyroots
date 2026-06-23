@@ -23,11 +23,13 @@ function NotificationItem({
   accessToken,
   apiBase,
   onUpdate,
+  onRemove,
 }: {
   n: Notification;
   accessToken: string | null;
   apiBase: string;
   onUpdate: (id: string, patch: Partial<Notification>) => void;
+  onRemove: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const [accepting, setAccepting] = useState(false);
@@ -107,6 +109,108 @@ function NotificationItem({
               className="mt-2 text-xs font-medium text-brand-600 hover:underline"
             >
               View tree →
+            </button>
+          )}
+
+          {/* Access request — owner can approve/deny */}
+          {n.type === 'ACCESS_REQUEST' && !accepted && !declined && (
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={async () => {
+                  setAccepting(true);
+                  try {
+                    const res = await fetch(`${apiBase}/trees/${n.data.tree_id}/access-requests/${n.data.request_id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                      credentials: 'include',
+                      body: JSON.stringify({ action: 'approve' }),
+                    });
+                    if (res.ok) {
+                      await fetch(`${apiBase}/notifications/${n.id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, credentials: 'include' });
+                      onRemove(n.id);
+                    }
+                  } finally { setAccepting(false); }
+                }}
+                disabled={accepting}
+                className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
+              >
+                {accepting ? 'Approving…' : 'Approve'}
+              </button>
+              <button
+                onClick={async () => {
+                  await fetch(`${apiBase}/trees/${n.data.tree_id}/access-requests/${n.data.request_id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                    credentials: 'include',
+                    body: JSON.stringify({ action: 'deny' }),
+                  });
+                  await fetch(`${apiBase}/notifications/${n.id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, credentials: 'include' });
+                  onRemove(n.id);
+                }}
+                className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Deny
+              </button>
+            </div>
+          )}
+
+          {/* Merge request — owner can approve/deny */}
+          {n.type === 'MERGE_REQUEST' && !accepted && !declined && (
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={async () => {
+                  setAccepting(true);
+                  try {
+                    const res = await fetch(`${apiBase}/trees/${n.data.tree_id}/merge-requests/${n.data.request_id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                      credentials: 'include',
+                      body: JSON.stringify({ action: 'approve' }),
+                    });
+                    if (res.ok) {
+                      await fetch(`${apiBase}/notifications/${n.id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, credentials: 'include' });
+                      onRemove(n.id);
+                    }
+                  } finally { setAccepting(false); }
+                }}
+                disabled={accepting}
+                className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
+              >
+                {accepting ? 'Approving…' : 'Approve Merge'}
+              </button>
+              <button
+                onClick={async () => {
+                  await fetch(`${apiBase}/trees/${n.data.tree_id}/merge-requests/${n.data.request_id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                    credentials: 'include',
+                    body: JSON.stringify({ action: 'deny' }),
+                  });
+                  await fetch(`${apiBase}/notifications/${n.id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${accessToken}` }, credentials: 'include' });
+                  onRemove(n.id);
+                }}
+                className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Deny
+              </button>
+            </div>
+          )}
+
+          {/* Result notifications — info-only with link */}
+          {(n.type === 'ACCESS_APPROVED' || n.type === 'MERGE_APPROVED') && n.data.tree_id && (
+            <button
+              onClick={() => navigate(`/trees/${n.data.tree_id}`)}
+              className="mt-2 text-xs font-medium text-brand-600 hover:underline"
+            >
+              View tree →
+            </button>
+          )}
+          {n.type === 'MERGE_APPROVED' && n.data.merged_tree_id && (
+            <button
+              onClick={() => navigate(`/trees/${n.data.merged_tree_id}`)}
+              className="mt-2 ml-3 text-xs font-medium text-brand-600 hover:underline"
+            >
+              Open merged tree →
             </button>
           )}
         </div>
@@ -411,6 +515,15 @@ export default function AppShell() {
                   onUpdate={(id, patch) =>
                     setNotifications((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)))
                   }
+                  onRemove={(id) => {
+                    setNotifications((prev) => {
+                      const removed = prev.find((x) => x.id === id);
+                      if (removed && !removed.is_read) {
+                        setUnreadCount((c) => Math.max(0, c - 1));
+                      }
+                      return prev.filter((x) => x.id !== id);
+                    });
+                  }}
                 />
               ))
             )}
@@ -426,6 +539,7 @@ export default function AppShell() {
   const nav = [
     { to: '/dashboard', label: 'Dashboard' },
     { to: '/search',    label: 'Search' },
+    { to: '/discover',  label: 'Discover' },
     { to: '/reports',   label: 'Reports' },
     ...(isElevated ? [{ to: '/activity', label: 'Activity' }] : []),
     ...(isAdmin    ? [{ to: '/admin',    label: 'Admin Dashboard' }] : []),

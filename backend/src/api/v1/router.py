@@ -8,6 +8,7 @@ from src.api.v1.broadcast import router as broadcast_router
 from src.api.v1.auth import router as auth_router
 from src.api.v1.collaboration import router as collaboration_router
 from src.api.v1.contact import router as contact_router
+from src.api.v1.discovery import router as discovery_router
 from src.api.v1.media import router as media_router
 from src.api.v1.notifications import router as notifications_router
 from src.api.v1.push import router as push_router
@@ -26,6 +27,7 @@ v1_router.include_router(contact_router)
 v1_router.include_router(users_router)
 v1_router.include_router(persons_router)
 v1_router.include_router(collaboration_router)
+v1_router.include_router(discovery_router)
 v1_router.include_router(media_router)
 v1_router.include_router(search_router)
 v1_router.include_router(activity_router)

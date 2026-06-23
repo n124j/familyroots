@@ -46,6 +46,8 @@ const HelpPage           = lazy(() => import('@pages/HelpPage'));
 const LandingPage           = lazy(() => import('@pages/LandingPage'));
 const ConfirmDeletionPage   = lazy(() => import('@pages/ConfirmDeletionPage'));
 const SharedTreePage        = lazy(() => import('@pages/SharedTreePage'));
+const DiscoverPage          = lazy(() => import('@pages/DiscoverPage'));
+const DiscoverTreePage      = lazy(() => import('@pages/DiscoverTreePage'));
 
 // AppShell wraps all authenticated routes (sidebar + topbar)
 const AppShell           = lazy(() => import('@shared/components/layout/AppShell'));
@@ -157,6 +159,10 @@ const router = createBrowserRouter([
         path: '/trees/:treeId',
         element: <Lazy><FamilyTreePage /></Lazy>,
       },
+      {
+        path: '/discover/trees/:treeId',
+        element: <Lazy><DiscoverTreePage /></Lazy>,
+      },
     ],
   },
 
@@ -170,6 +176,7 @@ const router = createBrowserRouter([
           { path: '/dashboard',                              element: <Lazy><DashboardPage /></Lazy> },
           { path: '/trees/:treeId/persons/:personId',        element: <Lazy><ProfilePage /></Lazy> },
           { path: '/search',                                 element: <Lazy><SearchPage /></Lazy> },
+          { path: '/discover',                                element: <Lazy><DiscoverPage /></Lazy> },
           { path: '/reports',                                element: <Lazy><ReportsPage /></Lazy> },
           { path: '/settings',                               element: <Lazy><SettingsPage /></Lazy> },
           { path: '/settings/:tab',                          element: <Lazy><SettingsPage /></Lazy> },

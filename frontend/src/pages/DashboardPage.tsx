@@ -18,6 +18,7 @@ interface TreeSummary {
   link_sharing: string;
   share_token: string | null;
   is_pinned: boolean;
+  is_searchable: boolean;
 }
 
 const TREE_COVER_PRESETS = ['🌳','🌲','🌴','🌿','🌸','🏡','📜','⛩️','🎋','🧬','🗺️','📖'];
@@ -129,9 +130,24 @@ function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProp
           ) : (
             <div className="text-3xl">{tree.cover_emoji || DEFAULT_COVER}</div>
           )}
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[tree.role] ?? ROLE_BADGE.VIEWER}`}>
-            {tree.role.charAt(0) + tree.role.slice(1).toLowerCase()}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {tree.is_searchable && (
+              <span
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-50 border border-amber-200 text-amber-600"
+                title="Public &middot; Searchable by other users"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <circle cx="8" cy="8" r="5.5" />
+                  <ellipse cx="8" cy="8" rx="2.2" ry="5.5" />
+                  <line x1="2.5" y1="6" x2="13.5" y2="6" />
+                  <line x1="2.5" y1="10" x2="13.5" y2="10" />
+                </svg>
+              </span>
+            )}
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[tree.role] ?? ROLE_BADGE.VIEWER}`}>
+              {tree.role.charAt(0) + tree.role.slice(1).toLowerCase()}
+            </span>
+          </div>
         </div>
 
         <h2 className="font-semibold group-hover:text-brand-600 transition-colors truncate" style={{ color: 'var(--portal-text-primary)' }}>
@@ -866,6 +882,9 @@ function ShareTreeModal({
   const [savingSharing,  setSavingSharing]  = useState(false);
   const [linkCopied,     setLinkCopied]     = useState(false);
 
+  const [isSearchable,     setIsSearchable]     = useState(tree.is_searchable ?? false);
+  const [savingSearchable, setSavingSearchable] = useState(false);
+
   const [members,     setMembers]     = useState<TreeMember[]>([]);
   const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([]);
@@ -878,6 +897,10 @@ function ShareTreeModal({
   const [inviteRole,   setInviteRole]   = useState('VIEWER');
   const [inviting,     setInviting]     = useState(false);
   const [inviteError,  setInviteError]  = useState('');
+
+  // Pending requests (access + merge) — visible to owner
+  const [accessRequests, setAccessRequests] = useState<any[]>([]);
+  const [mergeRequests,  setMergeRequests]  = useState<any[]>([]);
 
   const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -895,6 +918,16 @@ function ShareTreeModal({
         setInvitations(all.filter((i) => i.status === 'PENDING'));
       }
       if (uRes.ok) setTenantUsers(await uRes.json());
+
+      // Fetch pending requests for owners
+      if (tree.role === 'OWNER') {
+        const [arRes, mrRes] = await Promise.all([
+          fetch(`${API_BASE}/trees/${tree.id}/access-requests?status=PENDING`, { headers: authHeader, credentials: 'include' }),
+          fetch(`${API_BASE}/trees/${tree.id}/merge-requests?status=PENDING`,  { headers: authHeader, credentials: 'include' }),
+        ]);
+        if (arRes.ok) setAccessRequests(await arRes.json());
+        if (mrRes.ok) setMergeRequests(await mrRes.json());
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -970,6 +1003,21 @@ function ShareTreeModal({
       if (res.ok) setLinkSharing(value);
     } finally {
       setSavingSharing(false);
+    }
+  }
+
+  async function handleSearchableChange(value: boolean) {
+    setSavingSearchable(true);
+    try {
+      const res = await fetch(`${API_BASE}/trees/${tree.id}/searchable`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        credentials: 'include',
+        body: JSON.stringify({ is_searchable: value }),
+      });
+      if (res.ok) setIsSearchable(value);
+    } finally {
+      setSavingSearchable(false);
     }
   }
 
@@ -1146,6 +1194,25 @@ function ShareTreeModal({
           </div>
         )}
 
+        {/* Searchable — visible to all users */}
+        <div className="px-6 py-4 border-t border-gray-100">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isSearchable}
+              onChange={(e) => canManage && handleSearchableChange(e.target.checked)}
+              disabled={!canManage || savingSearchable}
+              className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 disabled:opacity-50"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900">Searchable</p>
+              <p className="text-xs text-gray-500">
+                Allow other users to find this tree by searching for family members
+              </p>
+            </div>
+          </label>
+        </div>
+
         {/* General access — visible to all users */}
         <div className="px-6 py-4 border-t border-gray-100">
           <p className="text-sm font-medium text-gray-700 mb-3">General access</p>
@@ -1203,6 +1270,111 @@ function ShareTreeModal({
             )}
           </div>
         </div>
+
+        {/* Pending Requests — visible to owner only */}
+        {tree.role === 'OWNER' && (accessRequests.length > 0 || mergeRequests.length > 0) && (
+          <div className="px-6 py-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 mb-3">
+              Pending Requests
+              <span className="ml-1.5 text-xs font-normal text-gray-400">
+                ({accessRequests.length + mergeRequests.length})
+              </span>
+            </p>
+
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {/* Access requests */}
+              {accessRequests.map((ar: any) => (
+                <div key={ar.id} className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{ar.requester_name}</p>
+                    <p className="text-xs text-gray-500">
+                      Wants <span className="font-medium">{ar.requested_role}</span> access
+                      {ar.message && <> &middot; "{ar.message}"</>}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button
+                      onClick={async () => {
+                        await fetch(`${API_BASE}/trees/${tree.id}/access-requests/${ar.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', ...authHeader },
+                          credentials: 'include',
+                          body: JSON.stringify({ action: 'approve' }),
+                        });
+                        setAccessRequests((prev) => prev.filter((r: any) => r.id !== ar.id));
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await fetch(`${API_BASE}/trees/${tree.id}/access-requests/${ar.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', ...authHeader },
+                          credentials: 'include',
+                          body: JSON.stringify({ action: 'deny' }),
+                        });
+                        setAccessRequests((prev) => prev.filter((r: any) => r.id !== ar.id));
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Merge requests */}
+              {mergeRequests.map((mr: any) => (
+                <div key={mr.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      Merge from "{mr.source_tree_name}"
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      by {mr.requester_name}
+                      {mr.target_pivot_name && mr.source_pivot_name && (
+                        <> &middot; pivot: {mr.source_pivot_name} = {mr.target_pivot_name}</>
+                      )}
+                    </p>
+                    {mr.message && <p className="text-xs text-gray-400 mt-0.5 truncate">"{mr.message}"</p>}
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button
+                      onClick={async () => {
+                        await fetch(`${API_BASE}/trees/${tree.id}/merge-requests/${mr.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', ...authHeader },
+                          credentials: 'include',
+                          body: JSON.stringify({ action: 'approve' }),
+                        });
+                        setMergeRequests((prev) => prev.filter((r: any) => r.id !== mr.id));
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await fetch(`${API_BASE}/trees/${tree.id}/merge-requests/${mr.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', ...authHeader },
+                          credentials: 'include',
+                          body: JSON.stringify({ action: 'deny' }),
+                        });
+                        setMergeRequests((prev) => prev.filter((r: any) => r.id !== mr.id));
+                      }}
+                      className="px-2.5 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex justify-end px-6 py-4 border-t border-gray-100">
