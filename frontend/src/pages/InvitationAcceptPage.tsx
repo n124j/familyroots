@@ -6,6 +6,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 
@@ -14,6 +15,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 type State = 'checking' | 'needs-login' | 'accepting' | 'success' | 'error' | 'missing';
 
 export default function InvitationAcceptPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate       = useNavigate();
   const token          = searchParams.get('token');
@@ -84,19 +86,19 @@ export default function InvitationAcceptPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-muted px-4">
       <SEO
-        title="Accept Invitation"
+        title={t('invitationAccept.title')}
         description="Accept your invitation to collaborate on a FamilyRoots family tree."
         noIndex
       />
       <div className="w-full max-w-sm text-center">
         <div className="text-4xl mb-4">🌳</div>
-        <h1 className="text-xl font-bold text-slate-900 mb-2">FamilyRoots</h1>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">{t('common.appName')}</h1>
 
         {(state === 'checking' || state === 'accepting') && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-sm text-slate-600">
-              {state === 'checking' ? 'Checking your invitation…' : 'Accepting your invitation…'}
+              {state === 'checking' ? t('invitationAccept.checking') : t('invitationAccept.accepting')}
             </p>
           </div>
         )}
@@ -104,23 +106,23 @@ export default function InvitationAcceptPage() {
         {state === 'needs-login' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">✉️</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">You've been invited!</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('invitationAccept.youveBeenInvited')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              Sign in (or create an account) to accept your invitation and join the family tree.
+              {t('invitationAccept.signInToAccept')}
             </p>
             <a
               href={loginHref}
               className="inline-block w-full h-10 leading-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
             >
-              Sign in to accept
+              {t('invitationAccept.signInButton')}
             </a>
             <p className="text-xs text-slate-400 mt-4">
-              Don't have an account?{' '}
+              {t('invitationAccept.noAccount')}{' '}
               <a
                 href={`/register?next=${encodeURIComponent(`/invitations/accept?token=${token}`)}`}
                 className="text-brand-600 hover:text-brand-700 font-medium"
               >
-                Register
+                {t('invitationAccept.register')}
               </a>
             </p>
           </div>
@@ -129,17 +131,16 @@ export default function InvitationAcceptPage() {
         {state === 'success' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">🎉</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Welcome to the family!</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('invitationAccept.welcomeToFamily')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              You've successfully joined{treeName ? ` "${treeName}"` : ' the tree'}
-              {user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}.
-              Redirecting you to your dashboard…
+              {t('invitationAccept.successfullyJoined', { treeName: treeName || undefined, firstName: user?.displayName ? user.displayName.split(' ')[0] : undefined })}
+              {' '}{t('invitationAccept.redirecting')}
             </p>
             <Link
               to="/dashboard"
               className="inline-block w-full h-10 leading-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
             >
-              Go to dashboard
+              {t('invitationAccept.goToDashboard')}
             </Link>
           </div>
         )}
@@ -147,10 +148,10 @@ export default function InvitationAcceptPage() {
         {state === 'error' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">⚠️</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Couldn't accept invitation</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('invitationAccept.couldntAccept')}</h2>
             <p className="text-sm text-slate-500 mb-6">{message}</p>
             <Link to="/dashboard" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
-              Go to dashboard
+              {t('invitationAccept.goToDashboard')}
             </Link>
           </div>
         )}
@@ -158,12 +159,12 @@ export default function InvitationAcceptPage() {
         {state === 'missing' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">🔗</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Invalid link</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('verifyEmail.invalidLink')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              No invitation token found. Please use the link from your email.
+              {t('verifyEmail.noToken')}
             </p>
             <Link to="/dashboard" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
-              Go to dashboard
+              {t('invitationAccept.goToDashboard')}
             </Link>
           </div>
         )}

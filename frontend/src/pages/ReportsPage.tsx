@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 
@@ -32,6 +33,7 @@ function pageRange(cur: number, total: number): (number | '…')[] {
 }
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const [trees,   setTrees]   = useState<TreeSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,8 +63,8 @@ export default function ReportsPage() {
   }, [accessToken]);
 
   // Summary stats always reflect the full dataset
-  const totalPeople  = trees.reduce((s, t) => s + t.person_count, 0);
-  const totalMembers = trees.reduce((s, t) => s + t.member_count, 0);
+  const totalPeople  = trees.reduce((s, tr) => s + tr.person_count, 0);
+  const totalMembers = trees.reduce((s, tr) => s + tr.member_count, 0);
 
   // Filtered + sorted list (derived — no extra state)
   const filtered = useMemo(() => {
@@ -112,8 +114,8 @@ export default function ReportsPage() {
         description="View statistics and reports for your family trees on FamilyRoots."
         noIndex
       />
-      <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ color: 'var(--portal-text-primary)' }}>Reports</h1>
-      <p className="text-sm mb-6 md:mb-8" style={{ color: 'var(--portal-text-muted)' }}>Overview of your family trees and genealogy data.</p>
+      <h1 className="text-xl md:text-2xl font-bold mb-1" style={{ color: 'var(--portal-text-primary)' }}>{t('reportsPage.title')}</h1>
+      <p className="text-sm mb-6 md:mb-8" style={{ color: 'var(--portal-text-muted)' }}>{t('reportsPage.subtitle')}</p>
 
       {loading && (
         <div className="flex justify-center py-16">
@@ -132,9 +134,9 @@ export default function ReportsPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 md:mb-8">
             {[
-              { label: 'Family trees',  value: trees.length,  icon: '🌳' },
-              { label: 'Total people',  value: totalPeople,   icon: '👤' },
-              { label: 'Collaborators', value: totalMembers,  icon: '👥' },
+              { label: t('reportsPage.familyTrees'),  value: trees.length,  icon: '🌳' },
+              { label: t('reportsPage.totalPeople'),  value: totalPeople,   icon: '👤' },
+              { label: t('reportsPage.collaborators'), value: totalMembers,  icon: '👥' },
             ].map(({ label, value, icon }) => (
               <div key={label} className="rounded-xl border p-5" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-border)' }}>
                 <div className="text-2xl mb-2">{icon}</div>
@@ -147,12 +149,12 @@ export default function ReportsPage() {
           {trees.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
               <div className="text-5xl mb-4">📊</div>
-              <p className="text-lg font-medium text-gray-600">No data yet</p>
-              <p className="text-sm mt-1">Create a family tree to see reports here.</p>
+              <p className="text-lg font-medium text-gray-600">{t('reportsPage.noDataYet')}</p>
+              <p className="text-sm mt-1">{t('reportsPage.createTreeToSee')}</p>
             </div>
           ) : (
             <div>
-              <h2 className="text-base font-semibold mb-3" style={{ color: 'var(--portal-text-primary)' }}>Tree breakdown</h2>
+              <h2 className="text-base font-semibold mb-3" style={{ color: 'var(--portal-text-primary)' }}>{t('reportsPage.treeBreakdown')}</h2>
 
               {/* ── Toolbar ── */}
               <div className="flex flex-col sm:flex-row gap-2 mb-3">
@@ -165,7 +167,7 @@ export default function ReportsPage() {
                   </svg>
                   <input
                     type="search"
-                    placeholder="Search trees…"
+                    placeholder={t('reportsPage.searchTrees')}
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm
@@ -183,11 +185,11 @@ export default function ReportsPage() {
                              focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}
                 >
-                  <option value="">All roles</option>
-                  <option value="OWNER">Owner</option>
-                  <option value="ADMIN">Admin</option>
-                  <option value="EDITOR">Editor</option>
-                  <option value="VIEWER">Viewer</option>
+                  <option value="">{t('reportsPage.allRoles')}</option>
+                  <option value="OWNER">{t('roles.OWNER')}</option>
+                  <option value="ADMIN">{t('roles.ADMIN')}</option>
+                  <option value="EDITOR">{t('roles.EDITOR')}</option>
+                  <option value="VIEWER">{t('roles.VIEWER')}</option>
                 </select>
 
                 {/* Page size */}
@@ -199,7 +201,7 @@ export default function ReportsPage() {
                   style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}
                 >
                   {PAGE_SIZES.map((s) => (
-                    <option key={s} value={s}>{s} per page</option>
+                    <option key={s} value={s}>{t('reportsPage.perPage', { count: s })}</option>
                   ))}
                 </select>
               </div>
@@ -208,13 +210,13 @@ export default function ReportsPage() {
               <div className="flex items-center gap-3 mb-2 min-h-[1.25rem]">
                 <p className="text-xs text-gray-400">
                   {hasActiveFilter
-                    ? `${filtered.length} of ${trees.length} tree${trees.length !== 1 ? 's' : ''}`
-                    : `${trees.length} tree${trees.length !== 1 ? 's' : ''}`}
+                    ? `${filtered.length} / ${trees.length} ${t('common.trees')}`
+                    : `${trees.length} ${t('common.trees')}`}
                 </p>
                 {hasActiveFilter && (
                   <button onClick={clearFilters}
                     className="text-xs text-brand-600 hover:text-brand-700 hover:underline">
-                    Clear filters
+                    {t('reportsPage.clearFilters')}
                   </button>
                 )}
               </div>
@@ -223,10 +225,10 @@ export default function ReportsPage() {
               <div className="rounded-xl border overflow-hidden overflow-x-auto" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-border)' }}>
                 {filtered.length === 0 ? (
                   <div className="text-center py-12 text-gray-400">
-                    <p className="text-sm">No trees match your filters.</p>
+                    <p className="text-sm">{t('reportsPage.noTreesMatch')}</p>
                     <button onClick={clearFilters}
                       className="mt-2 text-xs text-brand-600 hover:underline">
-                      Clear filters
+                      {t('reportsPage.clearFilters')}
                     </button>
                   </div>
                 ) : (
@@ -236,25 +238,25 @@ export default function ReportsPage() {
                         <th className="text-left px-5 py-3 font-medium text-gray-600 whitespace-nowrap">
                           <button onClick={() => toggleSort('name')}
                             className="flex items-center gap-0.5 hover:opacity-80 transition-colors" style={{ color: 'var(--portal-text-muted)' }}>
-                            Tree <SortIcon field="name" />
+                            {t('reportsPage.colTree')} <SortIcon field="name" />
                           </button>
                         </th>
                         <th className="text-left px-5 py-3 font-medium text-gray-600 whitespace-nowrap">
                           <button onClick={() => toggleSort('role')}
                             className="flex items-center gap-0.5 hover:opacity-80 transition-colors" style={{ color: 'var(--portal-text-muted)' }}>
-                            Role <SortIcon field="role" />
+                            {t('reportsPage.colRole')} <SortIcon field="role" />
                           </button>
                         </th>
                         <th className="text-right px-5 py-3 font-medium text-gray-600 whitespace-nowrap">
                           <button onClick={() => toggleSort('person_count')}
                             className="flex items-center gap-0.5 ml-auto hover:text-gray-900 transition-colors">
-                            People <SortIcon field="person_count" />
+                            {t('reportsPage.colPeople')} <SortIcon field="person_count" />
                           </button>
                         </th>
                         <th className="text-right px-5 py-3 font-medium text-gray-600 whitespace-nowrap">
                           <button onClick={() => toggleSort('member_count')}
                             className="flex items-center gap-0.5 ml-auto hover:text-gray-900 transition-colors">
-                            Members <SortIcon field="member_count" />
+                            {t('reportsPage.colMembers')} <SortIcon field="member_count" />
                           </button>
                         </th>
                       </tr>
@@ -272,8 +274,8 @@ export default function ReportsPage() {
                               <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{tree.description}</p>
                             )}
                           </td>
-                          <td className="px-5 py-3 text-gray-500 capitalize whitespace-nowrap">
-                            {tree.role.toLowerCase()}
+                          <td className="px-5 py-3 text-gray-500 whitespace-nowrap">
+                            {t('roles.' + tree.role)}
                           </td>
                           <td className="px-5 py-3 text-right font-semibold text-gray-900">{tree.person_count}</td>
                           <td className="px-5 py-3 text-right font-semibold text-gray-900">{tree.member_count}</td>
@@ -288,7 +290,7 @@ export default function ReportsPage() {
               {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100">
                   <p className="text-sm text-gray-500 order-2 sm:order-1">
-                    Showing {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} of {filtered.length}
+                    {t('common.showing')} {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} {t('common.of')} {filtered.length}
                   </p>
                   <div className="flex items-center gap-1 order-1 sm:order-2">
                     <button
@@ -296,7 +298,7 @@ export default function ReportsPage() {
                       disabled={safePage === 1}
                       className="px-3 py-1.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      ← Prev
+                      {t('common.prev')}
                     </button>
                     {pageRange(safePage, totalPages).map((p, i) =>
                       p === '…' ? (
@@ -321,7 +323,7 @@ export default function ReportsPage() {
                       disabled={safePage === totalPages}
                       className="px-3 py-1.5 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
-                      Next →
+                      {t('common.next')}
                     </button>
                   </div>
                 </div>

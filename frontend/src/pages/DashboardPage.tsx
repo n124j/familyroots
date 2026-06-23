@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 import { UserAvatar } from '@shared/components/UserAvatar';
@@ -88,6 +89,7 @@ const PinIcon = ({ filled }: { filled: boolean }) => (
 );
 
 function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProps) {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -158,8 +160,8 @@ function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProp
         )}
 
         <div className="flex gap-4 mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500">
-          <span><span className="font-semibold text-gray-700">{tree.person_count}</span> people</span>
-          <span><span className="font-semibold text-gray-700">{tree.member_count}</span> {tree.member_count === 1 ? 'member' : 'members'}</span>
+          <span><span className="font-semibold text-gray-700">{tree.person_count}</span> {t('common.people')}</span>
+          <span><span className="font-semibold text-gray-700">{tree.member_count}</span> {tree.member_count === 1 ? t('common.member') : t('common.members')}</span>
         </div>
       </Link>
 
@@ -180,20 +182,20 @@ function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProp
                 onClick={(e) => { e.preventDefault(); setMenuOpen(false); onShare(tree); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Share tree
+                {t('dashboard.shareTree')}
               </button>
               <button
                 onClick={(e) => { e.preventDefault(); setMenuOpen(false); onEdit(tree); }}
                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Edit tree
+                {t('dashboard.editTree')}
               </button>
               {tree.role === 'OWNER' && (
                 <button
                   onClick={(e) => { e.preventDefault(); setMenuOpen(false); onDelete(tree); }}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  Delete tree
+                  {t('dashboard.deleteTree')}
                 </button>
               )}
             </div>
@@ -207,6 +209,7 @@ function TreeCard({ tree, onEdit, onDelete, onShare, onTogglePin }: TreeCardProp
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user        = useAuthStore((s) => s.user);
   const navigate    = useNavigate();
@@ -518,9 +521,9 @@ export default function DashboardPage() {
           />
           <div>
             <h1 className="text-xl md:text-2xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>
-              Welcome back{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}
+              {t('dashboard.welcomeBack')}{user?.displayName ? `, ${user.displayName.split(' ')[0]}` : ''}
             </h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>Your family trees</p>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>{t('dashboard.yourFamilyTrees')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -538,13 +541,13 @@ export default function DashboardPage() {
             title="Import a .frt backup or a .zip with photos"
             className="px-3 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            {importing ? 'Importing…' : '↑ Import'}
+            {importing ? t('dashboard.importing') : t('dashboard.import')}
           </button>
           <button
             className="px-3 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
             onClick={openModal}
           >
-            + New tree
+            {t('dashboard.newTree')}
           </button>
         </div>
       </div>
@@ -560,7 +563,7 @@ export default function DashboardPage() {
             type="text"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search trees…"
+            placeholder={t('dashboard.searchTrees')}
             aria-label="Search trees"
             className="w-full h-10 pl-9 pr-8 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
@@ -591,16 +594,16 @@ export default function DashboardPage() {
       {!loading && !error && trees.length === 0 && (
         <div className="text-center py-20 text-gray-400">
           <div className="text-5xl mb-4">🌳</div>
-          <p className="text-lg font-medium text-gray-600">No family trees yet</p>
-          <p className="text-sm mt-1">Create your first tree to get started.</p>
+          <p className="text-lg font-medium text-gray-600">{t('dashboard.noTreesYet')}</p>
+          <p className="text-sm mt-1">{t('dashboard.createFirstTree')}</p>
         </div>
       )}
 
       {!loading && !error && trees.length > 0 && sortedTrees.length === 0 && (
         <div className="text-center py-20 text-gray-400">
           <div className="text-5xl mb-4">🔍</div>
-          <p className="text-lg font-medium text-gray-600">No trees match "{search.trim()}"</p>
-          <p className="text-sm mt-1">Try a different name or clear the search.</p>
+          <p className="text-lg font-medium text-gray-600">{t('dashboard.noTreesMatch', { query: search.trim() })}</p>
+          <p className="text-sm mt-1">{t('dashboard.tryDifferent')}</p>
         </div>
       )}
 
@@ -656,28 +659,28 @@ export default function DashboardPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setModalOpen(false); }}
         >
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-4 md:p-6 mx-4 md:mx-0">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New family tree</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.newFamilyTree')}</h2>
             <form onSubmit={handleCreateTree} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name <span className="text-red-500">*</span>
+                  {t('dashboard.name')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   autoFocus
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. The Johnson Family"
+                  placeholder={t('dashboard.namePlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboard.descriptionLabel')}</label>
                 <textarea
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="Optional description…"
+                  placeholder={t('dashboard.descriptionPlaceholder')}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
                 />
@@ -686,11 +689,11 @@ export default function DashboardPage() {
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setModalOpen(false)}
                   className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={creating || !newName.trim()}
                   className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors">
-                  {creating ? 'Creating…' : 'Create tree'}
+                  {creating ? t('dashboard.creating') : t('dashboard.createTree')}
                 </button>
               </div>
             </form>
@@ -839,20 +842,19 @@ export default function DashboardPage() {
           onClick={(e) => { if (e.target === e.currentTarget && !deleting) setDeleteTarget(null); }}
         >
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Delete tree?</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('dashboard.deleteTreeTitle')}</h2>
             <p className="text-sm text-gray-500 mb-4">
-              <span className="font-medium text-gray-800">"{deleteTarget.name}"</span> and all its people,
-              family groups, and history will be permanently deleted. This cannot be undone.
+              {t('dashboard.deleteTreeDesc', { name: deleteTarget.name })}
             </p>
             {deleteError && <p className="text-sm text-red-600 mb-3">{deleteError}</p>}
             <div className="flex gap-3 justify-end">
               <button onClick={() => setDeleteTarget(null)} disabled={deleting}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={handleDeleteTree} disabled={deleting}
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors">
-                {deleting ? 'Deleting…' : 'Delete tree'}
+                {deleting ? t('dashboard.deleting') : t('dashboard.deleteTree')}
               </button>
             </div>
           </div>

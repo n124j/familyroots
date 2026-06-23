@@ -1,11 +1,10 @@
-/**
- * Unit tests for OAuthButtons component.
- * Verifies button rendering and OAuth redirect URL construction.
- */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { OAuthButtons } from '@features/auth/components/OAuthButtons';
+
+vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'test-google-id');
+
+const { OAuthButtons } = await import('@features/auth/components/OAuthButtons');
 
 // Capture window.location.href assignments
 const locationHrefSpy = vi.fn();

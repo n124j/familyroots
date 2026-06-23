@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -11,6 +12,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 type State = 'verifying' | 'success' | 'error' | 'missing';
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
 
@@ -50,33 +52,33 @@ export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-muted px-4">
       <SEO
-        title="Verify Email"
+        title={t('verifyEmail.title')}
         description="Verify your FamilyRoots email address to activate your account."
         noIndex
       />
       <div className="w-full max-w-sm text-center">
         <div className="text-4xl mb-4">🌳</div>
-        <h1 className="text-xl font-bold text-slate-900 mb-2">FamilyRoots</h1>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">{t('common.appName')}</h1>
 
         {state === 'verifying' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm text-slate-600">Verifying your email address…</p>
+            <p className="text-sm text-slate-600">{t('verifyEmail.verifying')}</p>
           </div>
         )}
 
         {state === 'success' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">✅</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Email verified!</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('verifyEmail.verified')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              Your account is now active. Sign in to start building your family tree.
+              {t('verifyEmail.verifiedDesc')}
             </p>
             <Link
               to="/login"
               className="inline-block w-full h-10 leading-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
             >
-              Sign in
+              {t('auth.signIn')}
             </Link>
           </div>
         )}
@@ -84,10 +86,10 @@ export default function VerifyEmailPage() {
         {state === 'error' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">⚠️</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Verification failed</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('verifyEmail.failed')}</h2>
             <p className="text-sm text-slate-500 mb-6">{message}</p>
             <Link to="/login" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
-              Back to sign in
+              {t('verifyEmail.backToSignIn')}
             </Link>
           </div>
         )}
@@ -95,12 +97,12 @@ export default function VerifyEmailPage() {
         {state === 'missing' && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-8">
             <div className="text-4xl mb-3">🔗</div>
-            <h2 className="text-lg font-semibold text-slate-900 mb-2">Invalid link</h2>
+            <h2 className="text-lg font-semibold text-slate-900 mb-2">{t('verifyEmail.invalidLink')}</h2>
             <p className="text-sm text-slate-500 mb-6">
-              No verification token found. Please use the link from your email.
+              {t('verifyEmail.noToken')}
             </p>
             <Link to="/login" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
-              Back to sign in
+              {t('verifyEmail.backToSignIn')}
             </Link>
           </div>
         )}

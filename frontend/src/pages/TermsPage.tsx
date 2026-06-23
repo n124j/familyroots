@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { Footer } from '@shared/components/layout/Footer';
 
@@ -35,6 +36,7 @@ const TOC = [
 ] as const;
 
 export default function TermsPage() {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen flex flex-col bg-surface-muted">
       <SEO
@@ -58,8 +60,8 @@ export default function TermsPage() {
 
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms &amp; Conditions</h1>
-            <p className="text-sm text-gray-500">Last updated: {LAST_UPDATED}</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('termsPage.title')}</h1>
+            <p className="text-sm text-gray-500">{t('termsPage.lastUpdated')}: {LAST_UPDATED}</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -67,7 +69,7 @@ export default function TermsPage() {
             {/* Sidebar TOC */}
             <aside className="lg:col-span-1 hidden lg:block">
               <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-20">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Contents</p>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">{t('termsPage.tableOfContents')}</p>
                 <nav className="space-y-1">
                   {TOC.map(([id, label]) => (
                     <a key={id} href={`#${id}`} className="block text-xs text-gray-600 hover:text-brand-600 py-0.5 hover:underline">

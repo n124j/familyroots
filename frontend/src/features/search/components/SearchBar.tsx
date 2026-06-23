@@ -3,6 +3,7 @@
  * Used in the top navigation bar; pressing Enter navigates to the full results page.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useNameSearch } from '../useSearch';
 import type { PersonHit } from '../types';
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function SearchBar({ treeId, placeholder, onSelect }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery]     = useState('');
   const [open, setOpen]       = useState(false);
   const [debounced, setDebounced] = useState('');
@@ -61,7 +63,7 @@ export function SearchBar({ treeId, placeholder, onSelect }: Props) {
           ref={inputRef}
           type="search"
           value={query}
-          placeholder={placeholder ?? 'Search people…'}
+          placeholder={placeholder ?? t('searchComponents.searchPeople')}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
@@ -81,7 +83,7 @@ export function SearchBar({ treeId, placeholder, onSelect }: Props) {
         <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
           {!data || data.hits.length === 0 ? (
             <p className="px-4 py-3 text-sm text-gray-500">
-              {isFetching ? 'Searching…' : 'No results found.'}
+              {isFetching ? t('searchPage.searching') : t('searchComponents.noResults')}
             </p>
           ) : (
             <>

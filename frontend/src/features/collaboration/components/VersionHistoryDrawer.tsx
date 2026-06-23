@@ -7,6 +7,7 @@
  */
 
 import React, { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@store/auth.store';
 import { PermissionGuard } from '@shared/components/PermissionGuard';
@@ -46,7 +47,9 @@ async function restoreVersion(
 // ── Snapshot modal ─────────────────────────────────────────────────────────
 
 const SnapshotModal = memo(
-  ({ version, onClose }: { version: PersonVersion; onClose: () => void }) => (
+  ({ version, onClose }: { version: PersonVersion; onClose: () => void }) => {
+    const { t } = useTranslation();
+    return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -55,7 +58,7 @@ const SnapshotModal = memo(
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
           <div>
             <h3 className="text-sm font-semibold text-slate-800">
-              Version {version.versionNumber}
+              {t('versionHistory.version')} {version.versionNumber}
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
               {new Date(version.createdAt).toLocaleString()}
@@ -75,7 +78,8 @@ const SnapshotModal = memo(
         </div>
       </div>
     </div>
-  )
+    );
+  }
 );
 
 // ── Version row ────────────────────────────────────────────────────────────
@@ -89,6 +93,7 @@ interface VersionRowProps {
 }
 
 const VersionRow = memo(({ version, isLatest, treeId, personId, onRestored }: VersionRowProps) => {
+  const { t } = useTranslation();
   const [showSnapshot, setShowSnapshot] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState(false);
   const queryClient = useQueryClient();
@@ -139,7 +144,7 @@ const VersionRow = memo(({ version, isLatest, treeId, personId, onRestored }: Ve
               onClick={() => setShowSnapshot(true)}
               className="text-[11px] text-slate-500 hover:text-slate-700 underline underline-offset-2"
             >
-              View snapshot
+              {t('versionHistory.viewSnapshot')}
             </button>
 
             {!isLatest && (
@@ -151,13 +156,13 @@ const VersionRow = memo(({ version, isLatest, treeId, personId, onRestored }: Ve
                       disabled={restoreMutation.isPending}
                       className="text-[11px] text-amber-700 font-medium hover:text-amber-800"
                     >
-                      {restoreMutation.isPending ? 'Restoring…' : 'Confirm restore'}
+                      {restoreMutation.isPending ? 'Restoring…' : t('versionHistory.restore')}
                     </button>
                     <button
                       onClick={() => setConfirmRestore(false)}
                       className="text-[11px] text-slate-400 hover:text-slate-500"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 ) : (
@@ -165,7 +170,7 @@ const VersionRow = memo(({ version, isLatest, treeId, personId, onRestored }: Ve
                     onClick={() => setConfirmRestore(true)}
                     className="text-[11px] text-amber-600 hover:text-amber-700 font-medium"
                   >
-                    Restore this version
+                    {t('versionHistory.restore')}
                   </button>
                 )}
               </PermissionGuard>
@@ -192,6 +197,7 @@ interface VersionHistoryDrawerProps {
 
 export const VersionHistoryDrawer = memo(
   ({ treeId, personId, personName, onClose }: VersionHistoryDrawerProps) => {
+    const { t } = useTranslation();
     const { data: versions = [], isLoading } = useQuery({
       queryKey: ['person-versions', treeId, personId],
       queryFn: () => fetchVersions(treeId, personId),
@@ -212,7 +218,7 @@ export const VersionHistoryDrawer = memo(
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">Version history</h2>
+              <h2 className="text-sm font-semibold text-slate-800">{t('versionHistory.version')}</h2>
               <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[200px]">
                 {personName}
               </p>

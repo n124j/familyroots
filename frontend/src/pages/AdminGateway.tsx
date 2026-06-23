@@ -7,6 +7,7 @@
  */
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { useMaintenanceStore } from '@store/maintenance.store';
 

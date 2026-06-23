@@ -11,6 +11,7 @@
  */
 
 import React, { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AncestryFanChart } from './AncestryFanChart';
 import ReactFlow, {
   Background,
@@ -96,18 +97,18 @@ function LegendRow({
 
 import type { LayoutMode } from '../types';
 
-const LEGEND_TITLES: Record<LayoutMode, string> = {
-  compact:             'Family Tree',
-  generation:          'Family Tree',
-  vertical:            'Family Tree',
-  horizontal:          'Family Tree',
-  fan:                 'Fan Chart',
-  'ancestry-fan':      'Ancestry Fan',
-  ancestor:            'Ancestor Chart',
-  descendant:          'Descendant Chart',
-  'descendant-family': 'Descendants + Spouses',
-  'ancestor-family':   'Ancestors + Spouses',
-  pedigree:            'Pedigree Chart',
+const LEGEND_TITLE_KEYS: Record<LayoutMode, string> = {
+  compact:             'legend.familyTree',
+  generation:          'legend.familyTree',
+  vertical:            'legend.familyTree',
+  horizontal:          'legend.familyTree',
+  fan:                 'legend.fanChart',
+  'ancestry-fan':      'legend.ancestryFan',
+  ancestor:            'legend.ancestorChart',
+  descendant:          'legend.descendantChart',
+  'descendant-family': 'legend.descendantsSpouses',
+  'ancestor-family':   'legend.ancestorsSpouses',
+  pedigree:            'legend.pedigreeChart',
 };
 
 function ChartLegend({
@@ -120,6 +121,7 @@ function ChartLegend({
   /** IDs of all nodes currently rendered (persons + family groups). */
   visibleNodeIds: Set<string>;
 }) {
+  const { t } = useTranslation();
   const { stats, unionTypes, parentageTypes } = useMemo(() => {
     const people = graph.persons.filter((p) => visibleNodeIds.has(p.id));
     const families = graph.familyGroups.filter((fg) => visibleNodeIds.has(fg.id));
@@ -166,7 +168,7 @@ function ChartLegend({
           className="text-[10px] font-semibold uppercase tracking-widest"
           style={{ color: theme.nodeSubtext }}
         >
-          {LEGEND_TITLES[mode]}
+          {t(LEGEND_TITLE_KEYS[mode])}
         </p>
         {/* Drag handle hint */}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="ml-2 shrink-0" style={{ color: theme.nodeSubtext }}>
@@ -179,77 +181,77 @@ function ChartLegend({
         </svg>
       </div>
       <div className="space-y-1.5">
-        <LegendRow icon="#" label="People"   count={stats.total}  color={theme.nodeSubtext} textColor={theme.nodeText} />
+        <LegendRow icon="#" label={t('legend.people')}   count={stats.total}  color={theme.nodeSubtext} textColor={theme.nodeText} />
         <div className="h-px my-1.5" style={{ background: theme.nodeBorder }} />
-        <LegendRow icon="♂" label="Male"     count={stats.male}   color="#3b82f6"            textColor={theme.nodeText} />
-        <LegendRow icon="♀" label="Female"   count={stats.female} color="#ec4899"            textColor={theme.nodeText} />
+        <LegendRow icon="♂" label={t('legend.male')}     count={stats.male}   color="#3b82f6"            textColor={theme.nodeText} />
+        <LegendRow icon="♀" label={t('legend.female')}   count={stats.female} color="#ec4899"            textColor={theme.nodeText} />
         <div className="h-px my-1.5" style={{ background: theme.nodeBorder }} />
-        <LegendRow icon="●" label="Living"   count={stats.living} color="#22c55e"            textColor={theme.nodeText} />
-        <LegendRow icon="✝" label="Deceased" count={stats.dead}   color={theme.nodeSubtext}  textColor={theme.nodeText} />
+        <LegendRow icon="●" label={t('legend.living')}   count={stats.living} color="#22c55e"            textColor={theme.nodeText} />
+        <LegendRow icon="✝" label={t('legend.deceased')} count={stats.dead}   color={theme.nodeSubtext}  textColor={theme.nodeText} />
       </div>
       {(hasUnions || hasChildren) && (
         <div className="mt-2.5 pt-2 space-y-1.5" style={{ borderTop: `1px solid ${theme.nodeBorder}` }}>
-          <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: theme.nodeSubtext }}>Lines</p>
+          <p className="text-[9px] font-semibold uppercase tracking-widest mb-1" style={{ color: theme.nodeSubtext }}>{t('legend.lines')}</p>
           {hasUnions && (
             <>
-              <p className="text-[8px] font-semibold uppercase tracking-widest mt-1 mb-0.5" style={{ color: theme.nodeSubtext }}>Unions</p>
+              <p className="text-[8px] font-semibold uppercase tracking-widest mt-1 mb-0.5" style={{ color: theme.nodeSubtext }}>{t('legend.unions')}</p>
               {unionTypes.has('MARRIAGE') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#f59e0b" strokeWidth="1.5"/><line x1="0" y1="6" x2="24" y2="6" stroke="#f59e0b" strokeWidth="1.5"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Marriage</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.marriage')}</span>
                 </div>
               )}
               {unionTypes.has('PARTNERSHIP') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke="#10b981" strokeWidth="1.5"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Partnership</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.partnership')}</span>
                 </div>
               )}
               {unionTypes.has('COHABITATION') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke="#6366f1" strokeWidth="1.5" strokeDasharray="6 6"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Cohabitation</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.cohabitation')}</span>
                 </div>
               )}
               {unionTypes.has('DIVORCED') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="2" x2="24" y2="2" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/><line x1="0" y1="6" x2="24" y2="6" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 3"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Divorced</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.divorced')}</span>
                 </div>
               )}
             </>
           )}
           {hasChildren && (
             <>
-              <p className="text-[8px] font-semibold uppercase tracking-widest mt-1.5 mb-0.5" style={{ color: theme.nodeSubtext }}>Children</p>
+              <p className="text-[8px] font-semibold uppercase tracking-widest mt-1.5 mb-0.5" style={{ color: theme.nodeSubtext }}>{t('legend.childrenSection')}</p>
               {parentageTypes.has('BIOLOGICAL') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Biological</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.biological')}</span>
                 </div>
               )}
               {parentageTypes.has('ADOPTIVE') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Adopted</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.adopted')}</span>
                 </div>
               )}
               {parentageTypes.has('STEP') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Step</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.step')}</span>
                 </div>
               )}
               {parentageTypes.has('FOSTER') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="6 3 2 3"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Foster</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.foster')}</span>
                 </div>
               )}
               {parentageTypes.has('UNKNOWN') && (
                 <div className="flex items-center gap-2">
                   <svg width="24" height="8" className="shrink-0"><line x1="0" y1="4" x2="24" y2="4" stroke={theme.edgeColor} strokeWidth="1.5" strokeDasharray="4 4"/></svg>
-                  <span className="text-[10px]" style={{ color: theme.nodeText }}>Unknown</span>
+                  <span className="text-[10px]" style={{ color: theme.nodeText }}>{t('legend.unknown')}</span>
                 </div>
               )}
             </>
@@ -428,6 +430,7 @@ export interface TreeCanvasHandle {
 
 const TreeCanvasInner = forwardRef<TreeCanvasHandle, TreeCanvasInnerProps>(
 function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect }, ref) {
+  const { t } = useTranslation();
   const { fitView } = useReactFlow();
   const canvasTheme = useThemeStore((s) => s.theme);
 
@@ -892,7 +895,7 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
       <div className="w-full h-full flex items-center justify-center bg-surface-muted">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-slate-500">Loading family tree…</p>
+          <p className="text-sm text-slate-500">{t('legend.loadingTree')}</p>
         </div>
       </div>
     );
@@ -903,8 +906,8 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
       <div className="w-full h-full flex items-center justify-center bg-surface-muted">
         <div className="text-center">
           <div className="text-4xl mb-3">🌳</div>
-          <p className="text-slate-700 font-medium">No people yet</p>
-          <p className="text-sm text-slate-500 mt-1">Add a person to start your family tree</p>
+          <p className="text-slate-700 font-medium">{t('legend.noPeopleYet')}</p>
+          <p className="text-sm text-slate-500 mt-1">{t('legend.addPersonToStart')}</p>
         </div>
       </div>
     );
@@ -972,7 +975,7 @@ function TreeCanvasInner({ graph, isLoading, onPersonSelect, onFamilyGroupSelect
 
         {!isPdfMode && (
           <div className="absolute bottom-4 left-4 z-10 text-xs text-slate-400 bg-white/80 px-2 py-1 rounded-lg border border-slate-200">
-            {graph.persons.length} people · {displayNodes.filter((n) => n.type === 'person').length} visible
+            {t('legend.peopleVisible', { total: graph.persons.length, visible: displayNodes.filter((n) => n.type === 'person').length })}
           </div>
         )}
       </ReactFlow>

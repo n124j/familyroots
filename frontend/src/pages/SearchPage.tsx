@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { useQuery } from '@tanstack/react-query';
 import { get } from '@api/client';
@@ -17,14 +18,8 @@ interface TreeSummary {
   member_count: number;
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  OWNER:  'Owner',
-  ADMIN:  'Admin',
-  EDITOR: 'Editor',
-  VIEWER: 'Viewer',
-};
-
 export default function SearchPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlQ = searchParams.get('q') ?? '';
 
@@ -38,8 +33,8 @@ export default function SearchPage() {
     staleTime: 60_000,
   });
 
-  const filteredTrees = trees?.filter((t) =>
-    t.name.toLowerCase().includes(treeFilter.toLowerCase())
+  const filteredTrees = trees?.filter((tr) =>
+    tr.name.toLowerCase().includes(treeFilter.toLowerCase())
   );
 
   const handleQueryChange = useCallback(
@@ -56,21 +51,21 @@ export default function SearchPage() {
         description="Search across family members, trees, and relationships in FamilyRoots."
         noIndex
       />
-      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6" style={{ color: 'var(--portal-text-primary)' }}>Search</h1>
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6" style={{ color: 'var(--portal-text-primary)' }}>{t('searchPage.title')}</h1>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         {([
-          ['members',      'Members'],
-          ['trees',        'Trees'],
-          ['relationship', 'Relationship'],
-        ] as [Tab, string][]).map(([t, label]) => (
+          ['members',      t('searchPage.tabs.members')],
+          ['trees',        t('searchPage.tabs.trees')],
+          ['relationship', t('searchPage.tabs.relationship')],
+        ] as [Tab, string][]).map(([tabKey, label]) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tabKey}
+            onClick={() => setTab(tabKey)}
             className={[
               'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tab === t
+              tab === tabKey
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700',
             ].join(' ')}
@@ -90,7 +85,7 @@ export default function SearchPage() {
                 type="search"
                 value={urlQ}
                 onChange={handleQueryChange}
-                placeholder="Search people by name…"
+                placeholder={t('searchPage.searchPeople')}
                 autoFocus
                 autoComplete="off"
                 className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-4 text-sm
@@ -107,9 +102,9 @@ export default function SearchPage() {
                          focus:ring-indigo-500 sm:min-w-[160px]"
               style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}
             >
-              <option value="">All trees</option>
-              {trees?.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+              <option value="">{t('searchPage.allTrees')}</option>
+              {trees?.map((tr) => (
+                <option key={tr.id} value={tr.id}>{tr.name}</option>
               ))}
             </select>
           </div>
@@ -126,7 +121,7 @@ export default function SearchPage() {
               type="search"
               value={treeFilter}
               onChange={(e) => setTreeFilter(e.target.value)}
-              placeholder="Filter trees by name…"
+              placeholder={t('searchPage.filterTrees')}
               autoFocus
               autoComplete="off"
               className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-4 text-sm
@@ -145,7 +140,7 @@ export default function SearchPage() {
             <div className="flex flex-col items-center gap-3 py-16 text-gray-400">
               <TreeIcon />
               <p className="text-sm">
-                {treeFilter ? `No trees matching "${treeFilter}".` : 'No family trees yet.'}
+                {treeFilter ? t('searchPage.noTreesMatching', { query: treeFilter }) : t('searchPage.noFamilyTreesYet')}
               </p>
             </div>
           )}
@@ -165,11 +160,11 @@ export default function SearchPage() {
                         <p className="text-sm text-gray-500 mt-0.5 truncate">{tree.description}</p>
                       )}
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {tree.person_count} {tree.person_count === 1 ? 'person' : 'people'}
+                        {tree.person_count} {tree.person_count === 1 ? t('searchPage.person') : t('common.people')}
                         {' · '}
-                        {tree.member_count} {tree.member_count === 1 ? 'collaborator' : 'collaborators'}
+                        {tree.member_count} {tree.member_count === 1 ? t('searchPage.collaborator') : t('searchPage.collaborators')}
                         {' · '}
-                        {ROLE_LABEL[tree.role] ?? tree.role}
+                        {t('roles.' + tree.role, { defaultValue: tree.role })}
                       </p>
                     </div>
                     <ChevronIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />

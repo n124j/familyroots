@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNameSearch, useRelationship } from '../useSearch';
 import type { PersonHit, RelationshipPath, PathStep } from '../types';
 
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function RelationshipSearch({ trees }: Props) {
+  const { t } = useTranslation();
   const [treeId, setTreeId]   = useState('');
   const [person1, setPerson1] = useState<PersonHit | null>(null);
   const [person2, setPerson2] = useState<PersonHit | null>(null);
@@ -31,14 +33,14 @@ export function RelationshipSearch({ trees }: Props) {
     <div className="space-y-6">
       {/* Tree selector */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Family tree</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('relationshipSearch.familyTree')}</label>
         <select
           value={treeId}
           onChange={(e) => handleTreeChange(e.target.value)}
           className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm
                      text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
-          <option value="">Select a tree…</option>
+          <option value="">{t('relationshipSearch.selectTree')}</option>
           {trees.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </div>
@@ -46,19 +48,19 @@ export function RelationshipSearch({ trees }: Props) {
       {/* Person pickers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <PersonPicker
-          label="Person 1"
+          label={t('relationshipSearch.person1')}
           treeId={treeId}
           value={person1}
           onChange={setPerson1}
-          placeholder="Search first person…"
+          placeholder={t('relationshipSearch.searchFirst')}
           excludeId={person2?.person_id}
         />
         <PersonPicker
-          label="Person 2"
+          label={t('relationshipSearch.person2')}
           treeId={treeId}
           value={person2}
           onChange={setPerson2}
-          placeholder="Search second person…"
+          placeholder={t('relationshipSearch.searchSecond')}
           excludeId={person1?.person_id}
         />
       </div>
@@ -67,7 +69,7 @@ export function RelationshipSearch({ trees }: Props) {
       {(person1 || person2) && (
         <div className="flex items-center gap-3 -mt-2">
           <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400 font-medium">vs</span>
+          <span className="text-xs text-gray-400 font-medium">{t('relationshipSearch.vs')}</span>
           <div className="flex-1 h-px bg-gray-200" />
         </div>
       )}
@@ -100,6 +102,7 @@ function PersonPicker({
   placeholder: string;
   excludeId?: string;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery]         = useState('');
   const [open, setOpen]           = useState(false);
   const [debounced, setDebounced] = useState('');
@@ -156,7 +159,7 @@ function PersonPicker({
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => debounced.length >= 2 && setOpen(true)}
-          placeholder={treeId ? placeholder : 'Select a tree first…'}
+          placeholder={treeId ? placeholder : t('relationshipSearch.selectTreeFirst')}
           disabled={!treeId}
           autoComplete="off"
           className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-3 pr-3 text-sm
@@ -166,9 +169,9 @@ function PersonPicker({
         {open && debounced.length >= 2 && (
           <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
             {isFetching ? (
-              <p className="px-4 py-3 text-sm text-gray-400">Searching…</p>
+              <p className="px-4 py-3 text-sm text-gray-400">{t('relationshipSearch.searching')}</p>
             ) : hits.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-gray-400">No results.</p>
+              <p className="px-4 py-3 text-sm text-gray-400">{t('relationshipSearch.noResults')}</p>
             ) : (
               hits.map((hit) => (
                 <button
@@ -199,31 +202,32 @@ function RelationshipResult({
   name1: string;
   name2: string;
 }) {
+  const { t } = useTranslation();
   if (!rel.found) {
     return (
       <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center">
         <div className="text-3xl mb-3">🔍</div>
-        <p className="font-medium text-gray-700">No connection found</p>
+        <p className="font-medium text-gray-700">{t('relationshipSearch.noConnection')}</p>
         <p className="text-sm text-gray-400 mt-1">
-          {name1} and {name2} are not connected in this tree.
+          {t('relationshipSearch.notConnected', { name1, name2 })}
         </p>
       </div>
     );
   }
 
   const label = rel.relationship_label
-    ?? `${rel.distance} ${rel.distance === 1 ? 'step' : 'steps'} apart`;
+    ?? `${rel.distance} ${rel.distance === 1 ? t('relationshipSearch.step') : t('relationshipSearch.steps')} ${t('relationshipSearch.apart')}`;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-indigo-50 border-b border-indigo-100 px-5 py-4">
         <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-          Relationship
+          {t('relationshipSearch.relationship')}
         </p>
         <p className="text-xl font-bold text-gray-900 mt-1">{label}</p>
         <p className="text-sm text-gray-500 mt-0.5">
-          {name1} → {name2} · {rel.distance} {rel.distance === 1 ? 'step' : 'steps'}
+          {name1} → {name2} · {rel.distance} {rel.distance === 1 ? t('relationshipSearch.step') : t('relationshipSearch.steps')}
         </p>
       </div>
 
@@ -231,7 +235,7 @@ function RelationshipResult({
       {rel.path.length > 0 && (
         <div className="px-5 py-5 border-b border-gray-100">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-            Connection path
+            {t('relationshipSearch.connectionPath')}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {rel.path.map((step, i) => (
@@ -259,7 +263,7 @@ function RelationshipResult({
       {rel.path.length > 0 && (
         <div className="px-5 py-6">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">
-            Family tree structure
+            {t('relationshipSearch.familyTreeStructure')}
           </p>
           <RelationshipTreeView path={rel.path} edgeLabels={rel.edge_labels ?? []} />
         </div>
@@ -270,12 +274,12 @@ function RelationshipResult({
 
 // ── Tree structure visualization ───────────────────────────────────────────────
 
-const EDGE_STYLE: Record<string, { color: string; icon: string; label: string }> = {
-  parent:  { color: '#6366f1', icon: '↑', label: 'parent of' },
-  child:   { color: '#10b981', icon: '↓', label: 'child of'  },
-  spouse:  { color: '#8b5cf6', icon: '♦', label: 'spouse'    },
-  sibling: { color: '#f59e0b', icon: '↔', label: 'sibling'   },
-  relative:{ color: '#9ca3af', icon: '→', label: 'relative'  },
+const EDGE_STYLE_BASE: Record<string, { color: string; icon: string; labelKey: string }> = {
+  parent:  { color: '#6366f1', icon: '↑', labelKey: 'relationshipSearch.parentOf' },
+  child:   { color: '#10b981', icon: '↓', labelKey: 'relationshipSearch.childOf'  },
+  spouse:  { color: '#8b5cf6', icon: '♦', labelKey: 'relationshipSearch.spouse'    },
+  sibling: { color: '#f59e0b', icon: '↔', labelKey: 'relationshipSearch.sibling'   },
+  relative:{ color: '#9ca3af', icon: '→', labelKey: 'relationshipSearch.relative'  },
 };
 
 function PersonBubble({
@@ -285,6 +289,7 @@ function PersonBubble({
   step: PathStep;
   highlight?: 'start' | 'end' | 'ancestor' | 'none';
 }) {
+  const { t } = useTranslation();
   const styles = {
     start:    { wrap: 'bg-indigo-50 border-indigo-300',   avatar: 'bg-indigo-200 text-indigo-800',   text: 'text-indigo-800'  },
     end:      { wrap: 'bg-emerald-50 border-emerald-300', avatar: 'bg-emerald-200 text-emerald-800', text: 'text-emerald-800' },
@@ -301,7 +306,7 @@ function PersonBubble({
       <span className={`text-sm font-medium whitespace-nowrap ${s.text}`}>{step.name}</span>
       {highlight === 'ancestor' && (
         <span className="text-[10px] font-semibold text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded ml-1">
-          common ancestor
+          {t('relationshipSearch.commonAncestor')}
         </span>
       )}
     </div>
@@ -309,13 +314,14 @@ function PersonBubble({
 }
 
 function BranchConnector({ label }: { label: string }) {
-  const e = EDGE_STYLE[label] ?? EDGE_STYLE.relative;
+  const { t } = useTranslation();
+  const e = EDGE_STYLE_BASE[label] ?? EDGE_STYLE_BASE.relative;
   return (
     <div className="flex flex-col items-center" style={{ gap: 2 }}>
       <div className="w-px h-3 bg-gray-300" />
       <div className="flex items-center gap-1">
         <span style={{ color: e.color, fontSize: 13, lineHeight: 1 }}>{e.icon}</span>
-        <span className="text-[10px] text-gray-400">{e.label}</span>
+        <span className="text-[10px] text-gray-400">{t(e.labelKey)}</span>
       </div>
       <div className="w-px h-3 bg-gray-300" />
     </div>
@@ -329,6 +335,7 @@ function RelationshipTreeView({
   path: PathStep[];
   edgeLabels: string[];
 }) {
+  const { t } = useTranslation();
   if (path.length === 0) return null;
 
   if (path.length === 1) {
@@ -355,12 +362,12 @@ function RelationshipTreeView({
 
   // ── Direct spouse / sibling (2 people, same generation) ──────────────────
   if (path.length === 2 && minGen === 0) {
-    const e = EDGE_STYLE[edgeLabels[0]] ?? EDGE_STYLE.relative;
+    const e = EDGE_STYLE_BASE[edgeLabels[0]] ?? EDGE_STYLE_BASE.relative;
     return (
       <div className="flex items-center justify-center gap-4">
         <PersonBubble step={path[0]} highlight="start" />
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[10px] text-gray-400">{e.label}</span>
+          <span className="text-[10px] text-gray-400">{t(e.labelKey)}</span>
           <span style={{ color: e.color, fontSize: 20 }}>{e.icon}</span>
         </div>
         <PersonBubble step={path[1]} highlight="end" />
@@ -454,7 +461,7 @@ function RelationshipTreeView({
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function personName(hit: PersonHit): string {
-  return [hit.given_name, hit.surname].filter(Boolean).join(' ') || 'Unknown';
+  return [hit.given_name, hit.surname].filter(Boolean).join(' ') || '?';
 }
 
 function Spinner() {

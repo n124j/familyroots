@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
@@ -14,6 +15,7 @@ export function AccessRequestModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const [role, setRole] = useState<'EDITOR' | 'ADMIN'>('EDITOR');
   const [message, setMessage] = useState('');
@@ -49,9 +51,9 @@ export function AccessRequestModal({
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 pt-5 pb-2">
-          <h2 className="text-lg font-semibold text-gray-900">Request Access</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('accessRequest.title')}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Request elevated access to <span className="font-medium">{treeName}</span>
+            {t('accessRequest.requestElevated')} <span className="font-medium">{treeName}</span>
           </p>
         </div>
 
@@ -62,13 +64,13 @@ export function AccessRequestModal({
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <p className="text-sm font-medium text-gray-900">Request sent!</p>
-            <p className="text-xs text-gray-500 mt-1">The tree owner will be notified.</p>
+            <p className="text-sm font-medium text-gray-900">{t('accessRequest.sent')}</p>
+            <p className="text-xs text-gray-500 mt-1">{t('accessRequest.sentDesc')}</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="px-6 pb-2">
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Requested role</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('accessRequest.requestedRole')}</label>
               <div className="flex gap-3">
                 {(['EDITOR', 'ADMIN'] as const).map((r) => (
                   <label key={r} className="flex items-center gap-2 cursor-pointer">
@@ -80,12 +82,12 @@ export function AccessRequestModal({
                       onChange={() => setRole(r)}
                       className="text-brand-500 focus:ring-brand-500"
                     />
-                    <span className="text-sm text-gray-700">{r === 'EDITOR' ? 'Editor' : 'Admin'}</span>
+                    <span className="text-sm text-gray-700">{t(`roles.${r}`)}</span>
                   </label>
                 ))}
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                {role === 'EDITOR' ? 'Can add and edit family members' : 'Can manage members and all tree settings'}
+                {role === 'EDITOR' ? t('accessRequest.editorDesc') : t('accessRequest.adminDesc')}
               </p>
             </div>
 

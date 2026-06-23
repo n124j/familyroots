@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { useMaintenanceStore } from '@store/maintenance.store';
 import { usePortalThemeStore } from '@store/portalTheme.store';
@@ -31,6 +32,7 @@ function NotificationItem({
   onUpdate: (id: string, patch: Partial<Notification>) => void;
   onRemove: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -87,28 +89,28 @@ function NotificationItem({
                 disabled={accepting}
                 className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
               >
-                {accepting ? 'Accepting…' : 'Accept'}
+                {accepting ? t('notif.accepting') : t('notif.accept')}
               </button>
               <button
                 onClick={handleDecline}
                 className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               >
-                Decline
+                {t('notif.decline')}
               </button>
             </div>
           )}
           {n.type === 'TREE_INVITE' && accepted && (
-            <p className="text-xs text-green-600 mt-1 font-medium">Accepted — opening tree…</p>
+            <p className="text-xs text-green-600 mt-1 font-medium">{t('notif.acceptedOpening')}</p>
           )}
           {n.type === 'TREE_INVITE' && declined && (
-            <p className="text-xs text-gray-400 mt-1">Invitation declined</p>
+            <p className="text-xs text-gray-400 mt-1">{t('notif.invitationDeclined')}</p>
           )}
           {n.type === 'TREE_SHARED' && n.data.tree_id && (
             <button
               onClick={() => navigate(`/trees/${n.data.tree_id}`)}
               className="mt-2 text-xs font-medium text-brand-600 hover:underline"
             >
-              View tree →
+              {t('common.viewTreeArrow')}
             </button>
           )}
 
@@ -134,7 +136,7 @@ function NotificationItem({
                 disabled={accepting}
                 className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
               >
-                {accepting ? 'Approving…' : 'Approve'}
+                {accepting ? t('notif.approving') : t('common.approve')}
               </button>
               <button
                 onClick={async () => {
@@ -149,7 +151,7 @@ function NotificationItem({
                 }}
                 className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               >
-                Deny
+                {t('common.deny')}
               </button>
             </div>
           )}
@@ -176,7 +178,7 @@ function NotificationItem({
                 disabled={accepting}
                 className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
               >
-                {accepting ? 'Approving…' : 'Approve Merge'}
+                {accepting ? t('notif.approving') : t('notif.approveMerge')}
               </button>
               <button
                 onClick={async () => {
@@ -191,7 +193,7 @@ function NotificationItem({
                 }}
                 className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               >
-                Deny
+                {t('common.deny')}
               </button>
             </div>
           )}
@@ -202,7 +204,7 @@ function NotificationItem({
               onClick={() => navigate(`/trees/${n.data.tree_id}`)}
               className="mt-2 text-xs font-medium text-brand-600 hover:underline"
             >
-              View tree →
+              {t('common.viewTreeArrow')}
             </button>
           )}
           {n.type === 'MERGE_APPROVED' && n.data.merged_tree_id && (
@@ -210,7 +212,7 @@ function NotificationItem({
               onClick={() => navigate(`/trees/${n.data.merged_tree_id}`)}
               className="mt-2 ml-3 text-xs font-medium text-brand-600 hover:underline"
             >
-              Open merged tree →
+              {t('notif.openMergedTree')}
             </button>
           )}
         </div>
@@ -220,6 +222,7 @@ function NotificationItem({
 }
 
 function MaintenanceBanner() {
+  const { t } = useTranslation();
   const isMaintenanceMode = useMaintenanceStore((s) => s.isMaintenanceMode);
   const setMaintenance    = useMaintenanceStore((s) => s.setMaintenance);
   const user              = useAuthStore((s) => s.user);
@@ -250,19 +253,19 @@ function MaintenanceBanner() {
 
   return (
     <div className="bg-amber-500 text-white text-sm font-medium py-1.5 px-4 flex items-center justify-center gap-3">
-      <span>Site is currently in Under Construction mode. Only you (Super Admin) can access it.</span>
+      <span>{t('maintenance.banner')}</span>
       <button
         onClick={handleGoLive}
         disabled={disabling}
         className="px-3 py-0.5 bg-white text-amber-600 text-xs font-semibold rounded-full hover:bg-amber-50 disabled:opacity-50 transition-colors"
       >
-        {disabling ? 'Disabling…' : 'Go Live'}
+        {disabling ? t('maintenance.disabling') : t('maintenance.goLive')}
       </button>
       <a
         href="/admin"
         className="px-3 py-0.5 border border-white/60 text-white text-xs font-semibold rounded-full hover:bg-white/10 transition-colors"
       >
-        Site Settings
+        {t('maintenance.siteSettings')}
       </a>
     </div>
   );
@@ -456,6 +459,8 @@ export default function AppShell() {
     }
   }
 
+  const { t } = useTranslation();
+
   const bellButton = (
     <div ref={bellRef} className="relative">
       <button
@@ -480,7 +485,7 @@ export default function AppShell() {
       {notifOpen && (
         <div className="absolute left-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-[200] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-900">Notifications</span>
+            <span className="text-sm font-semibold text-gray-900">{t('nav.notifications')}</span>
             {notifications.some(n => !n.is_read) && (
               <button
                 onClick={async () => {
@@ -494,7 +499,7 @@ export default function AppShell() {
                 }}
                 className="text-xs text-brand-600 hover:underline"
               >
-                Mark all as read
+                {t('nav.markAllRead')}
               </button>
             )}
           </div>
@@ -504,7 +509,7 @@ export default function AppShell() {
                 <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : notifications.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8">No notifications yet</p>
+              <p className="text-sm text-gray-500 text-center py-8">{t('nav.noNotificationsYet')}</p>
             ) : (
               notifications.map((n) => (
                 <NotificationItem
@@ -537,13 +542,13 @@ export default function AppShell() {
   const isAdmin    = user?.appRole === 'ADMIN' || user?.appRole === 'SUPER_ADMIN';
 
   const nav = [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/search',    label: 'Search' },
-    { to: '/discover',  label: 'Discover' },
-    { to: '/reports',   label: 'Reports' },
-    ...(isElevated ? [{ to: '/activity', label: 'Activity' }] : []),
-    ...(isAdmin    ? [{ to: '/admin',    label: 'Admin Dashboard' }] : []),
-    { to: '/settings',  label: 'Settings' },
+    { to: '/dashboard', label: t('nav.dashboard') },
+    { to: '/search',    label: t('nav.search') },
+    { to: '/discover',  label: t('nav.discover') },
+    { to: '/reports',   label: t('nav.reports') },
+    ...(isElevated ? [{ to: '/activity', label: t('nav.activity') }] : []),
+    ...(isAdmin    ? [{ to: '/admin',    label: t('nav.adminDashboard') }] : []),
+    { to: '/settings',  label: t('nav.settings') },
   ];
 
   const sidebarContent = (
@@ -626,7 +631,7 @@ export default function AppShell() {
           className="w-full text-left text-xs px-2 py-1 rounded disabled:opacity-50 hover:underline"
           style={{ color: 'var(--portal-nav-text)' }}
         >
-          {loggingOut ? 'Signing out…' : 'Sign out'}
+          {loggingOut ? t('nav.signingOut') : t('nav.signOut')}
         </button>
       </div>
     </>
@@ -742,24 +747,24 @@ export default function AppShell() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to FamilyRoots!</h2>
-            <p className="text-gray-500 text-sm leading-relaxed mb-6">
-              We're glad you're here. FamilyRoots helps you build, share, and explore your family tree.
-              <br /><br />
-              Not sure where to start? Head over to the <strong className="text-gray-700">Help</strong> section — it covers everything from creating your first tree to sharing it with family members.
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('welcome.title')}</h2>
+            <p className="text-gray-500 text-sm leading-relaxed mb-2">
+              {t('welcome.body')}
             </p>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6"
+              dangerouslySetInnerHTML={{ __html: t('welcome.helpHint') }} />
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <button
                 onClick={() => { dismissWelcome(); navigate('/help'); }}
                 className="flex-1 px-4 py-2.5 bg-brand-500 text-white text-sm font-semibold rounded-xl hover:bg-brand-600 transition-colors"
               >
-                Go to Help
+                {t('welcome.goToHelp')}
               </button>
               <button
                 onClick={dismissWelcome}
                 className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-colors"
               >
-                I'll explore on my own
+                {t('welcome.explore')}
               </button>
             </div>
           </div>

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
-function StrengthBar({ password }: { password: string }) {
+function StrengthBar({ password, t }: { password: string; t: (key: string) => string }) {
   const hasLength  = password.length >= 8;
   const hasUpper   = /[A-Z]/.test(password);
   const hasDigit   = /[0-9]/.test(password);
   const score      = [hasLength, hasUpper, hasDigit].filter(Boolean).length;
   const colors     = ['', 'bg-red-400', 'bg-amber-400', 'bg-green-500'];
-  const labels     = ['', 'Weak', 'Almost', 'Strong'];
+  const labels     = ['', t('resetPasswordPage.weak'), t('resetPasswordPage.almost'), t('resetPasswordPage.strong')];
 
   if (!password) return null;
   return (
@@ -24,7 +25,7 @@ function StrengthBar({ password }: { password: string }) {
         {labels[score]}
         {score < 3 && (
           <span className="ml-1 text-slate-400">
-            · needs {[!hasLength && '8+ chars', !hasUpper && 'uppercase', !hasDigit && 'a number'].filter(Boolean).join(', ')}
+            · {t('resetPasswordPage.needs')} {[!hasLength && t('resetPasswordPage.chars8'), !hasUpper && t('resetPasswordPage.uppercase'), !hasDigit && t('resetPasswordPage.aNumber')].filter(Boolean).join(', ')}
           </span>
         )}
       </p>
@@ -33,6 +34,7 @@ function StrengthBar({ password }: { password: string }) {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const [searchParams]  = useSearchParams();
   const navigate        = useNavigate();
   const token           = searchParams.get('token') ?? '';
@@ -48,8 +50,8 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password !== confirm) { setError('Passwords do not match.'); return; }
-    if (!isStrong) { setError('Password does not meet the requirements.'); return; }
+    if (password !== confirm) { setError(t('resetPasswordPage.passwordsNoMatch')); return; }
+    if (!isStrong) { setError(t('resetPasswordPage.requirementsNotMet')); return; }
     setError('');
     setLoading(true);
     try {
@@ -62,9 +64,9 @@ export default function ResetPasswordPage() {
         const err = await res.json().catch(() => ({}));
         const type = String((err as any).type ?? '');
         if (type.includes('token-expired'))
-          throw new Error('This reset link has expired. Please request a new one.');
+          throw new Error(t('resetPasswordPage.linkExpired'));
         if (type.includes('token-invalid'))
-          throw new Error('This reset link is invalid or has already been used.');
+          throw new Error(t('resetPasswordPage.linkInvalid'));
         throw new Error((err as any).detail ?? 'Something went wrong. Please try again.');
       }
       setDone(true);
@@ -82,14 +84,14 @@ export default function ResetPasswordPage() {
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <div className="text-3xl mb-2">🌳</div>
-            <h1 className="text-2xl font-bold text-slate-900">FamilyRoots</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('common.appName')}</h1>
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7 text-center space-y-3">
             <div className="text-4xl">🔗</div>
-            <p className="text-sm font-medium text-slate-800">Invalid reset link</p>
-            <p className="text-sm text-slate-500">This link is missing a reset token. Please use the link from your email.</p>
+            <p className="text-sm font-medium text-slate-800">{t('resetPasswordPage.invalidLink')}</p>
+            <p className="text-sm text-slate-500">{t('resetPasswordPage.invalidLinkDesc')}</p>
             <Link to="/forgot-password" className="inline-block text-sm text-brand-600 font-medium hover:text-brand-700">
-              Request a new link
+              {t('resetPasswordPage.requestNewLink')}
             </Link>
           </div>
         </div>
@@ -100,7 +102,7 @@ export default function ResetPasswordPage() {
   return (
     <>
       <SEO
-        title="Reset Password"
+        title={t('resetPasswordPage.title')}
         description="Create a new secure password for your FamilyRoots account."
         noIndex
       />
@@ -108,28 +110,28 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-3xl mb-2">🌳</div>
-          <h1 className="text-2xl font-bold text-slate-900">FamilyRoots</h1>
-          <p className="text-sm text-slate-500 mt-1">Set a new password</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('common.appName')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('resetPasswordPage.setNewPassword')}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
           {done ? (
             <div className="text-center space-y-3">
               <div className="text-4xl">✅</div>
-              <p className="text-sm font-medium text-slate-800">Password updated!</p>
-              <p className="text-sm text-slate-500">Redirecting you to sign in…</p>
+              <p className="text-sm font-medium text-slate-800">{t('resetPasswordPage.passwordUpdated')}</p>
+              <p className="text-sm text-slate-500">{t('resetPasswordPage.redirecting')}</p>
               <Link to="/login" className="inline-block text-sm text-brand-600 font-medium hover:text-brand-700">
-                Sign in now
+                {t('resetPasswordPage.signInNow')}
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm text-slate-500">
-                Choose a strong password — at least 8 characters with an uppercase letter and a number.
+                {t('resetPasswordPage.chooseStrong')}
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">New password</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('resetPasswordPage.newPassword')}</label>
                 <input
                   type="password"
                   autoComplete="new-password"
@@ -140,11 +142,11 @@ export default function ResetPasswordPage() {
                   className="w-full h-10 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   placeholder="8+ chars, uppercase &amp; digit"
                 />
-                <StrengthBar password={password} />
+                <StrengthBar password={password} t={t} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm password</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('resetPasswordPage.confirmPassword')}</label>
                 <input
                   type="password"
                   autoComplete="new-password"
@@ -157,7 +159,7 @@ export default function ResetPasswordPage() {
                   placeholder="Re-enter password"
                 />
                 {!passwordsMatch && (
-                  <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+                  <p className="mt-1 text-xs text-red-500">{t('resetPasswordPage.passwordsNoMatch')}</p>
                 )}
               </div>
 
@@ -166,7 +168,7 @@ export default function ResetPasswordPage() {
                   {error}
                   {(error.includes('expired') || error.includes('invalid')) && (
                     <span className="block mt-1">
-                      <Link to="/forgot-password" className="underline font-medium">Request a new link</Link>
+                      <Link to="/forgot-password" className="underline font-medium">{t('resetPasswordPage.requestNewLink')}</Link>
                     </span>
                   )}
                 </div>
@@ -177,14 +179,14 @@ export default function ResetPasswordPage() {
                 disabled={loading || !isStrong || !passwordsMatch || !confirm}
                 className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? 'Updating…' : 'Set new password'}
+                {loading ? t('resetPasswordPage.updating') : t('resetPasswordPage.setPassword')}
               </button>
             </form>
           )}
         </div>
 
         <p className="text-center text-sm text-slate-500 mt-5">
-          <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">Back to sign in</Link>
+          <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">{t('forgotPasswordPage.backToSignIn')}</Link>
         </p>
       </div>
     </div>

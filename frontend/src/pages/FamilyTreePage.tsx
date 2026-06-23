@@ -6,6 +6,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TreeCanvas, type TreeCanvasHandle } from '@features/tree/canvas/TreeCanvas';
@@ -125,6 +126,7 @@ function PersonFormFields({
   autoFocus?: boolean;
   givenNameRef?: React.Ref<HTMLInputElement>;
 }) {
+  const { t } = useTranslation();
   const [showExtra, setShowExtra] = React.useState(false);
 
   return (
@@ -132,7 +134,7 @@ function PersonFormFields({
       {/* ── Core fields (always visible) ── */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">First name</label>
+          <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.firstName')}</label>
           <input
             ref={givenNameRef}
             autoFocus={autoFocus}
@@ -143,7 +145,7 @@ function PersonFormFields({
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Last name</label>
+          <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.lastName')}</label>
           <input
             value={values.surname}
             onChange={(e) => onChange({ ...values, surname: e.target.value })}
@@ -153,16 +155,16 @@ function PersonFormFields({
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-slate-600 mb-1 block">Sex</label>
+        <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.sex')}</label>
         <select
           value={values.sex}
           onChange={(e) => onChange({ ...values, sex: e.target.value })}
           className="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
         >
-          <option value="UNKNOWN">Unknown</option>
-          <option value="MALE">Male</option>
-          <option value="FEMALE">Female</option>
-          <option value="OTHER">Other</option>
+          <option value="UNKNOWN">{t('treeForm.unknown')}</option>
+          <option value="MALE">{t('treeForm.male')}</option>
+          <option value="FEMALE">{t('treeForm.female')}</option>
+          <option value="OTHER">{t('treeForm.other')}</option>
         </select>
       </div>
       <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
@@ -172,7 +174,7 @@ function PersonFormFields({
           onChange={(e) => onChange({ ...values, isLiving: e.target.checked })}
           className="rounded border-slate-300"
         />
-        Currently living
+        {t('treeForm.living')}
       </label>
 
       {/* ── More details (collapsed by default) ── */}
@@ -182,7 +184,7 @@ function PersonFormFields({
           onClick={() => setShowExtra((v) => !v)}
           className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-slate-500 hover:bg-slate-50 transition-colors"
         >
-          <span>More details <span className="text-slate-400 font-normal">(optional)</span></span>
+          <span>{t('treeForm.moreDetails')} <span className="text-slate-400 font-normal">({t('treeForm.optional')})</span></span>
           <span className="text-slate-400 text-[10px]">{showExtra ? '▲ less' : '▼ more'}</span>
         </button>
 
@@ -192,7 +194,7 @@ function PersonFormFields({
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Life dates</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Birth date</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.birthDate')}</label>
                 <input
                   type="date"
                   value={values.birthDate}
@@ -201,7 +203,7 @@ function PersonFormFields({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Birth year only</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.birthYear')}</label>
                 <input
                   type="number"
                   min={1}
@@ -213,7 +215,7 @@ function PersonFormFields({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Death date</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.deathDate')}</label>
                 <input
                   type="date"
                   value={values.deathDate}
@@ -222,7 +224,7 @@ function PersonFormFields({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Death year only</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.deathYear')}</label>
                 <input
                   type="number"
                   min={1}
@@ -247,10 +249,10 @@ function PersonFormFields({
             })()}
 
             {/* Born location */}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Born location</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">{t('treeForm.bornCity')}</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Born city</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.bornCity')}</label>
                 <input
                   type="text"
                   placeholder="e.g. London"
@@ -260,7 +262,7 @@ function PersonFormFields({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Born country</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.bornCountry')}</label>
                 <input
                   type="text"
                   placeholder="e.g. United Kingdom"
@@ -272,10 +274,10 @@ function PersonFormFields({
             </div>
 
             {/* Died/Buried location */}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Died / Buried location</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">{t('treeForm.diedCity')}</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Died/Buried city</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.diedCity')}</label>
                 <input
                   type="text"
                   placeholder="e.g. Manchester"
@@ -285,7 +287,7 @@ function PersonFormFields({
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Died/Buried country</label>
+                <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.diedCountry')}</label>
                 <input
                   type="text"
                   placeholder="e.g. United Kingdom"
@@ -297,7 +299,7 @@ function PersonFormFields({
             </div>
 
             {/* Notes */}
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Notes</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">{t('treeForm.notes')}</p>
             <div>
               <textarea
                 placeholder="Add notes about this person (max 250 characters)"
@@ -325,6 +327,7 @@ interface AddPersonModalProps {
 }
 
 function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps) {
+  const { t } = useTranslation();
   const [fields,  setFields]  = useState<PersonFields>(EMPTY_FIELDS);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
@@ -354,18 +357,18 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="font-bold text-slate-900 mb-4">Add person</h2>
+        <h2 className="font-bold text-slate-900 mb-4">{t('treeForm.addPerson')}</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <PersonFormFields values={fields} onChange={setFields} autoFocus givenNameRef={givenNameRef} />
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-              Cancel
+              {t('treeForm.cancel')}
             </button>
             <button type="submit" disabled={loading}
               className="flex-1 h-9 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50">
-              {loading ? 'Adding…' : 'Add person'}
+              {loading ? 'Adding…' : t('treeForm.addPerson')}
             </button>
           </div>
         </form>
@@ -378,19 +381,19 @@ function AddPersonModal({ treeId, token, onClose, onAdded }: AddPersonModalProps
 
 type RelationMode = 'parent' | 'child' | 'spouse' | 'bothParents';
 
-const RELATION_CONFIG: Record<'parent' | 'child' | 'spouse', { label: string; linkBody: (id: string) => Record<string, unknown>; linkPath: (anchor: string) => string }> = {
+const RELATION_CONFIG: Record<'parent' | 'child' | 'spouse', { labelKey: string; linkBody: (id: string) => Record<string, unknown>; linkPath: (anchor: string) => string }> = {
   parent: {
-    label: 'Add Parent',
+    labelKey: 'treeForm.addParent',
     linkPath: (anchor) => `parents`,
     linkBody: (newId) => ({ parent_id: newId, parentage_type: 'BIOLOGICAL', union_type: 'UNKNOWN' }),
   },
   child: {
-    label: 'Add Child',
+    labelKey: 'treeForm.addChild',
     linkPath: (anchor) => `children`,
     linkBody: (newId) => ({ child_id: newId, parentage_type: 'BIOLOGICAL', union_type: 'UNKNOWN' }),
   },
   spouse: {
-    label: 'Add Spouse',
+    labelKey: 'treeForm.addSpouse',
     linkPath: (anchor) => `spouses`,
     linkBody: (newId) => ({ spouse_id: newId, union_type: 'MARRIAGE' }),
   },
@@ -417,6 +420,7 @@ const SEX_INITIAL_COLOR: Record<string, string> = {
 function AddRelationModal({
   mode, anchorPersonId, anchorName, treeId, token, candidates, onClose, onAdded,
 }: AddRelationModalProps) {
+  const { t } = useTranslation();
   const [inputMode,     setInputMode]     = useState<'new' | 'existing'>('new');
   const [fields,        setFields]        = useState<PersonFields>(EMPTY_FIELDS);
   const [search,        setSearch]        = useState('');
@@ -427,6 +431,7 @@ function AddRelationModal({
   const givenNameRef = React.useRef<HTMLInputElement>(null);
 
   const cfg = RELATION_CONFIG[mode];
+  const cfgLabel = t(cfg.labelKey);
 
   async function link(personId: string, force = false) {
     const suffix = force ? '?force=true' : '';
@@ -481,7 +486,7 @@ function AddRelationModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="font-bold text-slate-900 mb-0.5">{cfg.label}</h2>
+        <h2 className="font-bold text-slate-900 mb-0.5">{cfgLabel}</h2>
         {anchorName && <p className="text-xs text-slate-400 mb-4">for {anchorName}</p>}
 
         {/* Mode toggle */}
@@ -495,7 +500,7 @@ function AddRelationModal({
                 inputMode === m ? 'bg-brand-500 text-white' : 'text-slate-500 hover:bg-slate-50'
               }`}
             >
-              {m === 'new' ? 'New person' : 'Existing member'}
+              {m === 'new' ? t('treeForm.createNew') : t('treeForm.selectExisting')}
             </button>
           ))}
         </div>
@@ -505,17 +510,17 @@ function AddRelationModal({
             <PersonFormFields values={fields} onChange={setFields} autoFocus givenNameRef={givenNameRef} />
             {mode === 'child' && (
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('treeForm.parentage')}</label>
                 <select
                   value={parentageType}
                   onChange={(e) => setParentageType(e.target.value)}
                   className="w-full h-9 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  <option value="BIOLOGICAL">Biological</option>
-                  <option value="ADOPTIVE">Adopted</option>
-                  <option value="STEP">Step</option>
-                  <option value="FOSTER">Foster</option>
-                  <option value="UNKNOWN">Unknown</option>
+                  <option value="BIOLOGICAL">{t('treeForm.biological')}</option>
+                  <option value="ADOPTIVE">{t('treeForm.adopted')}</option>
+                  <option value="STEP">{t('treeForm.step')}</option>
+                  <option value="FOSTER">{t('treeForm.foster')}</option>
+                  <option value="UNKNOWN">{t('treeForm.unknown')}</option>
                 </select>
               </div>
             )}
@@ -523,11 +528,11 @@ function AddRelationModal({
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
                 className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-                Cancel
+                {t('treeForm.cancel')}
               </button>
               <button type="submit" disabled={loading}
                 className="flex-1 h-9 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50">
-                {loading ? 'Adding…' : cfg.label}
+                {loading ? 'Adding…' : cfgLabel}
               </button>
             </div>
           </form>
@@ -544,11 +549,11 @@ function AddRelationModal({
             <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <p className="px-3 py-4 text-xs text-slate-400 text-center">
-                  {candidates.length === 0 ? 'No other members in this tree' : 'No matches'}
+                  {candidates.length === 0 ? t('treeForm.noOtherMembers') : t('treeForm.noMatches')}
                 </p>
               )}
               {filtered.map((p) => {
-                const name = `${p.displayGivenName} ${p.displaySurname}`.trim() || 'Unknown';
+                const name = `${p.displayGivenName} ${p.displaySurname}`.trim() || t('treeForm.unknown');
                 const isSelected = selectedId === p.id;
                 return (
                   <button
@@ -577,17 +582,17 @@ function AddRelationModal({
             </div>
             {mode === 'child' && (
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{t('treeForm.parentage')}</label>
                 <select
                   value={parentageType}
                   onChange={(e) => setParentageType(e.target.value)}
                   className="w-full h-9 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  <option value="BIOLOGICAL">Biological</option>
-                  <option value="ADOPTIVE">Adopted</option>
-                  <option value="STEP">Step</option>
-                  <option value="FOSTER">Foster</option>
-                  <option value="UNKNOWN">Unknown</option>
+                  <option value="BIOLOGICAL">{t('treeForm.biological')}</option>
+                  <option value="ADOPTIVE">{t('treeForm.adopted')}</option>
+                  <option value="STEP">{t('treeForm.step')}</option>
+                  <option value="FOSTER">{t('treeForm.foster')}</option>
+                  <option value="UNKNOWN">{t('treeForm.unknown')}</option>
                 </select>
               </div>
             )}
@@ -600,7 +605,7 @@ function AddRelationModal({
             <div className="flex gap-2">
               <button type="button" onClick={onClose}
                 className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-                Cancel
+                {t('treeForm.cancel')}
               </button>
               <button
                 type="button"
@@ -703,6 +708,7 @@ function PersonPicker({
 function AddBothParentsModal({
   anchorPersonId, anchorName, anchorHasParents, treeId, token, candidates, familyGroups, onClose, onAdded,
 }: AddBothParentsModalProps) {
+  const { t } = useTranslation();
   const [fatherSearch, setFatherSearch] = useState('');
   const [motherSearch, setMotherSearch] = useState('');
   const [fatherId,     setFatherId]     = useState<string | null>(null);
@@ -802,7 +808,7 @@ function AddBothParentsModal({
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
         <div>
-          <h2 className="font-bold text-slate-900">Add Father & Mother</h2>
+          <h2 className="font-bold text-slate-900">{t('treeForm.addFatherMother')}</h2>
           {anchorName && <p className="text-xs text-slate-400 mt-0.5">for {anchorName}</p>}
         </div>
 
@@ -845,7 +851,7 @@ function AddBothParentsModal({
         <div className="flex gap-2 pt-1">
           <button type="button" onClick={onClose}
             className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-            Cancel
+            {t('treeForm.cancel')}
           </button>
           <button
             type="button"
@@ -889,6 +895,7 @@ function AddChildToUnionModal({
   fgId, parent1Id, parent2Id, parent1Name, parent2Name,
   treeId, token, candidates, onClose, onAdded, onRemoved,
 }: AddChildToUnionModalProps) {
+  const { t } = useTranslation();
   const [mode,          setMode]          = useState<'new' | 'existing'>('new');
   const [fields,        setFields]        = useState<PersonFields>(EMPTY_FIELDS);
   const [search,        setSearch]        = useState('');
@@ -977,7 +984,7 @@ function AddChildToUnionModal({
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <div className="flex items-start justify-between mb-0.5">
-          <h2 className="font-bold text-slate-900">Add Child</h2>
+          <h2 className="font-bold text-slate-900">{t('treeForm.addChild')}</h2>
           <button
             type="button"
             onClick={() => setConfirmRemove(true)}
@@ -1002,7 +1009,7 @@ function AddChildToUnionModal({
                   : 'text-slate-500 hover:bg-slate-50'
               }`}
             >
-              {m === 'new' ? 'New person' : 'Existing person'}
+              {m === 'new' ? t('treeForm.createNew') : t('treeForm.selectExisting')}
             </button>
           ))}
         </div>
@@ -1038,17 +1045,17 @@ function AddChildToUnionModal({
 
         {/* Parentage type (shared across both tabs) */}
         <div className="mb-4">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Parentage type</label>
+          <label className="block text-xs font-medium text-slate-600 mb-1">{t('treeForm.parentage')}</label>
           <select
             value={parentageType}
             onChange={(e) => setParentageType(e.target.value)}
             className="w-full h-9 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
-            <option value="BIOLOGICAL">Biological</option>
-            <option value="ADOPTIVE">Adopted</option>
-            <option value="STEP">Step</option>
-            <option value="FOSTER">Foster</option>
-            <option value="UNKNOWN">Unknown</option>
+            <option value="BIOLOGICAL">{t('treeForm.biological')}</option>
+            <option value="ADOPTIVE">{t('treeForm.adopted')}</option>
+            <option value="STEP">{t('treeForm.step')}</option>
+            <option value="FOSTER">{t('treeForm.foster')}</option>
+            <option value="UNKNOWN">{t('treeForm.unknown')}</option>
           </select>
         </div>
 
@@ -1059,11 +1066,11 @@ function AddChildToUnionModal({
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
                 className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-                Cancel
+                {t('treeForm.cancel')}
               </button>
               <button type="submit" disabled={loading}
                 className="flex-1 h-9 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50">
-                {loading ? 'Adding…' : 'Add child'}
+                {loading ? 'Adding…' : t('treeForm.addChild')}
               </button>
             </div>
           </form>
@@ -1080,7 +1087,7 @@ function AddChildToUnionModal({
             <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
               {filtered.length === 0 && (
                 <p className="px-3 py-4 text-xs text-slate-400 text-center">
-                  {candidates.length === 0 ? 'No available persons in this tree' : 'No matches'}
+                  {candidates.length === 0 ? t('treeForm.noOtherMembers') : t('treeForm.noMatches')}
                 </p>
               )}
               {filtered.map((p) => {
@@ -1123,7 +1130,7 @@ function AddChildToUnionModal({
             <div className="flex gap-2">
               <button type="button" onClick={onClose}
                 className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-                Cancel
+                {t('treeForm.cancel')}
               </button>
               <button
                 type="button"
@@ -1195,6 +1202,7 @@ interface GalleryPhoto {
 }
 
 function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, onClose, onSaved, onRefresh }: EditPersonModalProps) {
+  const { t } = useTranslation();
   const [fields,       setFields]       = useState<EditPersonFields>(initial);
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState('');
@@ -1363,7 +1371,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="font-bold text-slate-900 mb-4">Edit person</h2>
+        <h2 className="font-bold text-slate-900 mb-4">{t('treeForm.editPerson')}</h2>
 
         {/* Photo section */}
         <div className="mb-5 pb-4 border-b border-slate-100">
@@ -1395,8 +1403,8 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
               </button>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-slate-700">Profile photo</p>
-              <p className="text-xs text-slate-400 mt-0.5">JPG, PNG or WEBP · max 10 MB</p>
+              <p className="text-sm font-medium text-slate-700">{t('treeForm.profilePhoto')}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{t('treeForm.photoHint')}</p>
               <div className="flex gap-3 mt-1">
                 <button
                   type="button"
@@ -1404,7 +1412,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                   disabled={photoLoading}
                   className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50"
                 >
-                  {showPresets ? 'Hide presets' : 'Choose avatar'}
+                  {showPresets ? t('treeForm.hidePresets') : t('treeForm.chooseAvatar')}
                 </button>
                 {photoUrl && (
                   <button
@@ -1451,7 +1459,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
           {/* Gallery photos */}
           <div className="mt-3 pt-3 border-t border-slate-100">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-600">Photos <span className="text-slate-400 font-normal">({galleryPhotos.length}/3)</span></p>
+              <p className="text-xs font-medium text-slate-600">{t('treeForm.photos')} <span className="text-slate-400 font-normal">({galleryPhotos.length}/3)</span></p>
               {galleryPhotos.length < 3 && (
                 <button
                   type="button"
@@ -1459,7 +1467,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                   disabled={galleryLoading}
                   className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50"
                 >
-                  + Add photo
+                  {t('treeForm.addPhoto')}
                 </button>
               )}
             </div>
@@ -1539,7 +1547,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-slate-600 mb-1 block">First name</label>
+              <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.firstName')}</label>
               <input
                 ref={editGivenNameRef}
                 autoFocus
@@ -1550,7 +1558,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600 mb-1 block">Last name</label>
+              <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.lastName')}</label>
               <input
                 value={fields.surname}
                 onChange={(e) => setFields((f) => ({ ...f, surname: e.target.value }))}
@@ -1560,20 +1568,20 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Sex</label>
+            <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.sex')}</label>
             <select
               value={fields.sex}
               onChange={(e) => setFields((f) => ({ ...f, sex: e.target.value }))}
               className="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value="UNKNOWN">Unknown</option>
-              <option value="MALE">Male</option>
-              <option value="FEMALE">Female</option>
-              <option value="OTHER">Other</option>
+              <option value="UNKNOWN">{t('treeForm.unknown')}</option>
+              <option value="MALE">{t('treeForm.male')}</option>
+              <option value="FEMALE">{t('treeForm.female')}</option>
+              <option value="OTHER">{t('treeForm.other')}</option>
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600 mb-1 block">Status</label>
+            <label className="text-xs font-medium text-slate-600 mb-1 block">{t('treeForm.status')}</label>
             <div className="flex rounded-lg border border-slate-200 overflow-hidden">
               {(['living', 'deceased', 'unknown'] as const).map((s) => (
                 <button
@@ -1584,7 +1592,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                     fields.status === s ? 'bg-brand-500 text-white' : 'text-slate-500 hover:bg-slate-50'
                   }`}
                 >
-                  {s}
+                  {t(`treeForm.${s}`)}
                 </button>
               ))}
             </div>
@@ -1596,7 +1604,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
               onClick={() => setShowExtra((v) => !v)}
               className="flex items-center justify-between w-full px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              <span>More details</span>
+              <span>{t('treeForm.moreDetails')}</span>
               <span className="text-slate-400">{showExtra ? '▲' : '▼'}</span>
             </button>
 
@@ -1606,7 +1614,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Life dates</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Birth date</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.birthDate')}</label>
                     <input
                       type="date"
                       value={fields.birthDate}
@@ -1615,7 +1623,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Birth year only</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.birthYear')}</label>
                     <input
                       type="number"
                       min={1}
@@ -1627,7 +1635,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Death date</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.deathDate')}</label>
                     <input
                       type="date"
                       value={fields.deathDate}
@@ -1636,7 +1644,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Death year only</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.deathYear')}</label>
                     <input
                       type="number"
                       min={1}
@@ -1661,10 +1669,10 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                 })()}
 
                 {/* Born location */}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Born location</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">{t('treeForm.bornCity')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Born city</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.bornCity')}</label>
                     <input
                       type="text"
                       placeholder="e.g. London"
@@ -1674,7 +1682,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Born country</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.bornCountry')}</label>
                     <input
                       type="text"
                       placeholder="e.g. United Kingdom"
@@ -1686,10 +1694,10 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                 </div>
 
                 {/* Died/Buried location */}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Died / Buried location</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">{t('treeForm.diedCity')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Died/Buried city</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.diedCity')}</label>
                     <input
                       type="text"
                       placeholder="e.g. Manchester"
@@ -1699,7 +1707,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Died/Buried country</label>
+                    <label className="text-xs text-slate-500 mb-1 block">{t('treeForm.diedCountry')}</label>
                     <input
                       type="text"
                       placeholder="e.g. United Kingdom"
@@ -1711,7 +1719,7 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
                 </div>
 
                 {/* Notes */}
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">Notes</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-1">{t('treeForm.notes')}</p>
                 <div>
                   <textarea
                     placeholder="Add notes about this person (max 250 characters)"
@@ -1730,11 +1738,11 @@ function EditPersonModal({ personId, initial, initialPhotoUrl, treeId, token, on
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 h-9 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">
-              Cancel
+              {t('treeForm.cancel')}
             </button>
             <button type="submit" disabled={loading || photoLoading}
               className="flex-1 h-9 text-sm bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50">
-              {loading ? 'Saving…' : 'Save changes'}
+              {loading ? t('treeForm.saving') : t('treeForm.saveChanges')}
             </button>
           </div>
         </form>
@@ -1798,6 +1806,7 @@ interface PersonProfileModalProps {
 }
 
 function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: PersonProfileModalProps) {
+  const { t } = useTranslation();
   // Navigation history within the modal — allows clicking relatives to browse
   const [history, setHistory] = useState<string[]>([initialPersonId]);
   const personId = history[history.length - 1];
@@ -1815,7 +1824,7 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
     setProfileGallery([]);
     get<PersonDetailFull>(`/trees/${treeId}/persons/${personId}`)
       .then(setDetail)
-      .catch(() => setFetchErr('Failed to load profile'))
+      .catch(() => setFetchErr(t('treeForm.failedToLoadProfile')))
       .finally(() => setLoading(false));
     get<GalleryPhoto[]>(`/trees/${treeId}/persons/${personId}/gallery`)
       .then(setProfileGallery)
@@ -1868,7 +1877,8 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
           }
           const unionDateStr = unionInfo?.unionDate ? fmtDate(unionInfo.unionDate) : unionInfo?.unionDateYear != null ? String(unionInfo.unionDateYear) : null;
           const unionEndDateStr = unionInfo?.unionEndDate ? fmtDate(unionInfo.unionEndDate) : unionInfo?.unionEndDateYear != null ? String(unionInfo.unionEndDateYear) : null;
-          const unionLabel = unionInfo ? EDGE_UNION_LABEL[unionInfo.unionType] ?? 'Union' : null;
+          const unionLabelMap: Record<string, string> = { MARRIAGE: t('treeForm.marriageLabel'), PARTNERSHIP: t('treeForm.partnershipLabel'), COHABITATION: t('treeForm.cohabitation'), UNKNOWN: t('treeForm.union') };
+          const unionLabel = unionInfo ? unionLabelMap[unionInfo.unionType] ?? t('treeForm.union') : null;
           return (
             <button
               key={id}
@@ -1892,7 +1902,7 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                 {unionInfo && (unionDateStr || unionEndDateStr || unionInfo.isDivorced) && (
                   <span className="text-[10px] text-gray-400 block truncate">
                     {unionLabel}
-                    {unionInfo.isDivorced ? ' (Divorced)' : ''}
+                    {unionInfo.isDivorced ? ` (${t('treeForm.divorced')})` : ''}
                     {unionDateStr ? ` · ${unionDateStr}` : ''}
                     {unionEndDateStr ? ` – ${unionEndDateStr}` : ''}
                   </span>
@@ -1965,12 +1975,12 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                   <h2 className="text-lg font-bold text-gray-900 leading-tight break-words">{fullName}</h2>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badgeCls}`}>
-                      {PROFILE_SEX_LABEL[detail.sex] ?? detail.sex}
+                      {t('treeForm.' + detail.sex.toLowerCase()) ?? detail.sex}
                     </span>
                     {detail.is_deceased ? (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Deceased</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{t('treeForm.deceased')}</span>
                     ) : detail.is_living ? (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Living</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">{t('treeForm.living')}</span>
                     ) : null}
                   </div>
                 </div>
@@ -2016,7 +2026,7 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                   {(detail.birth_date || detail.birth_year) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-green-500 shrink-0">●</span>
-                      <span className="text-xs text-gray-400 w-12 shrink-0">Born</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">{t('treeForm.born')}</span>
                       <span className="text-gray-800">
                         {detail.birth_date ? fmtDate(detail.birth_date) : detail.birth_year}
                       </span>
@@ -2025,30 +2035,30 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
                   {(detail.born_city || detail.born_country) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-xs shrink-0">📍</span>
-                      <span className="text-xs text-gray-400 w-12 shrink-0">Born in</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">{t('treeForm.bornIn')}</span>
                       <span className="text-gray-800">{[detail.born_city, detail.born_country].filter(Boolean).join(', ')}</span>
                     </div>
                   )}
                   {(detail.is_deceased || detail.death_date || detail.death_year) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-gray-400 text-xs shrink-0">✝</span>
-                      <span className="text-xs text-gray-400 w-12 shrink-0">Died</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">{t('treeForm.died')}</span>
                       <span className="text-gray-800">
-                        {detail.death_date ? fmtDate(detail.death_date) : detail.death_year ?? 'Unknown'}
+                        {detail.death_date ? fmtDate(detail.death_date) : detail.death_year ?? t('treeForm.unknown')}
                       </span>
                     </div>
                   )}
                   {(detail.died_city || detail.died_country) && (
                     <div className="flex items-center gap-3 px-4 py-2.5">
                       <span className="text-xs shrink-0">📍</span>
-                      <span className="text-xs text-gray-400 w-12 shrink-0">Buried</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0">{t('treeForm.buried')}</span>
                       <span className="text-gray-800">{[detail.died_city, detail.died_country].filter(Boolean).join(', ')}</span>
                     </div>
                   )}
                   {detail.notes && (
                     <div className="flex items-start gap-3 px-4 py-2.5">
                       <span className="text-xs shrink-0 mt-0.5">📝</span>
-                      <span className="text-xs text-gray-400 w-12 shrink-0 mt-0.5">Notes</span>
+                      <span className="text-xs text-gray-400 w-12 shrink-0 mt-0.5">{t('treeForm.notesLabel')}</span>
                       <span className="text-gray-800 text-xs whitespace-pre-wrap">{detail.notes}</span>
                     </div>
                   )}
@@ -2058,17 +2068,17 @@ function PersonProfileModal({ initialPersonId, treeId, token, graph, onClose }: 
               {/* Relationships */}
               <div className="rounded-xl border border-gray-100 overflow-hidden">
                 <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Relationships</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('treeForm.relationships')}</span>
                 </div>
                 {hasRelatives ? (
                   <div className="divide-y divide-gray-50 p-1 space-y-1">
-                    <RelGroup ids={detail.parents}  label="Parents" />
-                    <RelGroup ids={detail.spouses}  label="Spouses / Partners" showUnionDates />
-                    <RelGroup ids={detail.children} label="Children" />
-                    <RelGroup ids={detail.siblings} label="Siblings" />
+                    <RelGroup ids={detail.parents}  label={t('treeForm.parents')} />
+                    <RelGroup ids={detail.spouses}  label={t('treeForm.spousesPartners')} showUnionDates />
+                    <RelGroup ids={detail.children} label={t('treeForm.children')} />
+                    <RelGroup ids={detail.siblings} label={t('treeForm.siblings')} />
                   </div>
                 ) : (
-                  <p className="px-4 py-6 text-center text-sm text-gray-400">No relationships recorded yet.</p>
+                  <p className="px-4 py-6 text-center text-sm text-gray-400">{t('treeForm.noRelationshipsYet')}</p>
                 )}
               </div>
 
@@ -2091,6 +2101,7 @@ function UnionDatesSection({
   savingDates: boolean;
   setSavingDates: (v: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [startDate, setStartDate] = useState(fg?.unionDate ?? '');
   const [startYear, setStartYear] = useState(fg?.unionDateYear != null ? String(fg.unionDateYear) : '');
@@ -2112,7 +2123,13 @@ function UnionDatesSection({
   }
 
   const ut = fg?.unionType ?? 'UNKNOWN';
-  const [startLabel, endLabel] = UNION_DATE_LABELS[ut] ?? UNION_DATE_LABELS.UNKNOWN;
+  const unionDateLabelsMap: Record<string, [string, string]> = {
+    MARRIAGE:     [t('treeForm.marriedDate'),      t('treeForm.marriedUntil')],
+    PARTNERSHIP:  [t('treeForm.partnershipDate'),  t('treeForm.partnershipUntil')],
+    COHABITATION: [t('treeForm.cohabitationDate'), t('treeForm.cohabitationUntil')],
+    UNKNOWN:      [t('treeForm.unionDate'),        t('treeForm.unionUntil')],
+  };
+  const [startLabel, endLabel] = unionDateLabelsMap[ut] ?? unionDateLabelsMap.UNKNOWN;
   const startDateYear = startDate ? new Date(startDate + 'T00:00:00').getFullYear() : null;
   const startYearNum = startYear ? parseInt(startYear, 10) : null;
   const startMismatch = startDateYear != null && startYearNum != null && !isNaN(startYearNum) && startDateYear !== startYearNum;
@@ -2137,7 +2154,7 @@ function UnionDatesSection({
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-slate-500 mb-1 block">Year only</label>
+          <label className="text-xs font-medium text-slate-500 mb-1 block">{t('treeForm.yearOnly')}</label>
           <input
             type="number"
             min={1}
@@ -2170,7 +2187,7 @@ function UnionDatesSection({
           />
         </div>
         <div>
-          <label className="text-xs font-medium text-slate-500 mb-1 block">Year only</label>
+          <label className="text-xs font-medium text-slate-500 mb-1 block">{t('treeForm.yearOnly')}</label>
           <input
             type="number"
             min={1}
@@ -2223,6 +2240,7 @@ const UNION_DATE_LABELS: Record<string, [string, string]> = {
 };
 
 function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onDeleted }: EdgeSelectionPanelProps) {
+  const { t } = useTranslation();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting,      setDeleting]      = React.useState(false);
   const [deleteError,   setDeleteError]   = React.useState('');
@@ -2247,10 +2265,12 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
   const fg          = graph?.familyGroups.find(f => f.id === familyGroupId);
   const parentNames = (fg?.parentIds ?? []).map(resolveName);
 
+  const edgeUnionLabelMap: Record<string, string> = { MARRIAGE: t('treeForm.marriageLabel'), PARTNERSHIP: t('treeForm.partnershipLabel'), COHABITATION: t('treeForm.cohabitation'), UNKNOWN: t('treeForm.union') };
+  const edgeParentageLabelMap: Record<string, string> = { BIOLOGICAL: t('treeForm.biologicalLabel'), ADOPTIVE: t('treeForm.adopted'), STEP: t('treeForm.stepLabel'), FOSTER: t('treeForm.fosterLabel'), UNKNOWN: t('treeForm.unknown') };
   const kindLabel = isUnion
-    ? (EDGE_UNION_LABEL[edge.unionType ?? 'UNKNOWN'] ?? 'Union')
-    : `${EDGE_PARENTAGE_LABEL[edge.parentageType ?? 'BIOLOGICAL'] ?? 'Biological'} Parent–Child`;
-  const subLabel  = isUnion ? `${kindLabel} link` : `${kindLabel} link`;
+    ? (edgeUnionLabelMap[edge.unionType ?? 'UNKNOWN'] ?? t('treeForm.union'))
+    : `${edgeParentageLabelMap[edge.parentageType ?? 'BIOLOGICAL'] ?? t('treeForm.biologicalLabel')} ${t('treeForm.parentChild')}`;
+  const subLabel  = `${kindLabel} ${t('treeForm.link')}`;
 
   async function handleDelete() {
     setDeleting(true);
@@ -2270,7 +2290,7 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
     <div className="absolute top-0 right-0 h-full w-72 bg-white border-l border-slate-200 shadow-xl z-20 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div className="min-w-0">
-          <span className="text-sm font-semibold text-slate-700">Relationship</span>
+          <span className="text-sm font-semibold text-slate-700">{t('treeForm.relationshipTitle')}</span>
           <p className="text-xs text-slate-400 mt-0.5 truncate">{subLabel}</p>
         </div>
         <button onClick={onClose} className="ml-2 w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">✕</button>
@@ -2286,14 +2306,14 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
             {parentNames.length > 0 && (
               <div className="flex items-start gap-2 text-xs text-slate-500">
                 <span className="mt-0.5">{isUnion ? '🔗' : '👨‍👩'}</span>
-                <span>{isUnion ? `Family with ${parentNames.join(' & ')}` : `Child of ${parentNames.join(' & ')}`}</span>
+                <span>{isUnion ? t('treeForm.familyWith', { names: parentNames.join(' & ') }) : t('treeForm.childOf', { names: parentNames.join(' & ') })}</span>
               </div>
             )}
           </div>
 
           {canWrite && !isUnion && (
             <div className="pt-1 border-t border-slate-100">
-              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Parentage type</label>
+              <label className="text-xs font-medium text-slate-500 mb-1.5 block">{t('treeForm.parentageType')}</label>
               <select
                 value={edge.parentageType ?? 'BIOLOGICAL'}
                 disabled={savingParentage}
@@ -2309,18 +2329,18 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
                 }}
                 className="w-full h-8 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
               >
-                <option value="BIOLOGICAL">Biological</option>
-                <option value="ADOPTIVE">Adopted</option>
-                <option value="STEP">Step</option>
-                <option value="FOSTER">Foster</option>
-                <option value="UNKNOWN">Unknown</option>
+                <option value="BIOLOGICAL">{t('treeForm.biologicalLabel')}</option>
+                <option value="ADOPTIVE">{t('treeForm.adopted')}</option>
+                <option value="STEP">{t('treeForm.stepLabel')}</option>
+                <option value="FOSTER">{t('treeForm.fosterLabel')}</option>
+                <option value="UNKNOWN">{t('treeForm.unknown')}</option>
               </select>
             </div>
           )}
 
           {canWrite && isUnion && (
             <div className="pt-1 border-t border-slate-100">
-              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Union type</label>
+              <label className="text-xs font-medium text-slate-500 mb-1.5 block">{t('treeForm.unionType')}</label>
               <select
                 value={fg?.unionType ?? 'MARRIAGE'}
                 disabled={savingUnionType}
@@ -2336,10 +2356,10 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
                 }}
                 className="w-full h-8 px-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
               >
-                <option value="MARRIAGE">Marriage</option>
-                <option value="PARTNERSHIP">Partnership</option>
-                <option value="COHABITATION">Cohabitation</option>
-                <option value="UNKNOWN">Unknown</option>
+                <option value="MARRIAGE">{t('treeForm.marriageLabel')}</option>
+                <option value="PARTNERSHIP">{t('treeForm.partnershipLabel')}</option>
+                <option value="COHABITATION">{t('treeForm.cohabitation')}</option>
+                <option value="UNKNOWN">{t('treeForm.unknown')}</option>
               </select>
             </div>
           )}
@@ -2374,7 +2394,7 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
                     : 'text-slate-600 border-slate-200 hover:bg-slate-50'
                 } disabled:opacity-50`}
               >
-                {togglingDivorce ? '…' : fg?.isDivorced ? '↩ Undo Divorced' : '💔 Mark as Divorced'}
+                {togglingDivorce ? '…' : fg?.isDivorced ? t('treeForm.undoDivorced') : t('treeForm.markAsDivorced')}
               </button>
             </div>
           )}
@@ -2387,17 +2407,17 @@ function EdgeSelectionPanel({ edge, graph, treeId, token, canWrite, onClose, onD
                   onClick={() => { setDeleteError(''); setConfirmDelete(true); }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 rounded-lg hover:bg-red-50 border border-red-100"
                 >
-                  🗑 Remove this relationship
+                  {t('treeForm.removeRelationship')}
                 </button>
               ) : (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
                   <p className="text-xs text-red-700 font-medium">
                     {isUnion
-                      ? `Remove ${personName} from this union?`
-                      : `Remove ${personName} from this family?`}
+                      ? t('treeForm.removeFromUnion', { name: personName })
+                      : t('treeForm.removeFromFamily', { name: personName })}
                   </p>
                   {onlyParent && (
-                    <p className="text-xs text-red-500">Last parent — the family group will be deleted too.</p>
+                    <p className="text-xs text-red-500">{t('treeForm.lastParentWarning')}</p>
                   )}
                   {!isUnion && (
                     <p className="text-xs text-slate-500">The person stays in the tree; only the parent–child link is removed.</p>
@@ -2448,6 +2468,7 @@ function SelectionPanel({
   personId, personName, treeId, token, canWrite,
   onClose, onOpenProfile, onAddParent, onAddBothParents, onAddChild, onAddSpouse, onSetFocus, onDeleted, onEdit,
 }: SelectionPanelProps) {
+  const { t } = useTranslation();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting,      setDeleting]      = useState(false);
   const [deleteError,   setDeleteError]   = useState('');
@@ -2470,7 +2491,7 @@ function SelectionPanel({
     <div className="absolute top-0 right-0 h-full w-72 bg-white border-l border-slate-200 shadow-xl z-20 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div className="min-w-0">
-          <span className="text-sm font-semibold text-slate-700">Person</span>
+          <span className="text-sm font-semibold text-slate-700">{t('treeForm.person')}</span>
           {personName && (
             <p className="text-xs text-slate-400 mt-0.5 truncate">{personName}</p>
           )}
@@ -2489,41 +2510,41 @@ function SelectionPanel({
             onClick={onOpenProfile}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200"
           >
-            👤 Open Profile
+            👤 {t('treeForm.openProfile')}
           </button>
           {canWrite && (
             <button onClick={onEdit}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
-              ✏️ Edit
+              ✏️ {t('treeForm.edit')}
             </button>
           )}
           {canWrite && (
             <button onClick={onAddParent}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
-              ➕ Add Parent
+              ➕ {t('treeForm.addParent')}
             </button>
           )}
           {canWrite && (
             <button onClick={onAddBothParents}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
-              👨‍👩 Add Father & Mother
+              👨‍👩 {t('treeForm.addFatherMother')}
             </button>
           )}
           {canWrite && (
             <button onClick={onAddChild}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
-              ➕ Add Child
+              ➕ {t('treeForm.addChild')}
             </button>
           )}
           {canWrite && (
             <button onClick={onAddSpouse}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
-              ➕ Add Spouse
+              ➕ {t('treeForm.addSpouse')}
             </button>
           )}
           <button onClick={onSetFocus}
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 rounded-lg hover:bg-slate-50 border border-slate-200">
-            🎯 Set as Focus
+            🎯 {t('treeForm.setAsFocus')}
           </button>
 
           {/* Divider + delete — write only */}
@@ -2535,12 +2556,12 @@ function SelectionPanel({
                   onClick={() => { setDeleteError(''); setConfirmDelete(true); }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 rounded-lg hover:bg-red-50 border border-red-100"
                 >
-                  🗑 Delete person
+                  🗑 {t('treeForm.deletePerson')}
                 </button>
               ) : (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
                   <p className="text-xs text-red-700 font-medium">
-                    Remove <span className="font-semibold">{personName || 'this person'}</span> from the tree?
+                    {t('treeForm.confirmDelete')}
                   </p>
                   {deleteError && <p className="text-xs text-red-600">{deleteError}</p>}
                   <div className="flex gap-2">
@@ -2549,14 +2570,14 @@ function SelectionPanel({
                       disabled={deleting}
                       className="flex-1 h-7 text-xs border border-slate-300 bg-white rounded-lg hover:bg-slate-50 disabled:opacity-50"
                     >
-                      Cancel
+                      {t('treeForm.cancel')}
                     </button>
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
                       className="flex-1 h-7 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
                     >
-                      {deleting ? 'Deleting…' : 'Delete'}
+                      {deleting ? t('treeForm.deleting') : t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -2595,6 +2616,7 @@ function MembersModal({
   currentUserId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [members,  setMembers]  = useState<Member[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
@@ -2603,7 +2625,7 @@ function MembersModal({
   useEffect(() => {
     get<Member[]>(`/trees/${treeId}/members`)
       .then(setMembers)
-      .catch(() => setError('Failed to load members'))
+      .catch(() => setError(t('treePage.failedLoadMembers')))
       .finally(() => setLoading(false));
   }, [treeId]);
 
@@ -2616,7 +2638,7 @@ function MembersModal({
       await del(`/trees/${treeId}/members/${member.user_id}`);
       setMembers((prev) => prev.filter((m) => m.user_id !== member.user_id));
     } catch (err) {
-      setError(apiErrorMessage(err, 'Failed to remove member'));
+      setError(apiErrorMessage(err, t('treePage.failedRemoveMember')));
     } finally {
       setRemoving(null);
     }
@@ -2629,7 +2651,7 @@ function MembersModal({
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-slate-900">Members</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t('treePage.members')}</h2>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">✕</button>
         </div>
 
@@ -2650,14 +2672,14 @@ function MembersModal({
                 <p className="text-xs text-slate-400 truncate">{m.email}</p>
               </div>
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${ROLE_COLOR[m.role] ?? ROLE_COLOR.VIEWER}`}>
-                {m.role.charAt(0) + m.role.slice(1).toLowerCase()}
+                {t('roles.' + m.role)}
               </span>
               {canRemove && m.user_id !== currentUserId && m.role !== 'OWNER' && (
                 <button
                   onClick={() => handleRemove(m)}
                   disabled={removing === m.user_id}
                   className="ml-1 w-6 h-6 flex items-center justify-center rounded text-slate-300 hover:text-red-500 hover:bg-red-50 disabled:opacity-40 transition-colors flex-shrink-0"
-                  title="Remove member"
+                  title={t('treePage.removeMember')}
                 >
                   ✕
                 </button>
@@ -2701,6 +2723,7 @@ function TreeTopBar({
   onTheme: () => void;
   onShowActivity: () => void;
 }) {
+  const { t } = useTranslation();
   const [exportOpen,    setExportOpen]    = React.useState(false);
   const [moreOpen,      setMoreOpen]      = React.useState(false);
   const [exportingPdf,  setExportingPdf]  = React.useState(false);
@@ -2743,7 +2766,7 @@ function TreeTopBar({
       await onExportPdf();
     } catch (err) {
       console.error('PDF export failed:', err);
-      setExportPdfError('PDF export failed. Please try again.');
+      setExportPdfError(t('treePage.pdfFailed'));
     } finally {
       setExportingPdf(false);
     }
@@ -2829,11 +2852,11 @@ function TreeTopBar({
   return (
     <div className="absolute top-0 left-0 right-0 h-12 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center px-3 md:px-4 gap-2 md:gap-3 z-30">
       <Link to="/dashboard" className="text-slate-400 hover:text-slate-600 transition-colors text-sm shrink-0">
-        ← <span className="hidden sm:inline">Dashboard</span>
+        {t('treePage.dashboard')}
       </Link>
       <div className="w-px h-5 bg-slate-200 shrink-0" />
       <span className="font-semibold text-slate-800 text-sm truncate min-w-0">{treeName}</span>
-      <span className="text-xs text-slate-400 shrink-0 hidden sm:inline">{personCount} people</span>
+      <span className="text-xs text-slate-400 shrink-0 hidden sm:inline">{personCount} {t('treePage.people')}</span>
 
       <div className="ml-auto flex items-center gap-1.5 md:gap-2">
 
@@ -2842,7 +2865,7 @@ function TreeTopBar({
           <button
             onClick={() => setExportOpen((o) => !o)}
             disabled={!graph || anyExporting}
-            title="Export tree data"
+            title={t('treePage.exportTreeData')}
             className="px-3 py-1.5 text-xs font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40 flex items-center gap-1.5"
           >
             {anyExporting ? (
@@ -2853,7 +2876,7 @@ function TreeTopBar({
                 <path d="M1 9.5h9" />
               </svg>
             )}
-            Export
+            {t('treePage.export')}
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className={`transition-transform ${exportOpen ? 'rotate-180' : ''}`}>
               <path d="M2 3.5l3 3 3-3" />
             </svg>
@@ -2868,7 +2891,7 @@ function TreeTopBar({
           {exportOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl border border-slate-200 shadow-lg z-50 overflow-hidden">
               <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                Export
+                {t('treePage.export')}
               </div>
               <div className="py-1">
                 {/* PDF */}
@@ -2881,7 +2904,7 @@ function TreeTopBar({
                     <path d="M8 1v3h3" />
                     <path d="M4 8h6M4 10h4" strokeLinecap="round" />
                   </svg>
-                  Export as PDF
+                  {t('treePage.exportAsPdf')}
                 </button>
 
                 {/* CSV */}
@@ -2894,7 +2917,7 @@ function TreeTopBar({
                     <rect x="1" y="1" width="12" height="12" rx="1.5" />
                     <path d="M1 4.5h12M4.5 4.5v8.5M1 7.5h12M1 10.5h12" strokeLinecap="round" />
                   </svg>
-                  Export as CSV
+                  {t('treePage.exportAsCsv')}
                 </button>
 
                 {/* FRT */}
@@ -2908,7 +2931,7 @@ function TreeTopBar({
                     <path d="M8 1v3h3" />
                     <path d="M4 7h4M4 9.5h2.5" strokeLinecap="round" />
                   </svg>
-                  Export as .frt
+                  {t('treePage.exportAsFrt')}
                 </button>
 
                 {/* ZIP */}
@@ -2926,7 +2949,7 @@ function TreeTopBar({
                       <path d="M4 10h6" strokeLinecap="round" />
                     </svg>
                   )}
-                  {exportingZip ? 'Exporting…' : 'Export .zip + Photos'}
+                  {exportingZip ? t('treePage.exporting') : t('treePage.exportZipPhotos')}
                 </button>
               </div>
             </div>
@@ -2937,23 +2960,23 @@ function TreeTopBar({
 
         <button
           onClick={onLayouts}
-          title="Save or load a named layout"
+          title={t('treePage.saveLayout')}
           className="hidden md:inline-flex px-3 py-1.5 text-xs font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
         >
-          Layouts
+          {t('treePage.layouts')}
         </button>
         <button
           onClick={onTheme}
-          title="Customize tree canvas appearance"
+          title={t('treePage.customizeTheme')}
           className="hidden md:inline-flex px-3 py-1.5 text-xs font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
         >
-          🎨 Theme
+          {`🎨 ${t('treePage.theme')}`}
         </button>
         <button
           onClick={onMembers}
           className="hidden md:inline-flex px-3 py-1.5 text-xs font-medium text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
         >
-          Members
+          {t('treePage.members')}
         </button>
 
         {/* ── Mobile "⋮" overflow menu ── */}
@@ -2961,7 +2984,7 @@ function TreeTopBar({
           <button
             onClick={() => setMoreOpen((o) => !o)}
             className="p-2 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-            aria-label="More options"
+            aria-label={t('treePage.moreOptions')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <circle cx="8" cy="3" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="8" cy="13" r="1.4"/>
@@ -2972,26 +2995,26 @@ function TreeTopBar({
               <div className="py-1">
                 <button onClick={() => { setMoreOpen(false); onLayouts(); }}
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                  Layouts
+                  {t('treePage.layouts')}
                 </button>
                 <button onClick={() => { setMoreOpen(false); onTheme(); }}
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                  🎨 Theme
+                  {`🎨 ${t('treePage.theme')}`}
                 </button>
                 <button onClick={() => { setMoreOpen(false); onMembers(); }}
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                  Members
+                  {t('treePage.members')}
                 </button>
                 <div className="border-t border-slate-100 my-1" />
                 <button onClick={() => { setMoreOpen(false); onExportCsv(); }}
                   disabled={!graph}
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-                  Export CSV
+                  {t('treePage.exportAsCsv')}
                 </button>
                 <button onClick={() => { setMoreOpen(false); handleExportPdf(); }}
                   disabled={exportingPdf}
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40">
-                  {exportingPdf ? 'Exporting…' : 'Export PDF'}
+                  {exportingPdf ? t('treePage.exporting') : t('treePage.exportPdf')}
                 </button>
               </div>
             </div>
@@ -3003,7 +3026,7 @@ function TreeTopBar({
             onClick={onAddPerson}
             className="px-2.5 md:px-3 py-1.5 bg-brand-500 text-white text-xs font-medium rounded-lg hover:bg-brand-600 transition-colors"
           >
-            <span className="hidden sm:inline">+ Add person</span>
+            <span className="hidden sm:inline">{t('treePage.addPerson')}</span>
             <span className="sm:hidden">+</span>
           </button>
         )}

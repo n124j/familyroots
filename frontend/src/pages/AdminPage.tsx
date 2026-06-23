@@ -3,6 +3,7 @@
  * Visible to ADMIN role only.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 import { UserAvatar } from '@shared/components/UserAvatar';
@@ -75,10 +76,10 @@ interface GroupMember {
 
 interface TenantTree { id: string; name: string; }
 
-const LEVEL_LABEL: Record<string, string> = {
-  VISIBLE:    'Visible',
-  READ:       'Read',
-  READ_WRITE: 'Read & Write',
+const LEVEL_LABEL_KEY: Record<string, string> = {
+  VISIBLE:    'adminPage.visible',
+  READ:       'adminPage.read',
+  READ_WRITE: 'adminPage.readWrite',
 };
 
 const LEVEL_BADGE: Record<string, string> = {
@@ -87,10 +88,10 @@ const LEVEL_BADGE: Record<string, string> = {
   READ_WRITE: 'bg-green-100 text-green-700',
 };
 
-const LEVEL_DESC: Record<string, string> = {
-  VISIBLE:    'Can see the tree exists but not its content',
-  READ:       'Can view all tree content (read-only)',
-  READ_WRITE: 'Can view and edit tree content',
+const LEVEL_DESC_KEY: Record<string, string> = {
+  VISIBLE:    'adminPage.visibleDesc',
+  READ:       'adminPage.readDesc',
+  READ_WRITE: 'adminPage.readWriteDesc',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -123,6 +124,7 @@ function CreateUserModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { t } = useTranslation();
   const [email,      setEmail]      = useState('');
   const [givenName,  setGivenName]  = useState('');
   const [familyName, setFamilyName] = useState('');
@@ -158,43 +160,43 @@ function CreateUserModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Create user</h2>
-        <p className="text-xs text-gray-500 mb-4">An activation email will be sent immediately.</p>
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('adminPage.createUser')}</h2>
+        <p className="text-xs text-gray-500 mb-4">{t('adminPage.activationEmail')}</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Email <span className="text-red-500">*</span></label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.email')} <span className="text-red-500">*</span></label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
               placeholder="user@example.com" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">First name <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.firstName')} <span className="text-red-500">*</span></label>
               <input type="text" value={givenName} onChange={(e) => setGivenName(e.target.value)} required maxLength={100}
                 className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Last name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.lastName')}</label>
               <input type="text" value={familyName} onChange={(e) => setFamilyName(e.target.value)} maxLength={100}
                 className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.role')}</label>
             <select value={role} onChange={(e) => setRole(e.target.value as typeof role)}
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
-              {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.charAt(0) + r.slice(1).toLowerCase()}</option>)}
+              {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{t('roles.' + r)}</option>)}
             </select>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} disabled={saving}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50">
-              Cancel
+              {t('adminPage.cancel')}
             </button>
             <button type="submit" disabled={saving || !email.trim() || !givenName.trim()}
               className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
-              {saving ? 'Creating…' : 'Create & send email'}
+              {saving ? t('adminPage.creating') : t('adminPage.createUser')}
             </button>
           </div>
         </form>
@@ -218,6 +220,7 @@ function EditUserModal({
   onClose: () => void;
   onSaved: (updated: AdminUser) => void;
 }) {
+  const { t } = useTranslation();
   const [givenName,  setGivenName]  = useState(user.given_name ?? '');
   const [familyName, setFamilyName] = useState(user.family_name ?? '');
   const [role,       setRole]       = useState(user.app_role);
@@ -259,7 +262,7 @@ function EditUserModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit user</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('common.edit')}</h2>
         {isSelf && (
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
             Role, active status, and verification cannot be changed on your own account.
@@ -268,18 +271,18 @@ function EditUserModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">First name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.firstName')}</label>
               <input type="text" value={givenName} onChange={(e) => setGivenName(e.target.value)} maxLength={100}
                 className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Last name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.lastName')}</label>
               <input type="text" value={familyName} onChange={(e) => setFamilyName(e.target.value)} maxLength={100}
                 className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
           </div>
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isSelf ? 'text-gray-400' : 'text-gray-600'}`}>Role</label>
+            <label className={`block text-xs font-medium mb-1 ${isSelf ? 'text-gray-400' : 'text-gray-600'}`}>{t('adminPage.role')}</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as typeof role)}
@@ -289,7 +292,7 @@ function EditUserModal({
                 isSelf ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50' : 'border-gray-300'
               }`}
             >
-              {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r.charAt(0) + r.slice(1).toLowerCase()}</option>)}
+              {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{t('roles.' + r)}</option>)}
             </select>
           </div>
           <label className={`flex items-center gap-3 ${isSelf ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
@@ -301,7 +304,7 @@ function EditUserModal({
               title={isSelf ? 'You cannot deactivate your own account' : undefined}
               className="w-4 h-4 accent-brand-500 disabled:cursor-not-allowed"
             />
-            <span className={`text-sm ${isSelf ? 'text-gray-400' : 'text-gray-700'}`}>Account active</span>
+            <span className={`text-sm ${isSelf ? 'text-gray-400' : 'text-gray-700'}`}>{t('adminPage.accountActive')}</span>
           </label>
           <label className={`flex items-center gap-3 ${isSelf ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
             <input
@@ -312,17 +315,17 @@ function EditUserModal({
               title={isSelf ? 'You cannot change your own verification status' : undefined}
               className="w-4 h-4 accent-brand-500 disabled:cursor-not-allowed"
             />
-            <span className={`text-sm ${isSelf ? 'text-gray-400' : 'text-gray-700'}`}>Email verified</span>
+            <span className={`text-sm ${isSelf ? 'text-gray-400' : 'text-gray-700'}`}>{t('adminPage.emailVerified')}</span>
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} disabled={saving}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50">
-              Cancel
+              {t('adminPage.cancel')}
             </button>
             <button type="submit" disabled={saving}
               className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? t('adminPage.saving') : t('common.save')}
             </button>
           </div>
         </form>
@@ -548,6 +551,7 @@ function Step2MergePanel({
 // ── Merge Trees panel ─────────────────────────────────────────────────────────
 
 function MergeTreesPanel({ token }: { token: string | null }) {
+  const { t } = useTranslation();
   const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   // All trees in tenant
@@ -717,7 +721,7 @@ function MergeTreesPanel({ token }: { token: string | null }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Trees merged successfully</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('adminPage.mergeComplete')}</h2>
       <p className="text-sm text-gray-500 mb-1">
         <span className="font-medium text-gray-700">{result.tree_name}</span> was created with {result.person_count} people.
       </p>
@@ -726,10 +730,10 @@ function MergeTreesPanel({ token }: { token: string | null }) {
           href={`/trees/${result.tree_id}`}
           className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
         >
-          Open merged tree
+          {t('adminPage.openMergedTree')}
         </a>
         <button onClick={reset} className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-          Merge another
+          {t('adminPage.mergeAnother')}
         </button>
       </div>
     </div>
@@ -739,7 +743,7 @@ function MergeTreesPanel({ token }: { token: string | null }) {
     <div className="max-w-2xl">
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-6 text-sm">
-        {(['1. Name & select trees', '2. Choose pivot people', '3. Done'] as const).map((label, i) => (
+        {([t('adminPage.step1Label'), t('adminPage.step2Label'), t('adminPage.step3Label')]).map((label, i) => (
           <React.Fragment key={i}>
             {i > 0 && <span className="text-gray-300">›</span>}
             <span className={step === i + 1 ? 'text-brand-600 font-medium' : 'text-gray-400'}>{label}</span>
@@ -752,34 +756,34 @@ function MergeTreesPanel({ token }: { token: string | null }) {
         <div className="space-y-5">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              New tree name <span className="text-red-500">*</span>
+              {t('adminPage.newTreeName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={newName}
               onChange={e => setNewName(e.target.value)}
-              placeholder="e.g. Combined Family Tree"
+              placeholder={t('adminPage.newTreePlaceholder')}
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Description (optional)</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.descriptionOptional')}</label>
             <textarea
               value={newDesc}
               onChange={e => setNewDesc(e.target.value)}
               rows={2}
-              placeholder="Describe the merged tree…"
+              placeholder={t('adminPage.descMergedPlaceholder')}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
             />
           </div>
 
           <div>
             <p className="text-xs font-medium text-gray-600 mb-2">
-              Select trees to merge <span className="text-red-500">*</span>
-              <span className="text-gray-400 font-normal ml-1">(minimum 2)</span>
+              {t('adminPage.selectTreesToMerge')} <span className="text-red-500">*</span>
+              <span className="text-gray-400 font-normal ml-1">{t('adminPage.minimum2')}</span>
             </p>
             {allTrees.length === 0 ? (
-              <p className="text-sm text-gray-400">No trees found.</p>
+              <p className="text-sm text-gray-400">{t('adminPage.noTreesFound')}</p>
             ) : (
               <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-64 overflow-y-auto">
                 {allTrees.map(tree => (
@@ -866,6 +870,7 @@ const CATEGORY_OPTIONS = [
 ] as const;
 
 function BroadcastPanel({ token }: { token: string | null }) {
+  const { t } = useTranslation();
   const [subject,    setSubject]    = useState('');
   const [body,       setBody]       = useState('');
   const [category,   setCategory]   = useState<string>('notice');
@@ -1020,7 +1025,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
     <div className="max-w-3xl">
       <div className="rounded-xl border p-6" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
         <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--portal-text-primary)' }}>
-          Broadcast Email
+          {t('adminPage.broadcastEmail')}
         </h2>
         <p className="text-sm mb-6" style={{ color: 'var(--portal-text-muted)' }}>
           Compose and send an email to all users or selected recipients.
@@ -1049,7 +1054,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
 
         {/* Subject */}
         <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--portal-text-primary)' }}>
-          Subject
+          {t('adminPage.broadcastSubject')}
         </label>
         <input
           type="text"
@@ -1063,7 +1068,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
 
         {/* Body */}
         <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--portal-text-primary)' }}>
-          Message
+          {t('adminPage.broadcastBody')}
         </label>
         <textarea
           rows={6}
@@ -1188,7 +1193,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
             disabled={sending || !subject.trim() || !body.trim()}
             className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
-            {sending ? 'Sending…' : sendToAll ? 'Send to all users' : `Send to ${selectedIds.size} user${selectedIds.size !== 1 ? 's' : ''}`}
+            {sending ? t('adminPage.sending') : t('adminPage.sendBroadcast')}
           </button>
           {feedback && (
             <span className={`text-sm font-medium ${feedback.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
@@ -1201,7 +1206,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
       {/* ── Broadcast History ── */}
       <div className="rounded-xl border p-6 mt-6" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
         <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--portal-text-primary)' }}>
-          Broadcast History
+          {t('adminPage.broadcastHistory')}
         </h2>
 
         {historyLoading ? (
@@ -1210,7 +1215,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
           </div>
         ) : history.length === 0 ? (
           <p className="text-sm py-6 text-center" style={{ color: 'var(--portal-text-muted)' }}>
-            No broadcasts sent yet.
+            {t('adminPage.noBroadcasts')}
           </p>
         ) : (
           <>
@@ -1296,7 +1301,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
                   Previous
                 </button>
                 <span className="text-xs" style={{ color: 'var(--portal-text-muted)' }}>
-                  Page {historyPage} of {Math.ceil(historyTotal / 10)}
+                  {t('adminPage.pageOf', { page: historyPage, total: Math.ceil(historyTotal / 10) })}
                 </span>
                 <button
                   onClick={() => setHistoryPage((p) => p + 1)}
@@ -1318,6 +1323,7 @@ function BroadcastPanel({ token }: { token: string | null }) {
 // ── Maintenance mode panel (Super Admin only) ────────────────────────────────
 
 function MaintenancePanel({ token }: { token: string | null }) {
+  const { t } = useTranslation();
   const [loading, setLoading]       = useState(true);
   const [saving, setSaving]         = useState(false);
   const [enabled, setEnabled]       = useState(false);
@@ -1386,10 +1392,10 @@ function MaintenancePanel({ token }: { token: string | null }) {
     <div className="max-w-2xl">
       <div className="rounded-xl border p-6" style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
         <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--portal-text-primary)' }}>
-          Maintenance Mode
+          {t('adminPage.maintenanceMode')}
         </h2>
         <p className="text-sm mb-6" style={{ color: 'var(--portal-text-muted)' }}>
-          When enabled, all users except the Super Administrator will see an "Under Construction" page.
+          {t('adminPage.maintenanceModeDesc')}
         </p>
 
         {/* Toggle */}
@@ -1411,9 +1417,9 @@ function MaintenancePanel({ token }: { token: string | null }) {
           </button>
           <span className="text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>
             {enabled ? (
-              <span className="text-amber-600 font-semibold">Under Construction</span>
+              <span className="text-amber-600 font-semibold">{t('adminPage.enabled')}</span>
             ) : (
-              <span className="text-green-600 font-semibold">Live</span>
+              <span className="text-green-600 font-semibold">{t('adminPage.disabled')}</span>
             )}
           </span>
         </div>
@@ -1421,7 +1427,7 @@ function MaintenancePanel({ token }: { token: string | null }) {
         {/* Message */}
         <div className="flex items-center justify-between mb-1.5">
           <label className="block text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>
-            Maintenance message
+            {t('adminPage.motd')}
           </label>
           <button
             type="button"
@@ -1452,7 +1458,7 @@ function MaintenancePanel({ token }: { token: string | null }) {
             disabled={saving}
             className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
           >
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? t('adminPage.saving') : t('adminPage.saveSettings')}
           </button>
           {feedback && (
             <span className="text-sm font-medium" style={{ color: feedback.includes('Failed') ? '#ef4444' : '#22c55e' }}>
@@ -1468,6 +1474,7 @@ function MaintenancePanel({ token }: { token: string | null }) {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
+  const { t } = useTranslation();
   const accessToken  = useAuthStore((s) => s.accessToken);
   const currentUser  = useAuthStore((s) => s.user);
   const isSuperAdmin = currentUser?.appRole === 'SUPER_ADMIN';
@@ -1567,19 +1574,19 @@ export default function AdminPage() {
       />
       {/* Header */}
       <div className="mb-4 md:mb-6">
-        <h1 className="text-xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>Admin Dashboard</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>Manage users, roles, and permission groups</p>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>{t('adminPage.title')}</h1>
+        <p className="text-sm mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.subtitle')}</p>
       </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-gray-200 mb-6">
         {([
-          ['users', 'Users'],
-          ['permissions', 'Permission Groups'],
-          ['merge', 'Merge Trees'],
+          ['users', t('adminPage.tabs.users')],
+          ['permissions', t('adminPage.tabs.permissions')],
+          ['merge', t('adminPage.tabs.merge')],
           ...(isSuperAdmin ? [
-            ['broadcast', 'Broadcast'] as const,
-            ['site', 'Site Settings'] as const,
+            ['broadcast', t('adminPage.tabs.broadcast')] as const,
+            ['site', t('adminPage.tabs.site')] as const,
           ] : []),
         ] as const).map(([key, label]) => (
           <button
@@ -1609,7 +1616,7 @@ export default function AdminPage() {
           onClick={() => setCreateOpen(true)}
           className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
         >
-          + Create user
+          + {t('adminPage.createUser')}
         </button>
       </div>
 
@@ -1622,42 +1629,43 @@ export default function AdminPage() {
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
+            placeholder={t('adminPage.search')}
             className="w-full h-9 pl-9 pr-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }} />
         </div>
         <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
           className="h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}>
-          <option value="">All roles</option>
-          <option value="SUPER_ADMIN">Super Admin</option>
-          <option value="ADMIN">Admin</option>
-          <option value="STANDARD">Standard</option>
-          <option value="AUDITOR">Auditor</option>
+          <option value="">{t('adminPage.allRoles')}</option>
+          <option value="SUPER_ADMIN">{t('roles.SUPER_ADMIN')}</option>
+          <option value="ADMIN">{t('roles.ADMIN')}</option>
+          <option value="STANDARD">{t('roles.STANDARD')}</option>
+          <option value="AUDITOR">{t('roles.AUDITOR')}</option>
         </select>
         <select value={verifiedFilter} onChange={(e) => { setVerifiedFilter(e.target.value); setPage(1); }}
           className="h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}>
-          <option value="">All statuses</option>
-          <option value="false">Unverified</option>
-          <option value="true">Verified</option>
+          <option value="">{t('adminPage.status')}</option>
+          <option value="false">{t('adminPage.unverified')}</option>
+          <option value="true">{t('adminPage.verified')}</option>
         </select>
         <select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}
           className="h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}>
-          <option value="created_at_desc">Newest first</option>
-          <option value="created_at_asc">Oldest first</option>
-          <option value="name_asc">Name A–Z</option>
-          <option value="email_asc">Email A–Z</option>
-          <option value="last_login_desc">Last active</option>
+          <option value="created_at_desc">{t('adminPage.newestFirst')}</option>
+          <option value="created_at_asc">{t('adminPage.oldestFirst')}</option>
+          <option value="name_asc">{t('adminPage.nameAZ')}</option>
+          <option value="email_asc">{t('adminPage.emailAZ')}</option>
+          <option value="last_login_desc">{t('adminPage.lastActive')}</option>
         </select>
       </div>
 
       {data && (
         <p className="text-xs text-gray-500 mb-3">
-          {data.total} user{data.total !== 1 ? 's' : ''}
-          {debouncedSearch || roleFilter || verifiedFilter ? ' matching filters' : ' total'}
-          {' · '}Page {data.page} of {data.total_pages}
+          {debouncedSearch || roleFilter || verifiedFilter
+            ? t('adminPage.usersMatching', { count: data.total })
+            : t('adminPage.usersTotal', { count: data.total })}
+          {' · '}{t('adminPage.pageOf', { page: data.page, total: data.total_pages })}
         </p>
       )}
 
@@ -1672,18 +1680,18 @@ export default function AdminPage() {
             <div className="w-7 h-7 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : data?.items.length === 0 ? (
-          <div className="text-center py-16 text-sm" style={{ color: 'var(--portal-text-muted)' }}>No users found.</div>
+          <div className="text-center py-16 text-sm" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.noUsersFound')}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b" style={{ background: 'var(--portal-main-bg)', borderColor: 'var(--portal-border)' }}>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>User</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Last login</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Joined</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>Actions</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.name')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.role')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.status')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.lastLogin')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.joined')}</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>{t('adminPage.actions')}</th>
                 </tr>
               </thead>
               <tbody className={`divide-y divide-gray-50 ${loading ? 'opacity-50' : ''}`}>
@@ -1705,19 +1713,19 @@ export default function AdminPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_BADGE[user.app_role]}`}>
-                        {user.app_role.charAt(0) + user.app_role.slice(1).toLowerCase()}
+                        {t('roles.' + user.app_role)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5">
                         <span className={`inline-flex items-center gap-1 text-xs font-medium ${user.email_verified ? 'text-green-700' : 'text-amber-700'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${user.email_verified ? 'bg-green-500' : 'bg-amber-400'}`} />
-                          {user.email_verified ? 'Verified' : 'Unverified'}
+                          {user.email_verified ? t('adminPage.verified') : t('adminPage.unverified')}
                         </span>
                         {!user.is_active && (
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                            Deactivated
+                            {t('adminPage.inactive')}
                           </span>
                         )}
                       </div>
@@ -1733,7 +1741,7 @@ export default function AdminPage() {
                             title="Verify email"
                             className="px-2.5 py-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 disabled:opacity-50 transition-colors"
                           >
-                            {actionLoading === user.id + '_verify' ? '…' : 'Verify'}
+                            {actionLoading === user.id + '_verify' ? '…' : t('adminPage.verify')}
                           </button>
                         )}
                         <button
@@ -1741,16 +1749,16 @@ export default function AdminPage() {
                           title="Edit user"
                           className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                         >
-                          Edit
+                          {t('common.edit')}
                         </button>
                         {user.is_active && (
                           <button
                             onClick={() => { if (user.id !== currentUser?.id) setConfirmDeactivate(user); }}
                             disabled={actionLoading === user.id + '_del' || user.id === currentUser?.id}
-                            title={user.id === currentUser?.id ? 'Cannot deactivate your own account' : 'Deactivate user'}
+                            title={user.id === currentUser?.id ? 'Cannot deactivate your own account' : t('adminPage.deactivate')}
                             className="px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
-                            Deactivate
+                            {t('adminPage.deactivate')}
                           </button>
                         )}
                       </div>
@@ -1770,7 +1778,7 @@ export default function AdminPage() {
             className="h-8 px-3 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50">
             ← Previous
           </button>
-          <span className="text-sm text-gray-500">Page {page} of {data.total_pages}</span>
+          <span className="text-sm text-gray-500">{t('adminPage.pageOf', { page, total: data.total_pages })}</span>
           <button onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))} disabled={page === data.total_pages || loading}
             className="h-8 px-3 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50">
             Next →
@@ -1806,7 +1814,7 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setConfirmDeactivate(null); }}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Deactivate user?</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('adminPage.deactivate')}?</h2>
             <p className="text-sm text-gray-500 mb-4">
               <span className="font-medium text-gray-800">{displayName(confirmDeactivate)}</span> will
               lose access immediately. You can re-activate them via Edit.
@@ -1814,12 +1822,12 @@ export default function AdminPage() {
             <div className="flex justify-end gap-3">
               <button onClick={() => setConfirmDeactivate(null)}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                Cancel
+                {t('adminPage.cancel')}
               </button>
               <button onClick={() => handleDeactivate(confirmDeactivate)}
                 disabled={actionLoading === confirmDeactivate.id + '_del'}
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50">
-                {actionLoading === confirmDeactivate.id + '_del' ? 'Deactivating…' : 'Deactivate'}
+                {actionLoading === confirmDeactivate.id + '_del' ? t('adminPage.saving') : t('adminPage.deactivate')}
               </button>
             </div>
           </div>
@@ -1833,6 +1841,7 @@ export default function AdminPage() {
 // ── Permission Groups Panel ────────────────────────────────────────────────────
 
 function PermissionGroupsPanel({ token }: { token: string | null }) {
+  const { t } = useTranslation();
   const [groups, setGroups]           = useState<PermissionGroup[]>([]);
   const [loading, setLoading]         = useState(false);
   const [createOpen, setCreateOpen]   = useState(false);
@@ -1868,13 +1877,13 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-gray-500">
-          Define access templates and assign them to users for specific trees.
+          {t('adminPage.permGroupsDesc')}
         </p>
         <button
           onClick={() => setCreateOpen(true)}
           className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
         >
-          + Create group
+          + {t('adminPage.createGroup')}
         </button>
       </div>
 
@@ -1889,7 +1898,7 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
           </div>
         ) : groups.length === 0 ? (
           <div className="text-center py-16 text-sm" style={{ color: 'var(--portal-text-muted)' }}>
-            No permission groups yet. Create one to get started.
+            {t('adminPage.noGroups')}
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -1907,11 +1916,11 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900">{g.name}</div>
                     {g.description && <div className="text-xs text-gray-500 mt-0.5">{g.description}</div>}
-                    <div className="text-xs text-gray-400 mt-0.5">{LEVEL_DESC[g.permission_level]}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{t(LEVEL_DESC_KEY[g.permission_level])}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${LEVEL_BADGE[g.permission_level]}`}>
-                      {LEVEL_LABEL[g.permission_level]}
+                      {t(LEVEL_LABEL_KEY[g.permission_level])}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
@@ -1972,7 +1981,7 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Delete group?</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">{t('common.delete')}?</h2>
             <p className="text-sm text-gray-500 mb-4">
               <span className="font-medium text-gray-800">{deleteTarget.name}</span> will be permanently removed.
               All {deleteTarget.member_count} member{deleteTarget.member_count !== 1 ? 's' : ''} will lose access to its{' '}
@@ -1980,10 +1989,10 @@ function PermissionGroupsPanel({ token }: { token: string | null }) {
             </p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">{t('adminPage.cancel')}</button>
               <button onClick={() => handleDelete(deleteTarget)}
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           </div>
@@ -2003,6 +2012,7 @@ function GroupFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [name,  setName]  = useState(initial?.name ?? '');
   const [desc,  setDesc]  = useState(initial?.description ?? '');
   const [level, setLevel] = useState<'VISIBLE'|'READ'|'READ_WRITE'>(initial?.permission_level ?? 'READ');
@@ -2037,12 +2047,12 @@ function GroupFormModal({
       onClick={(e) => { if (e.target === e.currentTarget && !saving) onClose(); }}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          {initial ? 'Edit permission group' : 'Create permission group'}
+          {initial ? t('common.edit') : t('adminPage.createGroup')}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              Name <span className="text-red-500">*</span>
+              {t('adminPage.groupName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text" value={name} onChange={(e) => setName(e.target.value)}
@@ -2052,7 +2062,7 @@ function GroupFormModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('adminPage.description')}</label>
             <textarea
               value={desc} onChange={(e) => setDesc(e.target.value)}
               rows={2} maxLength={500} placeholder="Optional description…"
@@ -2060,7 +2070,7 @@ function GroupFormModal({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">Permission level</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">{t('adminPage.permissionLevel')}</label>
             <div className="space-y-2">
               {(['VISIBLE','READ','READ_WRITE'] as const).map((lvl) => (
                 <label key={lvl} className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
@@ -2070,9 +2080,9 @@ function GroupFormModal({
                     onChange={() => setLevel(lvl)} className="mt-0.5 accent-brand-500" />
                   <div>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${LEVEL_BADGE[lvl]}`}>
-                      {LEVEL_LABEL[lvl]}
+                      {t(LEVEL_LABEL_KEY[lvl])}
                     </span>
-                    <p className="text-xs text-gray-500 mt-1">{LEVEL_DESC[lvl]}</p>
+                    <p className="text-xs text-gray-500 mt-1">{t(LEVEL_DESC_KEY[lvl])}</p>
                   </div>
                 </label>
               ))}
@@ -2082,11 +2092,11 @@ function GroupFormModal({
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} disabled={saving}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50">
-              Cancel
+              {t('adminPage.cancel')}
             </button>
             <button type="submit" disabled={saving || !name.trim()}
               className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
-              {saving ? 'Saving…' : initial ? 'Save changes' : 'Create group'}
+              {saving ? t('adminPage.saving') : initial ? t('common.save') : t('adminPage.createGroup')}
             </button>
           </div>
         </form>
@@ -2100,6 +2110,7 @@ function GroupFormModal({
 function GroupDetailModal({
   group, token, onClose,
 }: { group: PermissionGroup; token: string | null; onClose: () => void; }) {
+  const { t } = useTranslation();
   const [groupTrees,   setGroupTrees]   = useState<GroupTree[]>([]);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [availTrees,   setAvailTrees]   = useState<TenantTree[]>([]);
@@ -2157,7 +2168,7 @@ function GroupDetailModal({
   }
 
   async function handleRemoveTree(entryId: string) {
-    const entry = groupTrees.find(t => t.id === entryId);
+    const entry = groupTrees.find(gt => gt.id === entryId);
     if (!entry) return;
     await fetch(`${API_BASE}/admin/permission-groups/${group.id}/trees/${entry.tree_id}`, {
       method: 'DELETE', headers: authHeader, credentials: 'include',
@@ -2192,9 +2203,9 @@ function GroupDetailModal({
     fetchAll();
   }
 
-  const groupTreeIds   = new Set(groupTrees.map(t => t.tree_id));
+  const groupTreeIds   = new Set(groupTrees.map(gt => gt.tree_id));
   const groupMemberIds = new Set(groupMembers.map(m => m.user_id));
-  const treesToAdd     = availTrees.filter(t => !groupTreeIds.has(t.id));
+  const treesToAdd     = availTrees.filter(tr => !groupTreeIds.has(tr.id));
   const usersToAdd     = availUsers.filter(u => !groupMemberIds.has(u.id));
 
   return (
@@ -2207,9 +2218,9 @@ function GroupDetailModal({
             <h2 className="text-lg font-semibold text-gray-900">{group.name}</h2>
             <div className="flex items-center gap-2 mt-1">
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${LEVEL_BADGE[group.permission_level]}`}>
-                {LEVEL_LABEL[group.permission_level]}
+                {t(LEVEL_LABEL_KEY[group.permission_level])}
               </span>
-              <span className="text-xs text-gray-400">{LEVEL_DESC[group.permission_level]}</span>
+              <span className="text-xs text-gray-400">{t(LEVEL_DESC_KEY[group.permission_level])}</span>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-1">×</button>
@@ -2228,10 +2239,10 @@ function GroupDetailModal({
             {/* ── Trees section ── */}
             <section>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-700">Trees ({groupTrees.length})</h3>
+                <h3 className="text-sm font-semibold text-gray-700">{t('adminPage.trees')} ({groupTrees.length})</h3>
                 {treesToAdd.length > 0 && !addTreeOpen && (
                   <button onClick={() => { setAddTreeOpen(true); setAddMemberOpen(false); setError(''); }}
-                    className="text-xs text-brand-600 font-medium hover:text-brand-700">+ Add tree</button>
+                    className="text-xs text-brand-600 font-medium hover:text-brand-700">+ {t('adminPage.addTree')}</button>
                 )}
               </div>
 
@@ -2239,11 +2250,11 @@ function GroupDetailModal({
                 <form onSubmit={handleAddTree} className="flex gap-2 mb-3">
                   <select value={selTree} onChange={(e) => setSelTree(e.target.value)} required
                     className="flex-1 h-9 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    <option value="">Select tree…</option>
-                    {treesToAdd.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    <option value="">{t('adminPage.selectTree')}</option>
+                    {treesToAdd.map(tr => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
                   </select>
                   <button type="button" onClick={() => { setAddTreeOpen(false); setSelTree(''); setError(''); }}
-                    className="px-3 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                    className="px-3 text-sm text-gray-500 hover:text-gray-700">{t('adminPage.cancel')}</button>
                   <button type="submit" disabled={saving || !selTree}
                     className="px-3 py-1.5 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
                     {saving ? '…' : 'Add'}
@@ -2257,11 +2268,11 @@ function GroupDetailModal({
                 </p>
               ) : (
                 <div className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
-                  {groupTrees.map(t => (
-                    <div key={t.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
-                      <span className="text-sm font-medium text-gray-800">{t.tree_name}</span>
-                      <button onClick={() => handleRemoveTree(t.id)}
-                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                  {groupTrees.map(gt => (
+                    <div key={gt.id} className="flex items-center justify-between px-3 py-2 hover:bg-gray-50">
+                      <span className="text-sm font-medium text-gray-800">{gt.tree_name}</span>
+                      <button onClick={() => handleRemoveTree(gt.id)}
+                        className="text-xs text-red-500 hover:text-red-700">{t('common.remove')}</button>
                     </div>
                   ))}
                 </div>
@@ -2271,10 +2282,10 @@ function GroupDetailModal({
             {/* ── Members section ── */}
             <section>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-700">Members ({groupMembers.length})</h3>
+                <h3 className="text-sm font-semibold text-gray-700">{t('adminPage.membersLabel')} ({groupMembers.length})</h3>
                 {usersToAdd.length > 0 && !addMemberOpen && (
                   <button onClick={() => { setAddMemberOpen(true); setAddTreeOpen(false); setError(''); }}
-                    className="text-xs text-brand-600 font-medium hover:text-brand-700">+ Add member</button>
+                    className="text-xs text-brand-600 font-medium hover:text-brand-700">+ {t('adminPage.addMember')}</button>
                 )}
               </div>
 
@@ -2286,7 +2297,7 @@ function GroupDetailModal({
                     {usersToAdd.map(u => <option key={u.id} value={u.id}>{u.display} ({u.email})</option>)}
                   </select>
                   <button type="button" onClick={() => { setAddMemberOpen(false); setSelUser(''); setError(''); }}
-                    className="px-3 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+                    className="px-3 text-sm text-gray-500 hover:text-gray-700">{t('adminPage.cancel')}</button>
                   <button type="submit" disabled={saving || !selUser}
                     className="px-3 py-1.5 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50">
                     {saving ? '…' : 'Add'}
@@ -2307,7 +2318,7 @@ function GroupDetailModal({
                         <div className="text-xs text-gray-500">{m.user_email}</div>
                       </div>
                       <button onClick={() => handleRemoveMember(m.id)}
-                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                        className="text-xs text-red-500 hover:text-red-700">{t('common.remove')}</button>
                     </div>
                   ))}
                 </div>

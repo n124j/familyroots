@@ -18,6 +18,7 @@
 
 import React, { memo, useCallback, useState } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
+import { useTranslation } from 'react-i18next';
 import type { PersonNodeData } from '../../types';
 import {
   SEX_BORDER_COLOR,
@@ -224,6 +225,7 @@ function DetailsPanel({ data, borderColor, bg, textColor, subtextColor, borderCs
 // ── Main component ─────────────────────────────────────────────────────────
 
 function PersonNodeComponent({ data, selected, dragging }: NodeProps<PersonNodeData>) {
+  const { t } = useTranslation();
   const {
     personId,
     displayGivenName,
@@ -336,7 +338,7 @@ function PersonNodeComponent({ data, selected, dragging }: NodeProps<PersonNodeD
                   <div className="text-xs mt-0.5" style={{ color: theme.nodeSubtext }}>{years}</div>
                 )}
                 {isDeceased && (
-                  <div className="text-[10px] mt-0.5" style={{ color: theme.nodeSubtext }}>✝ Deceased</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: theme.nodeSubtext }}>{t('treeForm.deceasedLabel')}</div>
                 )}
               </div>
             </div>
@@ -413,7 +415,7 @@ function PersonNodeComponent({ data, selected, dragging }: NodeProps<PersonNodeD
                 </div>
               )}
               {isDeceased && !isFocus && (
-                <div className="text-[10px] mt-0.5" style={{ color: theme.nodeSubtext }}>✝ Deceased</div>
+                <div className="text-[10px] mt-0.5" style={{ color: theme.nodeSubtext }}>{t('treeForm.deceasedLabel')}</div>
               )}
             </div>
 

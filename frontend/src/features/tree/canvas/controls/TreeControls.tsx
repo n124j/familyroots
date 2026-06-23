@@ -9,6 +9,7 @@
  */
 
 import React, { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useReactFlow } from 'reactflow';
 import type { LayoutMode } from '../../types';
 import { useCanvasStore } from '@store/canvas.store';
@@ -116,20 +117,20 @@ const GenerationSortIcon = () => (
 // ── Layout mode buttons ────────────────────────────────────────────────────
 
 type LayoutModeEntry =
-  | { mode: LayoutMode; label: string; title: string; icon?: never }
-  | { mode: LayoutMode; icon: React.ReactNode; title: string; label?: never };
+  | { mode: LayoutMode; label: string; titleKey: string; icon?: never }
+  | { mode: LayoutMode; icon: React.ReactNode; titleKey: string; label?: never };
 
 const LAYOUT_MODES: LayoutModeEntry[] = [
-  { mode: 'generation',         icon: <GenerationSortIcon />, title: 'Generation sort — oldest generation at top, each level below' },
-  { mode: 'vertical',           label: '↕',  title: 'Vertical (multi-marriage aware)' },
-  { mode: 'horizontal',         label: '↔',  title: 'Horizontal (left → right)' },
-  { mode: 'ancestor',           label: '↑',  title: 'Ancestor chart (roots above)' },
-  { mode: 'descendant',         label: '↓',  title: 'Descendant chart (roots below)' },
-  { mode: 'descendant-family',  icon: <DescendantFamilyIcon />, title: 'Descendants + spouses — all descendants with their partners' },
-  { mode: 'ancestor-family',    icon: <AncestorFamilyIcon />,   title: 'Ancestors + spouses — all ancestors with their partners' },
-  { mode: 'fan',                label: '◑',  title: 'Fan chart — semicircle (180°)' },
-  { mode: 'ancestry-fan',       label: '◎',  title: 'Ancestry fan chart — full circle (360°)' },
-  { mode: 'pedigree',           label: '⊢',  title: 'Pedigree chart (ancestors left → right)' },
+  { mode: 'generation',         icon: <GenerationSortIcon />, titleKey: 'treeControls.generationSort' },
+  { mode: 'vertical',           label: '↕',  titleKey: 'treeControls.vertical' },
+  { mode: 'horizontal',         label: '↔',  titleKey: 'treeControls.horizontal' },
+  { mode: 'ancestor',           label: '↑',  titleKey: 'treeControls.ancestor' },
+  { mode: 'descendant',         label: '↓',  titleKey: 'treeControls.descendant' },
+  { mode: 'descendant-family',  icon: <DescendantFamilyIcon />, titleKey: 'treeControls.descendantFamily' },
+  { mode: 'ancestor-family',    icon: <AncestorFamilyIcon />,   titleKey: 'treeControls.ancestorFamily' },
+  { mode: 'fan',                label: '◑',  titleKey: 'treeControls.fan' },
+  { mode: 'ancestry-fan',       label: '◎',  titleKey: 'treeControls.ancestryFan' },
+  { mode: 'pedigree',           label: '⊢',  titleKey: 'treeControls.pedigree' },
 ];
 
 // ── Control button ─────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ interface TreeControlsProps {
 }
 
 export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeControlsProps) => {
+  const { t } = useTranslation();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const layoutMode      = useCanvasStore((s) => s.layoutMode);
   const setLayoutMode   = useCanvasStore((s) => s.setLayoutMode);
@@ -197,7 +199,7 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeCon
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-1 p-1.5 bg-white/90 backdrop-blur rounded-xl border border-slate-200 shadow-card">
       {/* Zoom controls */}
-      <CtrlBtn onClick={handleZoomOut} title="Zoom out (scroll down)">
+      <CtrlBtn onClick={handleZoomOut} title={t('treeControls.zoomOut')}>
         <MinusIcon />
       </CtrlBtn>
 
@@ -205,22 +207,22 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeCon
         {Math.round(zoom * 100)}%
       </span>
 
-      <CtrlBtn onClick={handleZoomIn} title="Zoom in (scroll up)">
+      <CtrlBtn onClick={handleZoomIn} title={t('treeControls.zoomIn')}>
         <PlusIcon />
       </CtrlBtn>
 
-      <CtrlBtn onClick={handleFitView} title="Fit entire tree in view">
+      <CtrlBtn onClick={handleFitView} title={t('treeControls.fitView')}>
         <FitIcon />
       </CtrlBtn>
 
       <Divider />
 
       {/* Layout modes */}
-      {LAYOUT_MODES.map(({ mode, title, ...rest }) => (
+      {LAYOUT_MODES.map(({ mode, titleKey, ...rest }) => (
         <CtrlBtn
           key={mode}
           onClick={() => handleLayoutMode(mode)}
-          title={title}
+          title={t(titleKey)}
           active={layoutMode === mode}
         >
           {'icon' in rest ? rest.icon : rest.label}
@@ -230,24 +232,24 @@ export const TreeControls = memo(({ graph, onExpandAll, onCollapseAll }: TreeCon
       <Divider />
 
       {/* Expand / Collapse */}
-      <CtrlBtn onClick={onExpandAll} title="Expand all branches">
+      <CtrlBtn onClick={onExpandAll} title={t('treeControls.expandAll')}>
         ⊞
       </CtrlBtn>
-      <CtrlBtn onClick={onCollapseAll} title="Collapse to focus person">
+      <CtrlBtn onClick={onCollapseAll} title={t('treeControls.collapseAll')}>
         ⊟
       </CtrlBtn>
 
       <Divider />
 
       {/* Reset layout */}
-      <CtrlBtn onClick={bumpLayoutReset} title="Reset layout">
+      <CtrlBtn onClick={bumpLayoutReset} title={t('treeControls.resetLayout')}>
         ↺
       </CtrlBtn>
 
       {/* Compact family-tree view */}
       <CtrlBtn
         onClick={handleCompactView}
-        title="Compact view — traditional family tree layout"
+        title={t('treeControls.compactView')}
         active={layoutMode === 'compact'}
       >
         <CompactViewIcon />

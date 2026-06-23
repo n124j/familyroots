@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [email,        setEmail]        = useState('');
   const [submitted,    setSubmitted]    = useState(false);
   const [unverified,   setUnverified]   = useState(false);
@@ -57,7 +59,7 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <SEO
-        title="Forgot Password"
+        title={t('forgotPasswordPage.title')}
         description="Reset your FamilyRoots password. Enter your email address to receive a secure password reset link."
         canonical="/forgot-password"
         noIndex
@@ -66,31 +68,30 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-3xl mb-2">🌳</div>
-          <h1 className="text-2xl font-bold text-slate-900">FamilyRoots</h1>
-          <p className="text-sm text-slate-500 mt-1">Reset your password</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('common.appName')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('forgotPasswordPage.resetYourPassword')}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
           {submitted ? (
             <div className="text-center space-y-3">
               <div className="text-4xl">📬</div>
-              <p className="text-sm font-medium text-slate-800">Check your inbox</p>
+              <p className="text-sm font-medium text-slate-800">{t('forgotPasswordPage.checkInbox')}</p>
               <p className="text-sm text-slate-500">
-                If <span className="font-medium">{email}</span> is registered, you'll receive a reset link shortly.
+                {t('forgotPasswordPage.resetSent', { email })}
               </p>
             </div>
           ) : unverified ? (
             <div className="space-y-4">
               <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm font-medium text-amber-800">Email not verified</p>
+                <p className="text-sm font-medium text-amber-800">{t('forgotPasswordPage.emailNotVerified')}</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  <span className="font-medium">{email}</span> has not been verified yet.
-                  Please verify your account before resetting your password.
+                  {t('forgotPasswordPage.notVerifiedDesc', { email })}
                 </p>
               </div>
               {resent ? (
                 <p className="text-sm text-center text-green-700">
-                  Verification email sent — check your inbox.
+                  {t('forgotPasswordPage.verificationSent')}
                 </p>
               ) : (
                 <button
@@ -98,25 +99,25 @@ export default function ForgotPasswordPage() {
                   disabled={resending}
                   className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
                 >
-                  {resending ? 'Sending…' : 'Resend verification email'}
+                  {resending ? t('forgotPasswordPage.sending') : t('forgotPasswordPage.resendVerification')}
                 </button>
               )}
               <button
                 onClick={() => { setUnverified(false); setResent(false); }}
                 className="w-full text-sm text-slate-500 hover:text-slate-700"
               >
-                Try a different email
+                {t('forgotPasswordPage.tryDifferentEmail')}
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <p className="text-sm text-slate-500">
-                Enter your email and we'll send you a link to reset your password.
+                {t('forgotPasswordPage.enterEmail')}
               </p>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Email
+                  {t('auth.email')}
                 </label>
                 <input
                   type="email"
@@ -140,7 +141,7 @@ export default function ForgotPasswordPage() {
                 disabled={loading}
                 className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? 'Sending…' : 'Send reset link'}
+                {loading ? t('forgotPasswordPage.sending') : t('forgotPasswordPage.sendResetLink')}
               </button>
             </form>
           )}
@@ -148,7 +149,7 @@ export default function ForgotPasswordPage() {
 
         <p className="text-center text-sm text-slate-500 mt-5">
           <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">
-            Back to sign in
+            {t('forgotPasswordPage.backToSignIn')}
           </Link>
         </p>
       </div>

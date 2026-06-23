@@ -7,6 +7,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import '../../i18n';
 import { MediaUploader } from '@features/media/components/MediaUploader';
 
 const TREE_ID  = 'tree-abc';

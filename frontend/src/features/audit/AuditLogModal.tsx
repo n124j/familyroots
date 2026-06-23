@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { get } from '@api/client';
 
@@ -14,26 +15,29 @@ interface AuditEntry {
   occurred_at: string;
 }
 
-const ACTION_LABELS: Record<string, string> = {
-  CREATE_PERSON:       'Added person',
-  UPDATE_PERSON:       'Updated person',
-  DELETE_PERSON:       'Deleted person',
-  ADD_RELATIONSHIP:    'Added relationship',
-  REMOVE_RELATIONSHIP: 'Removed relationship',
-  UPLOAD_MEDIA:        'Uploaded media',
-  DELETE_MEDIA:        'Removed photo',
-  UPDATE_PHOTO:        'Updated photo',
-  INVITE_MEMBER:       'Invited member',
-  REMOVE_MEMBER:       'Removed member',
-  CHANGE_MEMBER_ROLE:  'Changed member role',
-  UPDATE_TREE:         'Updated tree',
-  DELETE_TREE:         'Deleted tree',
-  EXPORT_TREE:         'Exported tree (.frt)',
-  IMPORT_TREE:         'Imported tree (.frt)',
-  RESTORE_VERSION:     'Restored version',
-  GENERATE_REPORT:     'Generated report',
-  EXPORT_GEDCOM:       'Exported GEDCOM',
-};
+function useActionLabels(): Record<string, string> {
+  const { t } = useTranslation();
+  return {
+    CREATE_PERSON:       t('auditLog.addedPerson'),
+    UPDATE_PERSON:       t('auditLog.updatedPerson'),
+    DELETE_PERSON:       t('auditLog.deletedPerson'),
+    ADD_RELATIONSHIP:    t('auditLog.addedRelationship'),
+    REMOVE_RELATIONSHIP: t('auditLog.removedRelationship'),
+    UPLOAD_MEDIA:        t('auditLog.uploadedMedia'),
+    DELETE_MEDIA:        t('auditLog.removedPhoto'),
+    UPDATE_PHOTO:        t('auditLog.updatedPhoto'),
+    INVITE_MEMBER:       t('auditLog.invitedMember'),
+    REMOVE_MEMBER:       t('auditLog.removedMember'),
+    CHANGE_MEMBER_ROLE:  t('auditLog.changedRole'),
+    UPDATE_TREE:         t('auditLog.updatedTree'),
+    DELETE_TREE:         t('auditLog.deletedTree'),
+    EXPORT_TREE:         t('auditLog.exportedFrt'),
+    IMPORT_TREE:         t('auditLog.importedFrt'),
+    RESTORE_VERSION:     t('auditLog.restoredVersion'),
+    GENERATE_REPORT:     t('auditLog.generatedReport'),
+    EXPORT_GEDCOM:       t('auditLog.exportedGedcom'),
+  };
+}
 
 const ACTION_COLOR: Record<string, string> = {
   CREATE_PERSON:    'bg-green-100 text-green-700',
@@ -49,16 +53,19 @@ const ACTION_COLOR: Record<string, string> = {
 
 const DEFAULT_COLOR = 'bg-gray-100 text-gray-600';
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return d === 1 ? 'yesterday' : `${d}d ago`;
+function useRelativeTime() {
+  const { t } = useTranslation();
+  return (iso: string): string => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return t('auditLog.justNow');
+    const m = Math.floor(s / 60);
+    if (m < 60) return t('auditLog.minutesAgo', { count: m });
+    const h = Math.floor(m / 60);
+    if (h < 24) return t('auditLog.hoursAgo', { count: h });
+    const d = Math.floor(h / 24);
+    return d === 1 ? t('auditLog.yesterday') : t('auditLog.daysAgo', { count: d });
+  };
 }
 
 interface Props {
@@ -67,6 +74,9 @@ interface Props {
 }
 
 export function AuditLogModal({ treeId, onClose }: Props) {
+  const { t } = useTranslation();
+  const ACTION_LABELS = useActionLabels();
+  const relativeTime = useRelativeTime();
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const limit = 20;
@@ -88,7 +98,7 @@ export function AuditLogModal({ treeId, onClose }: Props) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg h-[calc(100vh-2rem)] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 className="font-bold text-slate-900">Activity log</h2>
+          <h2 className="font-bold text-slate-900">{t('auditLog.title')}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl leading-none">✕</button>
         </div>
 

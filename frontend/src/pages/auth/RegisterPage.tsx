@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { OAuthButtons, hasOAuthProviders } from '@features/auth/components/OAuthButtons';
 
@@ -25,6 +26,7 @@ async function register(body: {
 
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const oauthError = searchParams.get('error');
@@ -68,8 +70,8 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="text-3xl mb-2">🌳</div>
-          <h1 className="text-2xl font-bold text-slate-900">FamilyRoots</h1>
-          <p className="text-sm text-slate-500 mt-1">Create your free account</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('common.appName')}</h1>
+          <p className="text-sm text-slate-500 mt-1">{t('auth.createFreeAccount')}</p>
         </div>
 
         {/* Card */}
@@ -78,8 +80,8 @@ export default function RegisterPage() {
           {oauthError && (
             <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
               {oauthError === 'oauth_state_mismatch'
-                ? 'Sign-in session expired. Please try again.'
-                : 'An error occurred with social sign-in. Please try again.'}
+                ? t('auth.oauthExpired')
+                : t('auth.oauthError')}
             </div>
           )}
 
@@ -89,7 +91,7 @@ export default function RegisterPage() {
               <OAuthButtons dividerLabel="" next="/register" />
               <div className="relative flex items-center gap-3 my-5">
                 <div className="flex-1 h-px bg-slate-200" />
-                <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
+                <span className="text-xs text-slate-400 font-medium">{t('auth.orSignUpWithEmail')}</span>
                 <div className="flex-1 h-px bg-slate-200" />
               </div>
             </>
@@ -100,7 +102,7 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="reg-given-name" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  First name
+                  {t('auth.firstName')}
                 </label>
                 <input
                   id="reg-given-name"
@@ -115,7 +117,7 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label htmlFor="reg-family-name" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Last name
+                  {t('auth.lastName')}
                 </label>
                 <input
                   id="reg-family-name"
@@ -133,7 +135,7 @@ export default function RegisterPage() {
             {/* Email */}
             <div>
               <label htmlFor="reg-email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email
+                {t('auth.email')}
               </label>
               <input
                 id="reg-email"
@@ -150,7 +152,7 @@ export default function RegisterPage() {
             {/* Password */}
             <div>
               <label htmlFor="reg-password" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Password
+                {t('auth.password')}
               </label>
               <input
                 id="reg-password"
@@ -168,7 +170,7 @@ export default function RegisterPage() {
             {/* Confirm password */}
             <div>
               <label htmlFor="reg-confirm" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Confirm password
+                {t('auth.confirmPassword')}
               </label>
               <input
                 id="reg-confirm"
@@ -183,7 +185,7 @@ export default function RegisterPage() {
                 placeholder="Re-enter password"
               />
               {confirm && confirm !== password && (
-                <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+                <p className="mt-1 text-xs text-red-500">{t('auth.passwordsNoMatch')}</p>
               )}
             </div>
 
@@ -198,15 +200,15 @@ export default function RegisterPage() {
               disabled={loading}
               className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Creating account…' : 'Create account'}
+              {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
             </button>
           </form>
         </div>
 
         <p className="text-center text-sm text-slate-500 mt-5">
-          Already have an account?{' '}
+          {t('auth.alreadyHaveAccount')}{' '}
           <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">
-            Sign in
+            {t('auth.signIn')}
           </Link>
         </p>
       </div>

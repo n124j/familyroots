@@ -6,6 +6,7 @@
  */
 
 import React, { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@queries/keys';
 import { PermissionGuard } from '@shared/components/PermissionGuard';
@@ -24,9 +25,10 @@ interface Member {
   avatarUrl?: string;
 }
 
-const ROLE_LABELS: Record<TreeRole, string> = {
-  OWNER: 'Owner', ADMIN: 'Admin', EDITOR: 'Editor', VIEWER: 'Viewer',
-};
+function useRoleLabels(): Record<TreeRole, string> {
+  const { t } = useTranslation();
+  return { OWNER: t('roles.OWNER'), ADMIN: t('roles.ADMIN'), EDITOR: t('roles.EDITOR'), VIEWER: t('roles.VIEWER') };
+}
 
 const ROLE_COLORS: Record<TreeRole, string> = {
   OWNER:  'bg-amber-100 text-amber-800',
@@ -68,11 +70,14 @@ async function removeMember(treeId: string, userId: string): Promise<void> {
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-const RoleBadge = memo(({ role }: { role: TreeRole }) => (
-  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[role]}`}>
-    {ROLE_LABELS[role]}
-  </span>
-));
+const RoleBadge = memo(({ role }: { role: TreeRole }) => {
+  const labels = useRoleLabels();
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[role]}`}>
+      {labels[role]}
+    </span>
+  );
+});
 
 interface MemberRowProps {
   member: Member;
@@ -83,6 +88,8 @@ interface MemberRowProps {
 }
 
 const MemberRow = memo(({ member, treeId, isCurrentUser, canManage, isOwner }: MemberRowProps) => {
+  const { t } = useTranslation();
+  const roleLabels = useRoleLabels();
   const queryClient = useQueryClient();
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -121,7 +128,7 @@ const MemberRow = memo(({ member, treeId, isCurrentUser, canManage, isOwner }: M
             {member.displayName ?? member.email ?? member.userId.slice(0, 8)}
           </span>
           {isCurrentUser && (
-            <span className="text-[10px] text-slate-400">(you)</span>
+            <span className="text-[10px] text-slate-400">{t('membersPanel.you')}</span>
           )}
         </div>
         {member.email && (
@@ -139,7 +146,7 @@ const MemberRow = memo(({ member, treeId, isCurrentUser, canManage, isOwner }: M
             className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-700 bg-white focus:ring-1 focus:ring-brand-500 focus:outline-none"
           >
             {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              <option key={r} value={r}>{roleLabels[r]}</option>
             ))}
             {isOwner && <option value="OWNER">Owner (transfer)</option>}
           </select>

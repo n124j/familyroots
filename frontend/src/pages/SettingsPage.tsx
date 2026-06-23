@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 import { UserAvatar } from '@shared/components/UserAvatar';
 import { usePortalThemeStore, PORTAL_PRESETS, PORTAL_PRESET_LABEL, type PortalTheme } from '@store/portalTheme.store';
+import { changeLanguage, getCurrentLanguage } from '../i18n';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
-type Tab = 'profile' | 'security' | 'appearance' | 'notifications';
+type Tab = 'profile' | 'security' | 'appearance' | 'notifications' | 'language';
 
 interface UserProfile {
   given_name: string | null;
@@ -19,20 +21,6 @@ interface UserProfile {
   timezone: string;
   oauth_providers: string[];
 }
-
-const ROLE_LABEL: Record<string, string> = {
-  SUPER_ADMIN: 'Super Admin',
-  ADMIN:       'Admin',
-  STANDARD:    'Standard',
-  AUDITOR:     'Auditor',
-};
-
-const ROLE_BADGE: Record<string, string> = {
-  SUPER_ADMIN: 'bg-red-100 text-red-700',
-  ADMIN:       'bg-purple-100 text-purple-700',
-  STANDARD:    'bg-blue-100 text-blue-700',
-  AUDITOR:     'bg-amber-100 text-amber-700',
-};
 
 // ── Appearance Tab (portal-wide theme) ────────────────────────────────────
 
@@ -59,18 +47,18 @@ function PortalColorField({
 }
 
 function AppearanceTab() {
+  const { t } = useTranslation();
   const { theme, setPreset, reset } = usePortalThemeStore();
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-500">
-        Controls the overall look of the portal — sidebar, backgrounds, and navigation.
-        Tree canvas appearance is customized inside the tree view.
+        {t('settings.appearance.description')}
       </p>
 
       {/* Presets */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Presets</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">{t('settings.appearance.presets')}</h3>
         <div className="flex flex-wrap gap-2">
           {PORTAL_PRESETS.map((p) => (
             <button
@@ -92,7 +80,7 @@ function AppearanceTab() {
           ))}
           {theme.preset === 'custom' && (
             <span className="flex items-center px-3 py-2 rounded-lg border-2 border-brand-500 bg-brand-50 text-sm font-medium text-brand-700">
-              Custom
+              {t('settings.appearance.custom')}
             </span>
           )}
         </div>
@@ -100,44 +88,44 @@ function AppearanceTab() {
 
       {/* Background */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-1">Background</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-1">{t('settings.appearance.background')}</h3>
         <div className="bg-white rounded-xl border border-gray-200 px-4">
-          <PortalColorField label="Main content background" field="mainBg"   value={theme.mainBg} />
-          <PortalColorField label="Card / panel background" field="cardBg"   value={theme.cardBg} />
+          <PortalColorField label={t('settings.appearance.mainContentBg')} field="mainBg"   value={theme.mainBg} />
+          <PortalColorField label={t('settings.appearance.cardPanelBg')} field="cardBg"   value={theme.cardBg} />
         </div>
       </div>
 
       {/* Sidebar */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-1">Sidebar</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-1">{t('settings.appearance.sidebar')}</h3>
         <div className="bg-white rounded-xl border border-gray-200 px-4">
-          <PortalColorField label="Sidebar background"  field="sidebarBg"       value={theme.sidebarBg} />
-          <PortalColorField label="Sidebar border"      field="sidebarBorder"   value={theme.sidebarBorder} />
-          <PortalColorField label="Nav link text"       field="navText"         value={theme.navText} />
-          <PortalColorField label="Nav link hover"      field="navHover"        value={theme.navHover} />
-          <PortalColorField label="Active link bg"      field="navActiveBg"     value={theme.navActiveBg} />
-          <PortalColorField label="Active link text"    field="navActiveText"   value={theme.navActiveText} />
-          <PortalColorField label="Logo text"           field="logoText"        value={theme.logoText} />
+          <PortalColorField label={t('settings.appearance.sidebarBg')} field="sidebarBg"       value={theme.sidebarBg} />
+          <PortalColorField label={t('settings.appearance.sidebarBorder')} field="sidebarBorder"   value={theme.sidebarBorder} />
+          <PortalColorField label={t('settings.appearance.navLinkText')} field="navText"         value={theme.navText} />
+          <PortalColorField label={t('settings.appearance.navLinkHover')} field="navHover"        value={theme.navHover} />
+          <PortalColorField label={t('settings.appearance.activeLinkBg')} field="navActiveBg"     value={theme.navActiveBg} />
+          <PortalColorField label={t('settings.appearance.activeLinkText')} field="navActiveText"   value={theme.navActiveText} />
+          <PortalColorField label={t('settings.appearance.logoText')} field="logoText"        value={theme.logoText} />
         </div>
       </div>
 
       {/* Text */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-1">Foreground</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-1">{t('settings.appearance.foreground')}</h3>
         <div className="bg-white rounded-xl border border-gray-200 px-4">
-          <PortalColorField label="Primary text"  field="textPrimary" value={theme.textPrimary} />
-          <PortalColorField label="Muted text"    field="textMuted"   value={theme.textMuted} />
+          <PortalColorField label={t('settings.appearance.primaryText')} field="textPrimary" value={theme.textPrimary} />
+          <PortalColorField label={t('settings.appearance.mutedText')} field="textMuted"   value={theme.textMuted} />
         </div>
       </div>
 
       {/* Live preview */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Preview</h3>
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">{t('settings.appearance.preview')}</h3>
         <div className="rounded-xl overflow-hidden border border-gray-200 flex" style={{ height: 160 }}>
           {/* Sidebar preview */}
           <div className="w-36 flex flex-col p-2 gap-1" style={{ background: theme.sidebarBg, borderRight: `1px solid ${theme.sidebarBorder}` }}>
             <p className="text-xs font-bold px-2 py-1 mb-1" style={{ color: theme.logoText }}>FamilyRoots</p>
-            {['Dashboard', 'Settings'].map((l, i) => (
+            {[t('nav.dashboard'), t('nav.settings')].map((l, i) => (
               <div key={l} className="px-2 py-1 rounded text-xs" style={{
                 background: i === 0 ? theme.navActiveBg : 'transparent',
                 color: i === 0 ? theme.navActiveText : theme.navText,
@@ -146,10 +134,10 @@ function AppearanceTab() {
           </div>
           {/* Main preview */}
           <div className="flex-1 p-4 flex flex-col gap-2" style={{ background: theme.mainBg }}>
-            <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>Family Trees</p>
+            <p className="text-sm font-semibold" style={{ color: theme.textPrimary }}>{t('settings.appearance.familyTrees')}</p>
             <div className="rounded-lg p-3 shadow-sm" style={{ background: theme.cardBg, border: `1px solid ${theme.sidebarBorder}` }}>
               <p className="text-xs font-medium" style={{ color: theme.textPrimary }}>The Shah Dynasty</p>
-              <p className="text-xs" style={{ color: theme.textMuted }}>24 people · 3 members</p>
+              <p className="text-xs" style={{ color: theme.textMuted }}>24 {t('common.people')} · 3 {t('common.members')}</p>
             </div>
           </div>
         </div>
@@ -160,7 +148,7 @@ function AppearanceTab() {
           onClick={reset}
           className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
-          Reset to Light
+          {t('settings.appearance.resetToLight')}
         </button>
       </div>
     </div>
@@ -180,6 +168,7 @@ function DeleteAccountModal({
   accessToken: string | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const logout    = useAuthStore((s) => s.logout);
   const cardRef   = useRef<HTMLDivElement>(null);
   const [step, setStep]         = useState<DeleteStep>('warn');
@@ -201,7 +190,7 @@ function DeleteAccountModal({
   async function handleSendConfirmation(e: React.FormEvent) {
     e.preventDefault();
     if (emailInput.trim().toLowerCase() !== userEmail.toLowerCase()) {
-      setError('Email address does not match your account email.');
+      setError(t('settings.deleteModal.emailNoMatch'));
       return;
     }
     setLoading(true);
@@ -232,6 +221,8 @@ function DeleteAccountModal({
     window.location.href = '/';
   }
 
+  const deleteItems: string[] = t('settings.deleteModal.items', { returnObjects: true }) as any;
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
@@ -245,7 +236,7 @@ function DeleteAccountModal({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors text-lg leading-none"
-          aria-label="Close"
+          aria-label={t('common.close')}
         >
           ×
         </button>
@@ -257,21 +248,13 @@ function DeleteAccountModal({
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-xl shrink-0">
                 ⚠️
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Delete your account?</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('settings.deleteModal.title')}</h2>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
-              This action is <strong>permanent and cannot be undone.</strong> Deleting your account will immediately and irreversibly remove:
-            </p>
+            <p className="text-sm text-gray-600 mb-4" dangerouslySetInnerHTML={{ __html: t('settings.deleteModal.warning') }} />
 
             <ul className="text-sm text-gray-700 space-y-1.5 mb-5 pl-1">
-              {[
-                'All family trees you own, and every person in them',
-                'All family group relationships and connections',
-                'Your profile photo and account information',
-                'Your membership in other people\'s trees',
-                'All activity history associated with your account',
-              ].map((item) => (
+              {deleteItems.map((item: string) => (
                 <li key={item} className="flex items-start gap-2">
                   <span className="text-red-500 mt-0.5 shrink-0">✕</span>
                   {item}
@@ -279,22 +262,21 @@ function DeleteAccountModal({
               ))}
             </ul>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800 mb-6">
-              <strong>Note:</strong> Trees shared with you (where you are an Editor or Viewer) will not be deleted — only the owner's data is removed.
-            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800 mb-6"
+              dangerouslySetInnerHTML={{ __html: t('settings.deleteModal.note') }} />
 
             <div className="flex gap-3 justify-end">
               <button
                 onClick={onClose}
                 className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                Cancel — keep my account
+                {t('settings.deleteModal.cancelKeep')}
               </button>
               <button
                 onClick={() => setStep('confirm')}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
               >
-                I understand, continue
+                {t('settings.deleteModal.understandContinue')}
               </button>
             </div>
           </div>
@@ -307,20 +289,18 @@ function DeleteAccountModal({
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-xl shrink-0">
                 📧
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Confirm by email</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('settings.deleteModal.confirmByEmail')}</h2>
             </div>
 
-            <p className="text-sm text-gray-600 mb-1">
-              We'll send a <strong>one-time confirmation link</strong> to your registered email address. You must click it to complete the deletion.
-            </p>
+            <p className="text-sm text-gray-600 mb-1" dangerouslySetInnerHTML={{ __html: t('settings.deleteModal.confirmDesc') }} />
             <p className="text-xs text-gray-400 mb-5">
-              The link expires after 24 hours. If you don't click it, your account will not be deleted.
+              {t('settings.deleteModal.linkExpiry')}
             </p>
 
             <form onSubmit={handleSendConfirmation} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Type your email address to confirm
+                  {t('settings.deleteModal.typeEmail')}
                 </label>
                 <input
                   type="email"
@@ -332,7 +312,7 @@ function DeleteAccountModal({
                   className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
                 />
                 <p className="mt-1 text-xs text-gray-400">
-                  Your account email: <span className="font-medium text-gray-600">{userEmail}</span>
+                  {t('settings.deleteModal.yourAccountEmail')} <span className="font-medium text-gray-600">{userEmail}</span>
                 </p>
               </div>
 
@@ -348,14 +328,14 @@ function DeleteAccountModal({
                   onClick={() => { setStep('warn'); setEmailInput(''); setError(''); }}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  Back
+                  {t('common.back')}
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !emailInput.trim()}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Sending…' : 'Send confirmation email'}
+                  {loading ? t('settings.deleteModal.sending') : t('settings.deleteModal.sendConfirmation')}
                 </button>
               </div>
             </form>
@@ -366,27 +346,26 @@ function DeleteAccountModal({
         {step === 'sent' && (
           <div className="text-center py-2">
             <div className="text-5xl mb-4">📬</div>
-            <h2 className="text-lg font-bold text-gray-900 mb-2">Check your inbox</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">{t('settings.deleteModal.checkInbox')}</h2>
             <p className="text-sm text-gray-600 leading-relaxed mb-2">
-              A confirmation link has been sent to{' '}
+              {t('settings.deleteModal.confirmSent')}{' '}
               <span className="font-semibold text-gray-800">{userEmail}</span>.
             </p>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              Click the link in that email to permanently delete your account. The link expires in <strong>24 hours</strong>. If you don't click it, your account will remain active.
-            </p>
+            <p className="text-sm text-gray-600 leading-relaxed mb-6"
+              dangerouslySetInnerHTML={{ __html: t('settings.deleteModal.confirmSentDesc') }} />
             <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-xs text-gray-500 mb-6 text-left">
-              <strong className="text-gray-700">Didn't receive the email?</strong>
+              <strong className="text-gray-700">{t('settings.deleteModal.didntReceive')}</strong>
               <ul className="mt-1 space-y-0.5 list-disc pl-4">
-                <li>Check your spam or junk folder</li>
-                <li>Make sure you're checking <span className="font-medium">{userEmail}</span></li>
-                <li>Contact support if you need help</li>
+                <li>{t('settings.deleteModal.checkSpam')}</li>
+                <li>{t('settings.deleteModal.checkEmail')} <span className="font-medium">{userEmail}</span></li>
+                <li>{t('settings.deleteModal.contactSupport')}</li>
               </ul>
             </div>
             <button
               onClick={handleSentClose}
               className="w-full h-10 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-900 transition-colors"
             >
-              Sign out and close
+              {t('settings.deleteModal.signOutClose')}
             </button>
           </div>
         )}
@@ -398,6 +377,7 @@ function DeleteAccountModal({
 // ── Danger zone card ──────────────────────────────────────────────────────────
 
 function DangerZone({ userEmail, accessToken }: { userEmail: string; accessToken: string | null }) {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -411,15 +391,14 @@ function DangerZone({ userEmail, accessToken }: { userEmail: string; accessToken
       )}
 
       <div className="mt-10 rounded-xl border-2 border-red-200 bg-red-50 p-5">
-        <h3 className="text-sm font-bold text-red-800 mb-1">Danger zone</h3>
-        <p className="text-xs text-red-700 mb-4 leading-relaxed">
-          Permanently delete your account and all data associated with it. This includes every family tree you own, every person in those trees, and all related history. <strong>This action cannot be undone.</strong>
-        </p>
+        <h3 className="text-sm font-bold text-red-800 mb-1">{t('settings.danger.title')}</h3>
+        <p className="text-xs text-red-700 mb-4 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: t('settings.danger.description') }} />
         <button
           onClick={() => setModalOpen(true)}
           className="px-4 py-2 text-sm font-medium text-red-700 border border-red-300 bg-white rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors"
         >
-          Delete and close account…
+          {t('settings.danger.deleteButton')}
         </button>
       </div>
     </>
@@ -438,29 +417,10 @@ interface SettingsNotification {
   created_at: string;
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  TREE_INVITE: 'Invitation',
-  TREE_SHARED: 'Added to tree',
-};
-
-const TYPE_BADGE: Record<string, string> = {
-  TREE_INVITE: 'bg-violet-100 text-violet-700',
-  TREE_SHARED: 'bg-green-100 text-green-700',
-};
-
-function expiresIn(createdAt: string): string {
-  const expiry = new Date(new Date(createdAt).getTime() + 90 * 24 * 60 * 60 * 1000);
-  const days = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return 'Expiring soon';
-  if (days === 1) return 'Expires tomorrow';
-  if (days < 7) return `Expires in ${days} days`;
-  if (days < 30) return `Expires in ${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''}`;
-  return `Expires in ${Math.floor(days / 30)} month${Math.floor(days / 30) > 1 ? 's' : ''}`;
-}
-
 const ITEMS_PER_PAGE = 15;
 
 function BroadcastSubscriptionToggle({ accessToken }: { accessToken: string | null }) {
+  const { t } = useTranslation();
   const [unsubscribed, setUnsubscribed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -501,9 +461,9 @@ function BroadcastSubscriptionToggle({ accessToken }: { accessToken: string | nu
     <div className="flex items-center justify-between rounded-lg border p-4 mb-4"
       style={{ background: 'var(--portal-card-bg)', borderColor: 'var(--portal-card-border)' }}>
       <div>
-        <p className="text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>Broadcast emails</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--portal-text-primary)' }}>{t('settings.notifications.broadcastEmails')}</p>
         <p className="text-xs mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>
-          Receive broadcast emails from the site administrator (notices, alerts, events).
+          {t('settings.notifications.broadcastDesc')}
         </p>
       </div>
       <button
@@ -524,13 +484,42 @@ function BroadcastSubscriptionToggle({ accessToken }: { accessToken: string | nu
   );
 }
 
+function useExpiresIn() {
+  const { t } = useTranslation();
+  return (createdAt: string): string => {
+    const expiry = new Date(new Date(createdAt).getTime() + 90 * 24 * 60 * 60 * 1000);
+    const days = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (days <= 0) return t('settings.notifications.expiringSoon');
+    if (days === 1) return t('settings.notifications.expiresTomorrow');
+    if (days < 7) return t('settings.notifications.expiresInDays', { days });
+    if (days < 30) {
+      const weeks = Math.floor(days / 7);
+      return t('settings.notifications.expiresInWeeks', { count: weeks });
+    }
+    const months = Math.floor(days / 30);
+    return t('settings.notifications.expiresInMonths', { count: months });
+  };
+}
+
 function NotificationsTab({ accessToken }: { accessToken: string | null }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const expiresIn = useExpiresIn();
   const [notifications, setNotifications] = useState<SettingsNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [itemErrors, setItemErrors] = useState<Record<string, string>>({});
   const [page, setPage] = useState(0);
+
+  const TYPE_LABEL: Record<string, string> = {
+    TREE_INVITE: t('settings.notifications.typeLabelInvitation'),
+    TREE_SHARED: t('settings.notifications.typeLabelAddedToTree'),
+  };
+
+  const TYPE_BADGE: Record<string, string> = {
+    TREE_INVITE: 'bg-violet-100 text-violet-700',
+    TREE_SHARED: 'bg-green-100 text-green-700',
+  };
 
   useEffect(() => {
     if (!accessToken) return;
@@ -605,15 +594,13 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
       <BroadcastSubscriptionToggle accessToken={accessToken} />
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">
-          Notifications are kept for <strong>3 months</strong> then automatically removed.
-        </p>
+        <p className="text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: t('settings.notifications.retentionNote') }} />
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
             className="text-xs font-medium text-brand-600 hover:underline shrink-0"
           >
-            Mark all as read
+            {t('nav.markAllRead')}
           </button>
         )}
       </div>
@@ -626,8 +613,8 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
               <path d="M9 17a2 2 0 0 0 4 0" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-500">No notifications</p>
-          <p className="text-xs text-gray-400 mt-1">You're all caught up.</p>
+          <p className="text-sm font-medium text-gray-500">{t('settings.notifications.noNotifications')}</p>
+          <p className="text-xs text-gray-400 mt-1">{t('settings.notifications.allCaughtUp')}</p>
         </div>
       ) : (
         <>
@@ -645,7 +632,7 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                       {TYPE_LABEL[n.type] ?? n.type}
                     </span>
                     {!n.is_read && (
-                      <span className="text-[11px] font-medium text-brand-600">New</span>
+                      <span className="text-[11px] font-medium text-brand-600">{t('common.new')}</span>
                     )}
                   </div>
                   <p className="text-sm font-medium text-gray-900 leading-snug">{n.title}</p>
@@ -656,12 +643,10 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                     <span className="text-[11px] text-gray-400">{expiresIn(n.created_at)}</span>
                   </div>
 
-                  {/* Error */}
                   {itemErrors[n.id] && (
                     <p className="text-xs text-red-600 mt-1.5 bg-red-50 px-2 py-1 rounded">{itemErrors[n.id]}</p>
                   )}
 
-                  {/* Actions */}
                   {n.type === 'TREE_INVITE' && (
                     <div className="flex gap-2 mt-2.5 flex-wrap">
                       {n.data.token && !n.is_read && (
@@ -670,7 +655,7 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                           disabled={accepting === n.id}
                           className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:opacity-50 transition-colors"
                         >
-                          {accepting === n.id ? 'Accepting…' : 'Accept invitation'}
+                          {accepting === n.id ? t('notif.accepting') : t('settings.notifications.acceptInvitation')}
                         </button>
                       )}
                       {n.data.tree_id && (
@@ -678,7 +663,7 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                           onClick={() => navigate(`/trees/${n.data.tree_id}`)}
                           className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
                         >
-                          View tree
+                          {t('common.viewTree')}
                         </button>
                       )}
                       {!n.is_read && (
@@ -686,7 +671,7 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                           onClick={() => markRead(n.id)}
                           className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
                         >
-                          Dismiss
+                          {t('common.dismiss')}
                         </button>
                       )}
                     </div>
@@ -698,7 +683,7 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                           onClick={() => { markRead(n.id); navigate(`/trees/${n.data.tree_id}`); }}
                           className="px-3 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 transition-colors"
                         >
-                          View tree
+                          {t('common.viewTree')}
                         </button>
                       )}
                       {!n.is_read && (
@@ -706,7 +691,7 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                           onClick={() => markRead(n.id)}
                           className="px-3 py-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
                         >
-                          Dismiss
+                          {t('common.dismiss')}
                         </button>
                       )}
                     </div>
@@ -717,11 +702,10 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
           ))}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between pt-2">
             <span className="text-xs text-gray-400">
-              {page * ITEMS_PER_PAGE + 1}–{Math.min((page + 1) * ITEMS_PER_PAGE, notifications.length)} of {notifications.length}
+              {page * ITEMS_PER_PAGE + 1}–{Math.min((page + 1) * ITEMS_PER_PAGE, notifications.length)} {t('common.of')} {notifications.length}
             </span>
             <div className="flex gap-2">
               <button
@@ -729,14 +713,14 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
                 disabled={page === 0}
                 className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                ← Previous
+                {t('common.previous')}
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
                 className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Next →
+                {t('common.next')}
               </button>
             </div>
           </div>
@@ -747,8 +731,67 @@ function NotificationsTab({ accessToken }: { accessToken: string | null }) {
   );
 }
 
-function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
-  const label = tab === 'notifications' ? 'Notifications' : tab.charAt(0).toUpperCase() + tab.slice(1);
+// ── Language Tab ───────────────────────────────────────────────────────────────
+
+function LanguageTab() {
+  const { t, i18n } = useTranslation();
+  const [saved, setSaved] = useState(false);
+  const currentLng = getCurrentLanguage();
+
+  function handleChange(lng: string) {
+    changeLanguage(lng);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  const languages = [
+    { code: 'en', label: 'English', nativeLabel: 'English', flag: '🇺🇸' },
+    { code: 'ne', label: 'Nepali', nativeLabel: 'नेपाली', flag: '🇳🇵' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-gray-500">
+        {t('settings.language.description')}
+      </p>
+
+      <div className="space-y-3">
+        {languages.map((lang) => (
+          <button
+            key={lang.code}
+            onClick={() => handleChange(lang.code)}
+            className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
+              currentLng === lang.code
+                ? 'border-brand-500 bg-brand-50 shadow-sm'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <span className="text-2xl">{lang.flag}</span>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-semibold ${currentLng === lang.code ? 'text-brand-700' : 'text-gray-900'}`}>
+                {lang.nativeLabel}
+              </p>
+              <p className="text-xs text-gray-500">{lang.label}</p>
+            </div>
+            {currentLng === lang.code && (
+              <div className="w-6 h-6 rounded-full bg-brand-500 flex items-center justify-center shrink-0">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7l3 3 5-5" />
+                </svg>
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {saved && (
+        <p className="text-sm text-green-600 font-medium">{t('settings.language.saved')}</p>
+      )}
+    </div>
+  );
+}
+
+function TabLink({ tab, active, label }: { tab: Tab; active: boolean; label: string }) {
   return (
     <Link
       to={`/settings/${tab}`}
@@ -764,15 +807,31 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
 }
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { tab } = useParams<{ tab?: string }>();
   const accessToken = useAuthStore((s) => s.accessToken);
   const storeUser   = useAuthStore((s) => s.user);
   const setUser     = useAuthStore((s) => s.setUser);
 
+  const ROLE_LABEL: Record<string, string> = {
+    SUPER_ADMIN: t('roles.SUPER_ADMIN'),
+    ADMIN:       t('roles.ADMIN'),
+    STANDARD:    t('roles.STANDARD'),
+    AUDITOR:     t('roles.AUDITOR'),
+  };
+
+  const ROLE_BADGE: Record<string, string> = {
+    SUPER_ADMIN: 'bg-red-100 text-red-700',
+    ADMIN:       'bg-purple-100 text-purple-700',
+    STANDARD:    'bg-blue-100 text-blue-700',
+    AUDITOR:     'bg-amber-100 text-amber-700',
+  };
+
   const activeTab: Tab =
     tab === 'security' ? 'security' :
     tab === 'appearance' ? 'appearance' :
     tab === 'notifications' ? 'notifications' :
+    tab === 'language' ? 'language' :
     'profile';
 
   const [profile,     setProfile]     = useState<UserProfile | null>(null);
@@ -833,7 +892,7 @@ export default function SettingsPage() {
           displayName: `${updated.given_name ?? ''} ${updated.family_name ?? ''}`.trim() || storeUser.email,
         });
       }
-      setProfileMsg({ ok: true, text: 'Profile saved.' });
+      setProfileMsg({ ok: true, text: t('settings.profile.profileSaved') });
     } catch (err: any) {
       setProfileMsg({ ok: false, text: err.message });
     } finally {
@@ -862,7 +921,7 @@ export default function SettingsPage() {
       if (storeUser) {
         setUser({ ...storeUser, avatarUrl: avatar_url });
       }
-      setProfileMsg({ ok: true, text: 'Profile picture updated.' });
+      setProfileMsg({ ok: true, text: t('settings.profile.profilePictureUpdated') });
     } catch (err: any) {
       setProfileMsg({ ok: false, text: err.message });
     } finally {
@@ -887,7 +946,7 @@ export default function SettingsPage() {
       if (storeUser) {
         setUser({ ...storeUser, avatarUrl: undefined });
       }
-      setProfileMsg({ ok: true, text: 'Profile picture removed.' });
+      setProfileMsg({ ok: true, text: t('settings.profile.profilePictureRemoved') });
     } catch (err: any) {
       setProfileMsg({ ok: false, text: err.message });
     } finally {
@@ -898,7 +957,7 @@ export default function SettingsPage() {
   async function handlePasswordChange(e: React.FormEvent) {
     e.preventDefault();
     if (newPw !== confirmPw) {
-      setPwMsg({ ok: false, text: 'Passwords do not match.' });
+      setPwMsg({ ok: false, text: t('settings.security.passwordsNoMatch') });
       return;
     }
     setPwSaving(true);
@@ -914,7 +973,7 @@ export default function SettingsPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail ?? 'Failed to change password');
       }
-      setPwMsg({ ok: true, text: 'Password changed successfully.' });
+      setPwMsg({ ok: true, text: t('settings.security.passwordChanged') });
       setCurrentPw('');
       setNewPw('');
       setConfirmPw('');
@@ -928,22 +987,25 @@ export default function SettingsPage() {
   return (
     <div className="p-4 md:p-8 max-w-2xl mx-auto">
       <SEO
-        title="Settings"
-        description="Manage your FamilyRoots account settings — profile, security, and appearance."
+        title={t('settings.title')}
+        description={t('settings.description')}
         noIndex
       />
-      <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-5 md:mb-6">Settings</h1>
+      <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-5 md:mb-6">{t('settings.title')}</h1>
 
       <div className="flex gap-1 mb-8 border-b border-gray-200 overflow-x-auto">
-        <TabLink tab="profile"       active={activeTab === 'profile'} />
-        <TabLink tab="security"      active={activeTab === 'security'} />
-        <TabLink tab="appearance"    active={activeTab === 'appearance'} />
-        <TabLink tab="notifications" active={activeTab === 'notifications'} />
+        <TabLink tab="profile"       active={activeTab === 'profile'}       label={t('settings.tabs.profile')} />
+        <TabLink tab="security"      active={activeTab === 'security'}      label={t('settings.tabs.security')} />
+        <TabLink tab="appearance"    active={activeTab === 'appearance'}    label={t('settings.tabs.appearance')} />
+        <TabLink tab="notifications" active={activeTab === 'notifications'} label={t('settings.tabs.notifications')} />
+        <TabLink tab="language"      active={activeTab === 'language'}      label={t('settings.tabs.language')} />
       </div>
 
       {activeTab === 'appearance' && <AppearanceTab />}
 
       {activeTab === 'notifications' && <NotificationsTab accessToken={accessToken} />}
+
+      {activeTab === 'language' && <LanguageTab />}
 
       {(activeTab === 'profile' || activeTab === 'security') && (loading ? (
         <div className="flex justify-center py-16">
@@ -960,10 +1022,10 @@ export default function SettingsPage() {
               size="lg"
             />
             <div>
-              <p className="text-sm font-medium text-gray-900">Profile picture</p>
+              <p className="text-sm font-medium text-gray-900">{t('settings.profile.profilePicture')}</p>
               {profile?.oauth_providers?.length ? (
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Synced from your {profile.oauth_providers.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(', ')} account
+                  {t('settings.profile.syncedFrom', { providers: profile.oauth_providers.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') })}
                 </p>
               ) : (
                 <div className="flex items-center gap-2 mt-1">
@@ -984,7 +1046,7 @@ export default function SettingsPage() {
                     onClick={() => avatarInputRef.current?.click()}
                     className="text-xs font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
                   >
-                    {avatarUploading ? 'Uploading…' : profile?.avatar_url ? 'Change' : 'Upload photo'}
+                    {avatarUploading ? t('settings.profile.uploading') : profile?.avatar_url ? t('settings.profile.change') : t('settings.profile.uploadPhoto')}
                   </button>
                   {profile?.avatar_url && (
                     <button
@@ -993,7 +1055,7 @@ export default function SettingsPage() {
                       onClick={handleAvatarRemove}
                       className="text-xs font-medium text-red-500 hover:text-red-600 disabled:opacity-50"
                     >
-                      Remove
+                      {t('common.remove')}
                     </button>
                   )}
                 </div>
@@ -1003,28 +1065,28 @@ export default function SettingsPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">First name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.firstName')}</label>
               <input
                 type="text"
                 value={givenName}
                 onChange={(e) => setGivenName(e.target.value)}
-                placeholder="Given name"
+                placeholder={t('settings.profile.givenNamePlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.lastName')}</label>
               <input
                 type="text"
                 value={familyName}
                 onChange={(e) => setFamilyName(e.target.value)}
-                placeholder="Family name"
+                placeholder={t('settings.profile.familyNamePlaceholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.email')}</label>
             <input
               type="email"
               value={profile?.email ?? ''}
@@ -1033,14 +1095,14 @@ export default function SettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.role')}</label>
             <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
               {profile?.app_role && (
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium ${ROLE_BADGE[profile.app_role] ?? ROLE_BADGE.STANDARD}`}>
                   {ROLE_LABEL[profile.app_role] ?? profile.app_role}
                 </span>
               )}
-              <span className="text-xs text-gray-400">Assigned by an administrator</span>
+              <span className="text-xs text-gray-400">{t('settings.profile.assignedByAdmin')}</span>
             </div>
           </div>
           {profileMsg && (
@@ -1052,7 +1114,7 @@ export default function SettingsPage() {
               disabled={profileSaving}
               className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
             >
-              {profileSaving ? 'Saving…' : 'Save changes'}
+              {profileSaving ? t('settings.profile.saving') : t('settings.profile.saveChanges')}
             </button>
           </div>
         </form>
@@ -1060,7 +1122,7 @@ export default function SettingsPage() {
         <div>
           <form onSubmit={handlePasswordChange} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.security.currentPassword')}</label>
               <input
                 type="password"
                 value={currentPw}
@@ -1070,7 +1132,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.security.newPassword')}</label>
               <input
                 type="password"
                 value={newPw}
@@ -1078,10 +1140,10 @@ export default function SettingsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 required
               />
-              <p className="text-xs text-gray-400 mt-1">Minimum 8 characters, at least one uppercase letter and one digit.</p>
+              <p className="text-xs text-gray-400 mt-1">{t('settings.security.passwordHint')}</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.security.confirmNewPassword')}</label>
               <input
                 type="password"
                 value={confirmPw}
@@ -1099,7 +1161,7 @@ export default function SettingsPage() {
                 disabled={pwSaving || !currentPw || !newPw || !confirmPw}
                 className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors"
               >
-                {pwSaving ? 'Changing…' : 'Change password'}
+                {pwSaving ? t('settings.security.changing') : t('settings.security.changePassword')}
               </button>
             </div>
           </form>

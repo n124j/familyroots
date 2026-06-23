@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import '../../i18n';
 import { SearchBar } from '@features/search/components/SearchBar';
 import type { NameSearchResponse } from '@features/search/types';
 

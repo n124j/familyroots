@@ -4,6 +4,7 @@
  * Features: search, sort, filter, pagination, CSV export.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 
@@ -137,6 +138,7 @@ function formatDate(iso: string): string {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function ActivityPage() {
+  const { t } = useTranslation();
   const accessToken = useAuthStore((s) => s.accessToken);
 
   const [data, setData]         = useState<ActivityResponse | null>(null);
@@ -234,9 +236,9 @@ export default function ActivityPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>Activity Log</h1>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--portal-text-primary)' }}>{t('activityPage.title')}</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--portal-text-muted)' }}>
-            All actions and login events across every tree
+            {t('activityPage.subtitle')}
           </p>
         </div>
         <button
@@ -253,7 +255,7 @@ export default function ActivityPage() {
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           )}
-          Export CSV
+          {t('activityPage.exportCSV')}
         </button>
       </div>
 
@@ -270,7 +272,7 @@ export default function ActivityPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by actor, entity, or action…"
+            placeholder={t('activityPage.searchPlaceholder')}
             className="w-full h-9 pl-9 pr-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}
           />
@@ -305,22 +307,22 @@ export default function ActivityPage() {
           onClick={toggleSort}
           className="h-9 px-3 text-sm border border-gray-300 rounded-lg hover:opacity-80 flex items-center gap-1.5 transition-colors"
           style={{ background: 'var(--portal-card-bg)', color: 'var(--portal-text-primary)' }}
-          title={sort === 'desc' ? 'Newest first' : 'Oldest first'}
+          title={sort === 'desc' ? t('activityPage.newestFirst') : t('activityPage.oldestFirst')}
         >
           <svg className={`w-4 h-4 text-gray-500 transition-transform ${sort === 'asc' ? 'rotate-180' : ''}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
           </svg>
-          {sort === 'desc' ? 'Newest first' : 'Oldest first'}
+          {sort === 'desc' ? t('activityPage.newestFirst') : t('activityPage.oldestFirst')}
         </button>
       </div>
 
       {/* Stats bar */}
       {data && (
         <p className="text-xs text-gray-500 mb-3">
-          {data.total.toLocaleString()} event{data.total !== 1 ? 's' : ''}
-          {debouncedSearch || action || entityType ? ' matching filters' : ' total'}
-          {' · '}Page {data.page} of {data.total_pages}
+          {t('activityPage.eventCount', { count: data.total })}
+          {debouncedSearch || action || entityType ? ` ${t('activityPage.matchingFilters')}` : ` ${t('activityPage.total')}`}
+          {' · '}{t('activityPage.page', { current: data.page, total: data.total_pages })}
         </p>
       )}
 
@@ -339,7 +341,7 @@ export default function ActivityPage() {
           </div>
         ) : data?.items.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">No activity found.</p>
+            <p className="text-sm">{t('activityPage.noActivity')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -347,22 +349,22 @@ export default function ActivityPage() {
               <thead>
                 <tr className="border-b" style={{ background: 'var(--portal-main-bg)', borderColor: 'var(--portal-border)' }}>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-44" style={{ color: 'var(--portal-text-muted)' }}>
-                    When
+                    {t('activityPage.colWhen')}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>
-                    Actor
+                    {t('activityPage.colActor')}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>
-                    Action
+                    {t('activityPage.colAction')}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>
-                    On
+                    {t('activityPage.colOn')}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--portal-text-muted)' }}>
-                    Tree
+                    {t('activityPage.colTree')}
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-32" style={{ color: 'var(--portal-text-muted)' }}>
-                    IP
+                    {t('activityPage.colIP')}
                   </th>
                 </tr>
               </thead>
@@ -412,7 +414,7 @@ export default function ActivityPage() {
             disabled={page === 1 || loading}
             className="h-8 px-3 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
           >
-            ← Previous
+            {t('common.previous')}
           </button>
 
           <div className="flex items-center gap-1">
@@ -454,7 +456,7 @@ export default function ActivityPage() {
             disabled={page === data.total_pages || loading}
             className="h-8 px-3 text-sm border border-gray-300 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
           >
-            Next →
+            {t('common.next')}
           </button>
         </div>
       )}

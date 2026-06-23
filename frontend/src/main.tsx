@@ -17,6 +17,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { AppRouter } from './router';
 import { initAuth } from './store/auth.store';
 import { checkMaintenanceStatus } from './store/maintenance.store';
+import './i18n';
 import './index.css';
 
 // ── React Query client ─────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { useAuthStore } from '@store/auth.store';
 
@@ -31,6 +32,7 @@ interface DiscoveryResponse {
 }
 
 export default function DiscoverPage() {
+  const { t } = useTranslation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<DiscoveryResult[]>([]);
@@ -92,9 +94,9 @@ export default function DiscoverPage() {
     <>
       <SEO title="Discover" description="Search for family members across public trees" />
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Discover Trees</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('discoverPage.title')}</h1>
         <p className="text-sm text-gray-500 mb-6">
-          Search for family members across all publicly searchable trees
+          {t('discoverPage.subtitle')}
         </p>
 
         {/* Search input */}
@@ -111,7 +113,7 @@ export default function DiscoverPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name, tree name, or keywords..."
+            placeholder={t('discoverPage.searchPlaceholder')}
             className="w-full pl-10 pr-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white"
             autoFocus
           />
@@ -136,20 +138,20 @@ export default function DiscoverPage() {
               <circle cx="20" cy="20" r="14" />
               <line x1="30" y1="30" x2="42" y2="42" />
             </svg>
-            <p className="text-sm">Search for family members to discover related trees</p>
+            <p className="text-sm">{t('discoverPage.emptyPrompt')}</p>
           </div>
         )}
 
         {searched && !loading && !searchError && results.length === 0 && (
           <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">No matching trees found for "{query.trim()}"</p>
+            <p className="text-sm">{t('discoverPage.noResults', { query: query.trim() })}</p>
           </div>
         )}
 
         {results.length > 0 && (
           <div className="space-y-4">
             <p className="text-xs text-gray-500 mb-2">
-              {total} tree{total !== 1 ? 's' : ''} found
+              {t('discoverPage.treesFound', { count: total })}
             </p>
             {results.map((tree) => (
               <div
@@ -164,12 +166,12 @@ export default function DiscoverPage() {
                       </h3>
                       {tree.is_member && (
                         <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 bg-green-50 text-green-700 rounded-full border border-green-200">
-                          Member
+                          {t('discoverPage.memberBadge')}
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mb-1">
-                      by {tree.owner_name} &middot; {tree.person_count} {tree.person_count === 1 ? 'person' : 'people'}
+                      {t('dashboard.by')} {tree.owner_name} &middot; {tree.person_count} {tree.person_count === 1 ? t('searchPage.person') : t('common.people')}
                     </p>
 
                     {/* Tree description (shown when tree matched by name/description) */}
@@ -181,12 +183,12 @@ export default function DiscoverPage() {
                     <div className="flex flex-wrap gap-2 mt-2">
                       {tree.matched_on.includes('tree_name') && (
                         <span className="inline-flex items-center gap-1 text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200">
-                          Matched tree name
+                          {t('discoverPage.matchedTreeName')}
                         </span>
                       )}
                       {tree.matched_on.includes('tree_description') && !tree.matched_on.includes('tree_name') && (
                         <span className="inline-flex items-center gap-1 text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200">
-                          Matched description
+                          {t('discoverPage.matchedDescription')}
                         </span>
                       )}
                       {tree.matching_persons.map((p) => (
@@ -210,14 +212,14 @@ export default function DiscoverPage() {
                       to={`/trees/${tree.tree_id}`}
                       className="shrink-0 px-4 py-2 text-xs font-medium text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50 transition-colors"
                     >
-                      Open Tree
+                      {t('discoverPage.openTree')}
                     </Link>
                   ) : (
                     <Link
                       to={`/discover/trees/${tree.tree_id}`}
                       className="shrink-0 px-4 py-2 text-xs font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition-colors"
                     >
-                      View Tree
+                      {t('discoverPage.viewTree')}
                     </Link>
                   )}
                 </div>

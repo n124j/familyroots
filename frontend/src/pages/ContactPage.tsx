@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { Footer } from '@shared/components/layout/Footer';
 
@@ -35,6 +36,7 @@ function buildMailto(name: string, email: string, phone: string, subject: string
 }
 
 export default function ContactPage() {
+  const { t } = useTranslation();
   const [name,    setName]    = useState('');
   const [email,   setEmail]   = useState('');
   const [phone,   setPhone]   = useState('');
@@ -96,9 +98,9 @@ export default function ContactPage() {
           {/* Header */}
           <div className="text-center mb-10">
             <div className="text-4xl mb-3">✉️</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Contact Us</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('contactPage.title')}</h1>
             <p className="text-gray-500 text-base max-w-lg mx-auto">
-              Have a question, found a bug, or want to share feedback? We'd love to hear from you.
+              {t('contactPage.subtitle')} We'd love to hear from you.
             </p>
           </div>
 
@@ -107,13 +109,13 @@ export default function ContactPage() {
             {/* ── Contact info sidebar ── */}
             <div className="md:col-span-1 space-y-5">
               <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                <h2 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Get in touch</h2>
+                <h2 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">{t('contactPage.getInTouch')}</h2>
 
                 <div className="space-y-4">
                   <div className="flex gap-3">
                     <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center text-brand-600 shrink-0">📧</div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Email</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{t('contactPage.email')}</p>
                       <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm text-brand-600 hover:text-brand-700 hover:underline break-all">
                         {CONTACT_EMAIL}
                       </a>
@@ -123,7 +125,7 @@ export default function ContactPage() {
                   <div className="flex gap-3">
                     <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-green-600 shrink-0">⏱</div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Response time</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{t('contactPage.responseTime')}</p>
                       <p className="text-sm text-gray-700">Within 1–2 business days</p>
                     </div>
                   </div>
@@ -131,19 +133,19 @@ export default function ContactPage() {
                   <div className="flex gap-3">
                     <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 shrink-0">🌍</div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Support hours</p>
-                      <p className="text-sm text-gray-700">Mon – Fri, 9 am – 6 pm GMT+8</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{t('contactPage.supportHours')}</p>
+                      <p className="text-sm text-gray-700">{t('contactPage.supportHoursValue')}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="bg-brand-50 border border-brand-200 rounded-2xl p-5">
-                <h3 className="text-sm font-bold text-brand-800 mb-2">💡 Quick self-help</h3>
+                <h3 className="text-sm font-bold text-brand-800 mb-2">💡 {t('contactPage.quickSelfHelp')}</h3>
                 <ul className="space-y-2 text-sm text-brand-700">
-                  <li>• Forgot password? Use the <Link to="/forgot-password" className="underline hover:text-brand-900">reset link</Link></li>
-                  <li>• Missing tree members? See the troubleshooting guide in our docs</li>
-                  <li>• Invite issues? Check your spam folder for the invitation email</li>
+                  <li>• {t('contactPage.forgotPassword')} Use the <Link to="/forgot-password" className="underline hover:text-brand-900">{t('contactPage.resetLink')}</Link></li>
+                  <li>• {t('contactPage.missingMembers')} See the {t('contactPage.troubleshootingGuide')} in our docs</li>
+                  <li>• {t('contactPage.inviteIssues')} Check your {t('contactPage.spamFolder')} for the invitation email</li>
                 </ul>
               </div>
             </div>
@@ -155,28 +157,27 @@ export default function ContactPage() {
                 {status === 'success' ? (
                   <div className="text-center py-10">
                     <div className="text-5xl mb-4">🎉</div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">Message sent!</h2>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">{t('contactPage.sent')}</h2>
                     <p className="text-gray-500 mb-6">
-                      Thanks for reaching out, <strong>{name}</strong>. We'll get back to you at{' '}
-                      <strong>{email}</strong> within 1–2 business days.
+                      {t('contactPage.thanksForReaching')}, <strong>{name}</strong>. {t('contactPage.weWillGetBack')}
                     </p>
                     <button
                       onClick={() => { setStatus('idle'); setName(''); setEmail(''); setPhone(''); setSubject(''); setMessage(''); }}
                       className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
                     >
-                      Send another message
+                      {t('contactPage.sendAnother')}
                     </button>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-                    <h2 className="text-lg font-bold text-gray-900 mb-1">Send us a message</h2>
-                    <p className="text-sm text-gray-500 mb-4">All fields marked <span className="text-red-500">*</span> are required.</p>
+                    <h2 className="text-lg font-bold text-gray-900 mb-1">{t('contactPage.sendMessage')}</h2>
+                    <p className="text-sm text-gray-500 mb-4">{t('contactPage.fieldsRequired')} <span className="text-red-500">*</span> {t('contactPage.areRequired')}</p>
 
                     {/* Name + Email row */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Full name <span className="text-red-500">*</span>
+                          {t('contactPage.fullName')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -189,7 +190,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Email address <span className="text-red-500">*</span>
+                          {t('contactPage.emailAddress')} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="email"
@@ -206,7 +207,7 @@ export default function ContactPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Phone number <span className="text-xs text-gray-400 font-normal">(optional)</span>
+                          {t('contactPage.phoneNumber')} <span className="text-xs text-gray-400 font-normal">({t('contactPage.optional')})</span>
                         </label>
                         <input
                           type="tel"
@@ -218,7 +219,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Subject <span className="text-red-500">*</span>
+                          {t('contactPage.subject')} <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={subject}
@@ -237,7 +238,7 @@ export default function ContactPage() {
                     {/* Message */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Message <span className="text-red-500">*</span>
+                        {t('contactPage.message')} <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         value={message}
@@ -253,14 +254,14 @@ export default function ContactPage() {
                     <div className="flex items-center justify-between pt-1">
                       <p className="text-xs text-gray-400 max-w-xs">
                         By submitting this form you agree to our{' '}
-                        <Link to="/privacy" className="text-brand-600 hover:underline">Privacy Policy</Link>.
+                        <Link to="/privacy" className="text-brand-600 hover:underline">{t('contactPage.privacyPolicy')}</Link>.
                       </p>
                       <button
                         type="submit"
                         disabled={status === 'submitting'}
                         className="px-6 py-2.5 bg-brand-500 text-white text-sm font-semibold rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {status === 'submitting' ? 'Sending…' : 'Send message'}
+                        {status === 'submitting' ? t('contactPage.sending') : t('contactPage.sendButton')}
                       </button>
                     </div>
                   </form>

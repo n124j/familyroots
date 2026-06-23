@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@store/auth.store';
 import { SEO } from '@shared/components/SEO';
 import { OAuthButtons, hasOAuthProviders } from '@features/auth/components/OAuthButtons';
@@ -19,6 +20,7 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
   onSwitchToRegister: () => void;
   initialError?: string | null;
 }) {
+  const { t } = useTranslation();
   const navigate   = useNavigate();
   const storeLogin = useAuthStore((s) => s.login);
 
@@ -76,15 +78,15 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
     <ModalShell onClose={onClose}>
       <div className="text-center mb-6">
         <div className="text-3xl mb-2">🌳</div>
-        <h2 className="text-xl font-bold text-slate-900">Welcome back</h2>
-        <p className="text-sm text-slate-500 mt-1">Sign in to your FamilyRoots account</p>
+        <h2 className="text-xl font-bold text-slate-900">{t('auth.welcomeBack')}</h2>
+        <p className="text-sm text-slate-500 mt-1">{t('auth.signInToAccount')}</p>
       </div>
 
       {oauthError && (
         <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {oauthError === 'oauth_state_mismatch'
-            ? 'Sign-in session expired. Please try again.'
-            : 'An error occurred with social sign-in. Please try again.'}
+            ? t('auth.oauthExpired')
+            : t('auth.oauthError')}
         </div>
       )}
 
@@ -93,7 +95,7 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
           <OAuthButtons dividerLabel="" next="/?auth=login" />
           <div className="relative flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
+            <span className="text-xs text-slate-400 font-medium">{t('auth.orSignInWithEmail')}</span>
             <div className="flex-1 h-px bg-slate-200" />
           </div>
         </>
@@ -101,7 +103,7 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('auth.email')}</label>
           <input
             type="email"
             autoComplete="email"
@@ -116,14 +118,14 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium text-slate-700">Password</label>
+            <label className="text-sm font-medium text-slate-700">{t('auth.password')}</label>
             <Link
               to="/forgot-password"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-brand-600 hover:text-brand-700"
             >
-              Forgot password?
+              {t('auth.forgotPassword')}
             </Link>
           </div>
           <input
@@ -133,14 +135,14 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
             onChange={(e) => setPassword(e.target.value)}
             required
             className="w-full h-10 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-            placeholder="••••••••"
+            placeholder={t('auth.passwordPlaceholder')}
           />
         </div>
 
         {unverified && (
           <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            <p className="font-medium mb-0.5">Email not verified</p>
-            <p className="text-xs">Check your inbox for a verification link before signing in.</p>
+            <p className="font-medium mb-0.5">{t('auth.emailNotVerified')}</p>
+            <p className="text-xs">{t('auth.checkVerificationLink')}</p>
           </div>
         )}
         {error && (
@@ -154,17 +156,17 @@ function LoginModal({ onClose, onSwitchToRegister, initialError }: {
           disabled={loading}
           className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? 'Signing in…' : 'Sign in'}
+          {loading ? t('auth.signingIn') : t('auth.signIn')}
         </button>
       </form>
 
       <p className="text-center text-sm text-slate-500 mt-5">
-        Don't have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <button
           onClick={onSwitchToRegister}
           className="text-brand-600 font-medium hover:text-brand-700"
         >
-          Create one free
+          {t('auth.createOneFree')}
         </button>
       </p>
     </ModalShell>
@@ -178,6 +180,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
   onSwitchToLogin: () => void;
   initialError?: string | null;
 }) {
+  const { t } = useTranslation();
   const [givenName,     setGivenName]     = useState('');
   const [familyName,    setFamilyName]    = useState('');
   const [email,         setEmail]         = useState('');
@@ -218,16 +221,15 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
       <ModalShell onClose={onClose}>
         <div className="text-center py-4">
           <div className="text-5xl mb-4">📬</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Check your inbox</h2>
-          <p className="text-sm text-slate-600 leading-relaxed mb-6">
-            We sent a verification link to <span className="font-semibold text-slate-800">{email}</span>.
-            Click it to activate your account, then sign in.
-          </p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">{t('auth.checkInbox')}</h2>
+          <p className="text-sm text-slate-600 leading-relaxed mb-6"
+            dangerouslySetInnerHTML={{ __html: t('auth.verificationSent', { email }) }}
+          />
           <button
             onClick={onSwitchToLogin}
             className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
           >
-            Go to sign in
+            {t('auth.goToSignIn')}
           </button>
         </div>
       </ModalShell>
@@ -238,15 +240,15 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
     <ModalShell onClose={onClose}>
       <div className="text-center mb-6">
         <div className="text-3xl mb-2">🌳</div>
-        <h2 className="text-xl font-bold text-slate-900">Create your free account</h2>
-        <p className="text-sm text-slate-500 mt-1">Free during open beta · No payment needed</p>
+        <h2 className="text-xl font-bold text-slate-900">{t('auth.createFreeAccount')}</h2>
+        <p className="text-sm text-slate-500 mt-1">{t('auth.freeBeta')}</p>
       </div>
 
       {oauthError && (
         <div className="mb-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {oauthError === 'oauth_state_mismatch'
-            ? 'Sign-in session expired. Please try again.'
-            : 'An error occurred with social sign-in. Please try again.'}
+            ? t('auth.oauthExpired')
+            : t('auth.oauthError')}
         </div>
       )}
 
@@ -255,7 +257,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
           <OAuthButtons dividerLabel="" next="/?auth=register" />
           <div className="relative flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
+            <span className="text-xs text-slate-400 font-medium">{t('auth.orSignUpWithEmail')}</span>
             <div className="flex-1 h-px bg-slate-200" />
           </div>
         </>
@@ -264,7 +266,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">First name</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('auth.firstName')}</label>
             <input
               type="text"
               autoComplete="given-name"
@@ -277,7 +279,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Last name</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('auth.lastName')}</label>
             <input
               type="text"
               autoComplete="family-name"
@@ -291,7 +293,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('auth.email')}</label>
           <input
             type="email"
             autoComplete="email"
@@ -304,7 +306,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('auth.password')}</label>
           <input
             type="password"
             autoComplete="new-password"
@@ -313,12 +315,12 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
             required
             minLength={8}
             className="w-full h-10 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-            placeholder="8+ characters"
+            placeholder={t('auth.passwordHint')}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm password</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('auth.confirmPassword')}</label>
           <input
             type="password"
             autoComplete="new-password"
@@ -329,10 +331,10 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
               'w-full h-10 px-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent',
               confirm && confirm !== password ? 'border-red-400' : 'border-slate-300',
             ].join(' ')}
-            placeholder="Re-enter password"
+            placeholder={t('auth.reenterPassword')}
           />
           {confirm && confirm !== password && (
-            <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+            <p className="mt-1 text-xs text-red-500">{t('auth.passwordsNoMatch')}</p>
           )}
         </div>
 
@@ -346,7 +348,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
             className="mt-0.5 w-4 h-4 rounded border-slate-300 text-brand-500 focus:ring-brand-500 accent-brand-500 cursor-pointer shrink-0"
           />
           <span className="text-sm text-slate-600 leading-snug">
-            I accept the{' '}
+            {t('auth.acceptTerms')}{' '}
             <a
               href="/terms"
               target="_blank"
@@ -354,7 +356,7 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
               className="text-brand-600 font-medium hover:text-brand-700 underline underline-offset-2"
               onClick={(e) => e.stopPropagation()}
             >
-              Terms and Conditions
+              {t('auth.termsAndConditions')}
             </a>
           </span>
         </label>
@@ -370,17 +372,17 @@ function RegisterModal({ onClose, onSwitchToLogin, initialError }: {
           disabled={loading || !termsAccepted}
           className="w-full h-10 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? 'Creating account…' : 'Create account'}
+          {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
         </button>
       </form>
 
       <p className="text-center text-sm text-slate-500 mt-5">
-        Already have an account?{' '}
+        {t('auth.alreadyHaveAccount')}{' '}
         <button
           onClick={onSwitchToLogin}
           className="text-brand-600 font-medium hover:text-brand-700"
         >
-          Sign in
+          {t('auth.signIn')}
         </button>
       </p>
     </ModalShell>
@@ -431,6 +433,7 @@ function ModalShell({ onClose, children }: { onClose: () => void; children: Reac
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
 function LandingNav({ onSignIn, onSignUp }: { onSignIn: () => void; onSignUp: () => void }) {
+  const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20);
@@ -447,13 +450,13 @@ function LandingNav({ onSignIn, onSignUp }: { onSignIn: () => void; onSignUp: ()
         <Link to="/" className="flex items-center gap-2 group">
           <span className="text-2xl leading-none">🌳</span>
           <span className={['text-base font-bold tracking-tight transition-colors', scrolled ? 'text-gray-900' : 'text-white'].join(' ')}>
-            FamilyRoots
+            {t('common.appName')}
           </span>
           <span className={[
             'ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border',
             scrolled ? 'bg-brand-50 text-brand-600 border-brand-200' : 'bg-brand-500/20 text-brand-200 border-brand-400/30',
           ].join(' ')}>
-            BETA
+            {t('common.beta')}
           </span>
         </Link>
 
@@ -465,13 +468,13 @@ function LandingNav({ onSignIn, onSignUp }: { onSignIn: () => void; onSignUp: ()
               scrolled ? 'text-gray-600 hover:bg-gray-100' : 'text-white/80 hover:text-white hover:bg-white/10',
             ].join(' ')}
           >
-            Sign in
+            {t('landing.signIn')}
           </button>
           <button
             onClick={onSignUp}
             className="inline-flex items-center px-4 py-1.5 text-sm font-semibold rounded-lg bg-brand-500 text-white hover:bg-brand-600 shadow-sm transition-colors"
           >
-            Get started free
+            {t('landing.getStartedFree')}
           </button>
         </div>
       </div>
@@ -637,6 +640,7 @@ function CanvasMockup() {
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => void }) {
+  const { t } = useTranslation();
   return (
     <section aria-label="Build your family tree online for free" className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-brand-900 via-brand-800 to-indigo-900 pt-14">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -648,18 +652,18 @@ function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => vo
         <div className="flex-1 text-center lg:text-left">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-400/10 border border-green-400/20 text-green-300 text-xs font-medium mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Open beta · completely free right now
+            {t('landing.openBetaTag')}
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight mb-5">
-            Build your family tree{' '}
+            {t('landing.heroTitle')}{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-300">
-              beautifully, together.
+              {t('landing.heroHighlight')}
             </span>
           </h1>
 
           <p className="text-lg text-indigo-200 mb-8 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-            Free genealogy software to trace your ancestors, create interactive fan charts, and collaborate with family — on a canvas that actually feels good to use.
+            {t('landing.heroDesc')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-5">
@@ -667,7 +671,7 @@ function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => vo
               onClick={onSignUp}
               className="inline-flex items-center justify-center gap-2 px-7 py-3 text-sm font-semibold rounded-lg bg-brand-500 text-white hover:bg-brand-400 shadow-md transition-colors"
             >
-              Start building your tree
+              {t('landing.startBuilding')}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
@@ -676,10 +680,10 @@ function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => vo
               onClick={onSignIn}
               className="inline-flex items-center justify-center px-7 py-3 text-sm font-semibold rounded-lg border border-white/25 text-white hover:bg-white/10 transition-colors"
             >
-              Sign in
+              {t('landing.signIn')}
             </button>
           </div>
-          <p className="text-xs text-indigo-400">No payment info required · We're in open beta</p>
+          <p className="text-xs text-indigo-400">{t('landing.noPayment')}</p>
         </div>
 
         <div className="flex-1 flex items-center justify-center w-full">
@@ -699,13 +703,14 @@ function Hero({ onSignUp, onSignIn }: { onSignUp: () => void; onSignIn: () => vo
 // ─── Beta banner ──────────────────────────────────────────────────────────────
 
 function BetaBanner({ onSignUp }: { onSignUp: () => void }) {
+  const { t } = useTranslation();
   return (
     <section className="bg-brand-50 border-b border-brand-100 py-4">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center sm:text-left">
-        <span className="text-sm font-semibold text-brand-700">FamilyRoots is in open beta.</span>
-        <span className="text-sm text-brand-600">Everything is free while we build. Your feedback shapes the product.</span>
+        <span className="text-sm font-semibold text-brand-700">{t('landing.betaBannerTitle')}</span>
+        <span className="text-sm text-brand-600">{t('landing.betaBannerDesc')}</span>
         <button onClick={onSignUp} className="shrink-0 text-sm font-semibold text-brand-600 underline underline-offset-2 hover:text-brand-800 transition-colors">
-          Join now →
+          {t('landing.joinNow')}
         </button>
       </div>
     </section>
@@ -722,8 +727,8 @@ const FEATURES = [
         <path strokeLinecap="round" d="M12 7v4m0 0l-5 6m5-6l5 6"/>
       </svg>
     ),
-    title: 'Interactive Canvas',
-    desc: 'A full-screen ReactFlow canvas: pan, zoom, drag people freely. Seven layout modes — top-down, left-right, pedigree, ancestor, descendant, fan, and full ancestry fan chart.',
+    titleKey: 'landing.features.interactiveCanvas',
+    descKey: 'landing.features.interactiveCanvasDesc',
     accent: 'text-brand-600 bg-brand-50',
   },
   {
@@ -733,8 +738,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
       </svg>
     ),
-    title: 'Ancestry Fan Chart',
-    desc: 'Switch to a 180° or 360° polar fan chart to see your entire lineage at once. Perfect for printing and sharing at family gatherings.',
+    titleKey: 'landing.features.ancestryFanChart',
+    descKey: 'landing.features.ancestryFanChartDesc',
     accent: 'text-purple-600 bg-purple-50',
   },
   {
@@ -743,8 +748,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
       </svg>
     ),
-    title: 'Role-Based Collaboration',
-    desc: 'Invite family members as Owner, Admin, Editor, or Viewer. Existing users are added directly; external emails get an invitation link.',
+    titleKey: 'landing.features.roleBasedCollab',
+    descKey: 'landing.features.roleBasedCollabDesc',
     accent: 'text-green-600 bg-green-50',
   },
   {
@@ -753,8 +758,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
     ),
-    title: 'Profile Photos',
-    desc: 'Add a profile photo thumbnail to each person in your tree. Photos appear on person cards in the canvas and in person profiles.',
+    titleKey: 'landing.features.profilePhotos',
+    descKey: 'landing.features.profilePhotosDesc',
     accent: 'text-amber-600 bg-amber-50',
   },
   {
@@ -763,8 +768,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
       </svg>
     ),
-    title: 'Relationship Finder',
-    desc: 'Pick any two people and instantly see the shortest connection between them across your whole tree. Answer "how exactly are we related?" in one click.',
+    titleKey: 'landing.features.relationshipFinder',
+    descKey: 'landing.features.relationshipFinderDesc',
     accent: 'text-rose-600 bg-rose-50',
   },
   {
@@ -773,8 +778,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
       </svg>
     ),
-    title: 'Appearance Themes',
-    desc: 'Five portal themes — Light, Dark, Warm, Slate, Forest — applied from Settings. The whole app adapts, including the tree canvas node colours.',
+    titleKey: 'landing.features.appearanceThemes',
+    descKey: 'landing.features.appearanceThemesDesc',
     accent: 'text-sky-600 bg-sky-50',
   },
   {
@@ -783,8 +788,8 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
       </svg>
     ),
-    title: 'Import & Export',
-    desc: 'Export your tree as a .frt backup or a ZIP archive with all photos included. Re-import on any account to restore or migrate your data.',
+    titleKey: 'landing.features.importExport',
+    descKey: 'landing.features.importExportDesc',
     accent: 'text-indigo-600 bg-indigo-50',
   },
   {
@@ -793,31 +798,32 @@ const FEATURES = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
       </svg>
     ),
-    title: 'Reports & Statistics',
-    desc: 'See at a glance how many people are in each tree, your role, and member counts. Sort and filter across all your trees in one place.',
+    titleKey: 'landing.features.reportsStats',
+    descKey: 'landing.features.reportsStatsDesc',
     accent: 'text-teal-600 bg-teal-50',
   },
 ];
 
 function Features() {
+  const { t } = useTranslation();
   return (
     <section className="py-20 sm:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Built for families</span>
-          <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-gray-900">Everything you need to document your heritage</h2>
+          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">{t('landing.builtForFamilies')}</span>
+          <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold text-gray-900">{t('landing.everythingYouNeed')}</h2>
           <p className="mt-3 text-base text-gray-500 max-w-2xl mx-auto">
-            FamilyRoots is a full-featured genealogy platform — not just a viewer. You can build, edit, collaborate, and share.
+            {t('landing.featuresSubtitle')}
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {FEATURES.map((f) => (
-            <div key={f.title} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <div key={f.titleKey} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
               <div className={['w-10 h-10 rounded-xl flex items-center justify-center mb-4', f.accent].join(' ')}>
                 {f.icon}
               </div>
-              <h3 className="text-sm font-bold text-gray-900 mb-1.5">{f.title}</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">{f.desc}</p>
+              <h3 className="text-sm font-bold text-gray-900 mb-1.5">{t(f.titleKey)}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">{t(f.descKey)}</p>
             </div>
           ))}
         </div>
@@ -829,6 +835,7 @@ function Features() {
 // ─── Dashboard mockup section ─────────────────────────────────────────────────
 
 function DashboardSection() {
+  const { t } = useTranslation();
   const trees = [
     { emoji: '🌳', name: 'The Johnson Family',  role: 'Owner',  people: 47, members: 3, roleColor: '#6366f1', roleBg: '#eef2ff' },
     { emoji: '🌲', name: 'Smith Maternal Line', role: 'Editor', people: 21, members: 1, roleColor: '#16a34a', roleBg: '#f0fdf4' },
@@ -836,23 +843,20 @@ function DashboardSection() {
     { emoji: '🌸', name: 'Chen Family Tree',    role: 'Admin',  people: 34, members: 2, roleColor: '#7c3aed', roleBg: '#f5f3ff' },
   ];
 
+  const dashboardFeatures = t('landing.dashboardFeatures', { returnObjects: true }) as string[];
+
   return (
     <section className="py-20 sm:py-24 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center gap-12">
         <div className="flex-1 max-w-md">
-          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Dashboard</span>
-          <h2 className="mt-2 text-3xl font-extrabold text-gray-900 mb-4">All your trees, one place</h2>
+          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">{t('landing.dashboardSection')}</span>
+          <h2 className="mt-2 text-3xl font-extrabold text-gray-900 mb-4">{t('landing.allTreesOnePlace')}</h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
-            Your dashboard lists every tree you own or belong to — with your role clearly marked. Create a new tree, import a backup, or jump straight into the canvas with a single click.
+            {t('landing.dashboardDesc')}
           </p>
           <ul className="space-y-3">
-            {[
-              'Emoji covers to tell trees apart at a glance',
-              'Shows person count and collaborator count per tree',
-              'OWNER and ADMIN can edit, share, or delete',
-              'Import .frt or ZIP files directly from the toolbar',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2 text-sm text-gray-600">
+            {dashboardFeatures.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
                 <svg className="w-4 h-4 text-brand-500 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
                 </svg>
@@ -899,31 +903,32 @@ function DashboardSection() {
 // ─── Collaboration section ────────────────────────────────────────────────────
 
 function CollabSection() {
+  const { t } = useTranslation();
   const roles = [
-    { role: 'Owner',  color: '#6366f1', bg: '#eef2ff', desc: 'Full access. Can edit, delete, and manage all members.' },
-    { role: 'Admin',  color: '#7c3aed', bg: '#f5f3ff', desc: 'Can add/remove members and edit the tree.' },
-    { role: 'Editor', color: '#16a34a', bg: '#f0fdf4', desc: 'Can add and edit people. Cannot manage members.' },
-    { role: 'Viewer', color: '#6b7280', bg: '#f3f4f6', desc: 'Read-only access to the tree.' },
+    { role: 'Owner',  color: '#6366f1', bg: '#eef2ff', descKey: 'landing.roleDescriptions.owner' },
+    { role: 'Admin',  color: '#7c3aed', bg: '#f5f3ff', descKey: 'landing.roleDescriptions.admin' },
+    { role: 'Editor', color: '#16a34a', bg: '#f0fdf4', descKey: 'landing.roleDescriptions.editor' },
+    { role: 'Viewer', color: '#6b7280', bg: '#f3f4f6', descKey: 'landing.roleDescriptions.viewer' },
   ];
 
   return (
     <section className="py-20 sm:py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row-reverse items-center gap-12">
         <div className="flex-1 max-w-md">
-          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Collaboration</span>
-          <h2 className="mt-2 text-3xl font-extrabold text-gray-900 mb-4">Family research is a team sport</h2>
+          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">{t('landing.collaboration')}</span>
+          <h2 className="mt-2 text-3xl font-extrabold text-gray-900 mb-4">{t('landing.familyResearch')}</h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-4">
-            Invite relatives to work on the same tree. Assign a role to each person so you control exactly who can view, edit, or manage membership.
+            {t('landing.collabDesc1')}
           </p>
           <p className="text-gray-500 text-sm leading-relaxed">
-            External family members who don't yet have an account receive an email invitation with a direct sign-up link.
+            {t('landing.collabDesc2')}
           </p>
         </div>
         <div className="flex-1 w-full max-w-sm mx-auto lg:mx-0">
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
-              <div className="text-sm font-bold text-gray-900">Share "The Johnson Family"</div>
-              <div className="text-xs text-gray-400 mt-0.5">Manage who has access to this tree</div>
+              <div className="text-sm font-bold text-gray-900">{t('landing.collabShareTitle')}</div>
+              <div className="text-xs text-gray-400 mt-0.5">{t('landing.collabShareSubtitle')}</div>
             </div>
             <div className="p-4 space-y-2">
               {[
@@ -950,7 +955,7 @@ function CollabSection() {
                   <div className="flex-1 h-8 rounded-lg border border-dashed border-brand-300 bg-brand-50 flex items-center px-2">
                     <span className="text-[10px] text-brand-400">someone@example.com</span>
                   </div>
-                  <div className="h-8 px-3 bg-brand-500 text-white text-[10px] font-semibold rounded-lg flex items-center">Send invite</div>
+                  <div className="h-8 px-3 bg-brand-500 text-white text-[10px] font-semibold rounded-lg flex items-center">{t('landing.sendInvite')}</div>
                 </div>
               </div>
             </div>
@@ -958,7 +963,7 @@ function CollabSection() {
               {roles.map((r) => (
                 <div key={r.role} className="rounded-lg p-2" style={{ background: r.bg }}>
                   <div className="text-[10px] font-bold mb-0.5" style={{ color: r.color }}>{r.role}</div>
-                  <div className="text-[9px] text-gray-500 leading-tight">{r.desc}</div>
+                  <div className="text-[9px] text-gray-500 leading-tight">{t(r.descKey)}</div>
                 </div>
               ))}
             </div>
@@ -972,18 +977,19 @@ function CollabSection() {
 // ─── How it works ─────────────────────────────────────────────────────────────
 
 function HowItWorks() {
+  const { t } = useTranslation();
   const steps = [
-    { num: '1', emoji: '✉️', title: 'Create your free account', desc: 'Sign up with email and password, or use Google OAuth. Email verification keeps your account secure.' },
-    { num: '2', emoji: '🌳', title: 'Add the first person', desc: 'Create a new tree and add yourself (or any ancestor). Set name, dates, sex, and a profile photo. Then branch outward.' },
-    { num: '3', emoji: '🤝', title: 'Collaborate & explore', desc: 'Invite family members, attach photos and documents, and explore layouts from the top-down tree to the full ancestry fan chart.' },
+    { num: '1', emoji: '✉️', titleKey: 'landing.step1Title', descKey: 'landing.step1Desc' },
+    { num: '2', emoji: '🌳', titleKey: 'landing.step2Title', descKey: 'landing.step2Desc' },
+    { num: '3', emoji: '🤝', titleKey: 'landing.step3Title', descKey: 'landing.step3Desc' },
   ];
 
   return (
     <section className="py-20 sm:py-24 bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Getting started</span>
-          <h2 className="mt-2 text-3xl font-extrabold text-gray-900">Up and running in minutes</h2>
+          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">{t('landing.gettingStarted')}</span>
+          <h2 className="mt-2 text-3xl font-extrabold text-gray-900">{t('landing.upAndRunning')}</h2>
         </div>
         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="hidden md:block absolute top-12 left-1/3 right-1/3 h-px bg-gradient-to-r from-brand-200 via-brand-300 to-brand-200" />
@@ -997,8 +1003,8 @@ function HowItWorks() {
                   {step.num}
                 </div>
               </div>
-              <h3 className="text-sm font-bold text-gray-900 mb-2">{step.title}</h3>
-              <p className="text-xs text-gray-500 leading-relaxed max-w-56 mx-auto">{step.desc}</p>
+              <h3 className="text-sm font-bold text-gray-900 mb-2">{t(step.titleKey)}</h3>
+              <p className="text-xs text-gray-500 leading-relaxed max-w-56 mx-auto">{t(step.descKey)}</p>
             </div>
           ))}
         </div>
@@ -1010,6 +1016,7 @@ function HowItWorks() {
 // ─── Fan chart teaser ─────────────────────────────────────────────────────────
 
 function FanChartTeaser() {
+  const { t } = useTranslation();
   const cx = 300, cy = 240, r0 = 30;
   const gens = [
     { r: 30,  R: 80,  count: 1, color: '#6366f1' },
@@ -1063,23 +1070,23 @@ function FanChartTeaser() {
               <text x={cx} y={cy + 7} textAnchor="middle" fill="white" fontSize="8">Johnson</text>
             </svg>
             <div className="mt-3 flex items-center gap-3 flex-wrap">
-              {[{ color: '#6366f1', label: 'You' }, { color: '#818cf8', label: 'Parents' }, { color: '#a5b4fc', label: 'Grandparents' }, { color: '#c7d2fe', label: 'Great-grandparents' }].map(({ color, label }) => (
-                <div key={label} className="flex items-center gap-1.5">
+              {[{ color: '#6366f1', labelKey: 'landing.fanLegend.you' }, { color: '#818cf8', labelKey: 'landing.fanLegend.parents' }, { color: '#a5b4fc', labelKey: 'landing.fanLegend.grandparents' }, { color: '#c7d2fe', labelKey: 'landing.fanLegend.greatGrandparents' }].map(({ color, labelKey }) => (
+                <div key={labelKey} className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
-                  <span className="text-[10px] text-gray-500">{label}</span>
+                  <span className="text-[10px] text-gray-500">{t(labelKey)}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
         <div className="flex-1 max-w-md">
-          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Ancestry Fan Chart</span>
-          <h2 className="mt-2 text-3xl font-extrabold text-gray-900 mb-4">See four generations at once</h2>
+          <span className="text-xs font-semibold text-brand-600 uppercase tracking-widest">{t('landing.fanChartSection')}</span>
+          <h2 className="mt-2 text-3xl font-extrabold text-gray-900 mb-4">{t('landing.fourGenerations')}</h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-4">
-            Switch to the Ancestry Fan Chart layout to see your lineage as a 360° polar diagram. Each ring outward is one generation further back.
+            {t('landing.fanChartDesc1')}
           </p>
           <p className="text-gray-500 text-sm leading-relaxed">
-            Combined with regular top-down, left-right, pedigree, and ancestor/descendant views, you have seven ways to explore the same data.
+            {t('landing.fanChartDesc2')}
           </p>
         </div>
       </div>
@@ -1090,6 +1097,7 @@ function FanChartTeaser() {
 // ─── CTA ──────────────────────────────────────────────────────────────────────
 
 function CTA({ onSignUp }: { onSignUp: () => void }) {
+  const { t } = useTranslation();
   return (
     <section className="py-20 sm:py-24 bg-gradient-to-br from-brand-800 to-indigo-900 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none opacity-10">
@@ -1099,18 +1107,18 @@ function CTA({ onSignUp }: { onSignUp: () => void }) {
       </div>
       <div className="relative max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="text-5xl mb-5">🌳</div>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">Start your family tree today</h2>
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-3">{t('landing.startYourTree')}</h2>
         <p className="text-indigo-200 text-base mb-2">
-          FamilyRoots is free during our open beta. Sign up and start building — no payment details needed.
+          {t('landing.ctaDesc')}
         </p>
         <p className="text-indigo-300 text-sm mb-8">
-          Your data is yours. Export it any time as a .frt file or ZIP archive.
+          {t('landing.ctaDataNote')}
         </p>
         <button
           onClick={onSignUp}
           className="inline-flex items-center gap-2 px-8 py-3.5 text-sm font-bold rounded-lg bg-white text-brand-700 hover:bg-brand-50 shadow-lg transition-all hover:-translate-y-0.5 duration-200"
         >
-          Create your free account
+          {t('landing.createFreeAccount')}
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
           </svg>
@@ -1123,6 +1131,7 @@ function CTA({ onSignUp }: { onSignUp: () => void }) {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
 function LandingFooter() {
+  const { t } = useTranslation();
   return (
     <footer className="bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -1130,23 +1139,23 @@ function LandingFooter() {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl leading-none">🌳</span>
-              <span className="font-bold text-white">FamilyRoots</span>
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-brand-900 text-brand-400 border border-brand-700">BETA</span>
+              <span className="font-bold text-white">{t('common.appName')}</span>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-brand-900 text-brand-400 border border-brand-700">{t('common.beta')}</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
-              An interactive genealogy platform for building, sharing, and preserving your family history.
+              {t('landing.footerDesc')}
             </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
             {[
-              { heading: 'Support', links: [{ label: 'Help',    to: '/help'    }, { label: 'Contact', to: '/contact' }] },
-              { heading: 'Legal',   links: [{ label: 'Terms',   to: '/terms'   }, { label: 'Privacy', to: '/privacy' }] },
-            ].map(({ heading, links }) => (
-              <div key={heading}>
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{heading}</h4>
+              { headingKey: 'landing.support', links: [{ labelKey: 'landing.help', to: '/help' }, { labelKey: 'landing.contact', to: '/contact' }] },
+              { headingKey: 'landing.legal', links: [{ labelKey: 'landing.terms', to: '/terms' }, { labelKey: 'landing.privacy', to: '/privacy' }] },
+            ].map(({ headingKey, links }) => (
+              <div key={headingKey}>
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{t(headingKey)}</h4>
                 <ul className="space-y-2">
-                  {links.map(({ label, to }) => (
-                    <li key={label}><Link to={to} className="text-sm text-gray-400 hover:text-white transition-colors">{label}</Link></li>
+                  {links.map(({ labelKey, to }) => (
+                    <li key={labelKey}><Link to={to} className="text-sm text-gray-400 hover:text-white transition-colors">{t(labelKey)}</Link></li>
                   ))}
                 </ul>
               </div>
@@ -1154,8 +1163,8 @@ function LandingFooter() {
           </div>
         </div>
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-gray-500">© {new Date().getFullYear()} FamilyRoots · AIPioneerLab. All rights reserved.</p>
-          <p className="text-xs text-gray-600">Open beta — your feedback shapes what we build next.</p>
+          <p className="text-xs text-gray-500">{t('landing.copyright', { year: new Date().getFullYear() })}</p>
+          <p className="text-xs text-gray-600">{t('landing.betaFeedback')}</p>
         </div>
       </div>
     </footer>

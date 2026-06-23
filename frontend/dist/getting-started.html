@@ -449,7 +449,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
   <p class="hero-sub">Your step-by-step guide to building, exploring<br>and sharing your family tree</p>
   <div style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:100px;
               padding:9px 22px;color:white;font-size:13px;font-weight:600;letter-spacing:.3px">
-    📖 &nbsp;18 Easy Steps · Beginner Friendly · No Experience Needed
+    📖 &nbsp;19 Easy Steps · Beginner Friendly · No Experience Needed
   </div>
 </div>
 
@@ -1623,8 +1623,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
       <li class="step"><div class="sn">👤</div><div class="sb"><div class="sl">Profile tab</div><div class="sd">Update your name, email address, and upload a profile photo</div></div></li>
       <li class="step"><div class="sn">🔒</div><div class="sb"><div class="sl">Security tab</div><div class="sd">Change your password any time — use a strong, unique password</div></div></li>
       <li class="step"><div class="sn">🎨</div><div class="sb"><div class="sl">Appearance tab</div><div class="sd">Choose from colour themes: Light, Dark, Ocean, Forest, and more. The canvas also has its own theming!</div></div></li>
+      <li class="step"><div class="sn">🔔</div><div class="sb"><div class="sl">Notifications tab</div><div class="sd">View in-app notifications and manage your <strong>broadcast email</strong> subscription. Toggle off if you don't want to receive broadcast emails from the administrator.</div></div></li>
     </ul>
-    <div class="tip"><div class="tip-ico">🎉</div><div class="tip-txt">You now know everything you need to get started! The next slide has a handy <strong>quick-reference card</strong> to keep.</div></div>
+    <div class="tip"><div class="tip-ico">📧</div><div class="tip-txt">Broadcast emails (notices, alerts, event announcements) are sent by the site administrator. You can <strong>unsubscribe</strong> any time from Settings → Notifications.</div></div>
   </div>
   <div class="pane-r">
     <div class="app-wrap">
@@ -1639,36 +1640,79 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
         <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px">Settings</div>
         <!-- Tabs -->
         <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px">
-          <div class="stab active" style="font-size:9px">Profile</div>
+          <div class="stab" style="font-size:9px">Profile</div>
           <div class="stab" style="font-size:9px">Security</div>
           <div class="stab" style="font-size:9px">Appearance</div>
+          <div class="stab active" style="font-size:9px">Notifications</div>
         </div>
-        <!-- Profile form -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div><span class="mock-lbl">First name</span><div class="mock-inp filled">Alice</div></div>
-          <div><span class="mock-lbl">Last name</span><div class="mock-inp filled">Johnson</div></div>
-        </div>
-        <span class="mock-lbl">Email</span>
-        <div class="mock-inp filled">alice@example.com</div>
-        <div style="margin-top:8px">
-          <div style="font-size:9px;font-weight:700;color:var(--text);margin-bottom:6px">Theme</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <div style="padding:5px 10px;border:1.5px solid var(--brand);border-radius:8px;font-size:9px;font-weight:700;color:var(--brand);background:var(--brand-xlight)">☀️ Light</div>
-            <div style="padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:9px;color:var(--muted)">🌙 Dark</div>
-            <div style="padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:9px;color:var(--muted)">🌊 Ocean</div>
-            <div style="padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:9px;color:var(--muted)">🌿 Forest</div>
+        <!-- Broadcast subscription toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--text)">Broadcast emails</div>
+            <div style="font-size:8px;color:var(--muted);margin-top:2px">Receive notices, alerts &amp; event emails from the administrator</div>
+          </div>
+          <div class="highlighted" style="width:32px;height:18px;background:var(--brand);border-radius:20px;position:relative;flex-shrink:0">
+            <div style="width:14px;height:14px;background:white;border-radius:50%;position:absolute;top:2px;right:2px;box-shadow:0 1px 3px rgba(0,0,0,.2)"></div>
           </div>
         </div>
-        <div class="mock-btn-pri" style="margin-top:14px;max-width:120px;padding:7px;font-size:10px">Save changes</div>
+        <!-- Notification list -->
+        <div style="font-size:9px;font-weight:700;color:var(--text);margin-bottom:6px">Recent notifications</div>
+        <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #f8fafc">
+            <div style="font-size:14px">🌳</div>
+            <div style="flex:1"><div style="font-size:9px;font-weight:600;color:var(--text)">You were invited to Smith Family</div><div style="font-size:8px;color:var(--muted)">2 hours ago</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc">
+            <div style="font-size:14px">👤</div>
+            <div style="flex:1"><div style="font-size:9px;font-weight:600;color:var(--text)">Bob joined your Johnson Family tree</div><div style="font-size:8px;color:var(--muted)">1 day ago</div></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 17 — YOU'RE READY!
+     SLIDE 17 — UNDER CONSTRUCTION PAGE
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-end" id="s20">
+<div class="slide layout-split" id="s20">
+  <div class="pane-l">
+    <div class="slide-tag">Good to know</div>
+    <h2 class="slide-h">Under Construction page</h2>
+    <p class="slide-sub">Occasionally you may see an "Under Construction" page when visiting FamilyRoots. Here's what it means.</p>
+    <ul class="steps">
+      <li class="step"><div class="sn">🔧</div><div class="sb"><div class="sl">Scheduled maintenance</div><div class="sd">The site administrator may temporarily take the site offline for updates, migrations, or maintenance work</div></div></li>
+      <li class="step"><div class="sn">💬</div><div class="sb"><div class="sl">Custom message</div><div class="sd">The page will show a message from the administrator explaining what's happening and when to check back</div></div></li>
+      <li class="step"><div class="sn">⏳</div><div class="sb"><div class="sl">Temporary</div><div class="sd">Maintenance windows are brief. Your data is safe — just try again later and the site will be back up</div></div></li>
+    </ul>
+    <div class="tip"><div class="tip-ico">✅</div><div class="tip-txt">Your trees, people, and all your data are <strong>completely safe</strong> during maintenance. Nothing is lost — the site is just temporarily unavailable.</div></div>
+  </div>
+  <div class="pane-r">
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><div class="bd bd-r"></div><div class="bd bd-y"></div><div class="bd bd-g"></div></div>
+        <div class="browser-url">familyroots.aipioneerlab.com</div>
+      </div>
+      <div class="browser-content" style="background:linear-gradient(135deg,#fffbeb,#fff7ed);padding:30px 20px;text-align:center;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+          <span style="font-size:24px">🔧</span>
+        </div>
+        <div style="font-size:18px;font-weight:800;color:#1e293b;margin-bottom:6px">Under Construction</div>
+        <div style="font-size:11px;color:#64748b;line-height:1.6;max-width:280px;margin-bottom:16px">
+          We are currently performing scheduled maintenance. Please check back soon!
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:9px;color:#94a3b8">
+          <span style="font-weight:600">FamilyRoots</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SLIDE 18 — YOU'RE READY!
+═══════════════════════════════════════════════ -->
+<div class="slide layout-end" id="s21">
   <div style="font-size:72px;margin-bottom:14px">🎉</div>
   <h2 class="end-h">You're ready to start!</h2>
   <p class="end-sub">Here's your quick-reference cheat sheet to keep handy</p>
@@ -1705,9 +1749,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 
 
 <!-- ══════════════════════════════════════════
-     SLIDE 18 — TROUBLESHOOTING: MEMBERS NOT VISIBLE
+     SLIDE 19 — TROUBLESHOOTING: MEMBERS NOT VISIBLE
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s21">
+<div class="slide layout-split" id="s22">
   <div class="pane-l">
     <div class="slide-tag" style="color:#f59e0b">🔧 Troubleshooting</div>
     <h2 class="slide-h">Members not showing in tree?</h2>
@@ -1831,9 +1875,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 19 — MORE TROUBLESHOOTING
+     SLIDE 20 — MORE TROUBLESHOOTING
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s22">
+<div class="slide layout-split" id="s23">
   <div class="pane-l">
     <div class="slide-tag" style="color:#f59e0b">🔧 Troubleshooting</div>
     <h2 class="slide-h">More common issues &amp; fixes</h2>
@@ -1935,9 +1979,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 
 
 <!-- ══════════════════════════════════════════
-     SLIDE 20 — TIPS & TRICKS: CTRL INTERACTIONS
+     SLIDE 21 — TIPS & TRICKS: CTRL INTERACTIONS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s23">
+<div class="slide layout-split" id="s24">
   <div class="pane-l">
     <div class="slide-tag tip-tag">💡 Tips &amp; Tricks</div>
     <h2 class="slide-h">Power moves with <span class="ctrl-key" style="font-size:18px;vertical-align:middle;padding:3px 10px">Ctrl</span></h2>
@@ -2059,9 +2103,9 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 </div>
 
 <!-- ══════════════════════════════════════════
-     SLIDE 21 — MORE CANVAS TIPS & SHORTCUTS
+     SLIDE 22 — MORE CANVAS TIPS & SHORTCUTS
 ═══════════════════════════════════════════════ -->
-<div class="slide layout-split" id="s24">
+<div class="slide layout-split" id="s25">
   <div class="pane-l">
     <div class="slide-tag tip-tag">💡 Tips &amp; Tricks</div>
     <h2 class="slide-h">More canvas tips to know</h2>
@@ -2185,7 +2229,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 <!-- ── Navigation ── -->
 <div class="nav-bar">
   <button class="nav-btn" id="btnPrev" onclick="go(-1)" title="Previous (← Arrow)">&#8592;</button>
-  <span class="nav-counter" id="counter">1 / 24</span>
+  <span class="nav-counter" id="counter">1 / 25</span>
   <button class="nav-btn" id="btnNext" onclick="go(1)" title="Next (→ Arrow)">&#8594;</button>
 </div>
 
@@ -2196,7 +2240,7 @@ kbd{background:#f1f5f9;border:1px solid var(--border);border-radius:3px;padding:
 <div class="progress"><div class="progress-fill" id="progress"></div></div>
 
 <script>
-const TOTAL = 24;
+const TOTAL = 25;
 let cur = 1;
 
 // Build dots

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { SEO } from '@shared/components/SEO';
 import { useQuery } from '@tanstack/react-query';
@@ -23,9 +24,7 @@ interface PersonDetail {
   siblings: string[];
 }
 
-const SEX_LABEL: Record<string, string> = {
-  MALE: 'Male', FEMALE: 'Female', OTHER: 'Other', UNKNOWN: 'Unknown',
-};
+// SEX_LABEL moved inside component to access t()
 const SEX_BADGE: Record<string, string> = {
   MALE:    'bg-blue-100 text-blue-700',
   FEMALE:  'bg-pink-100 text-pink-700',
@@ -88,12 +87,17 @@ function RelativeList({
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const { treeId, personId } = useParams<{ treeId: string; personId: string }>();
   const accessToken = useAuthStore((s) => s.accessToken);
   const location = useLocation();
   const fromSearch = location.state?.from === 'search';
   const backTo    = fromSearch ? (location.state.searchUrl as string) : `/trees/${treeId}`;
-  const backLabel = fromSearch ? '← Back to results' : '← Back to tree';
+  const backLabel = fromSearch ? '← Back to results' : t('profilePage.backToTree');
+
+  const SEX_LABEL: Record<string, string> = {
+    MALE: t('profilePage.male'), FEMALE: t('profilePage.female'), OTHER: t('profilePage.other'), UNKNOWN: t('profilePage.unknown'),
+  };
 
   const { data: person, isLoading, error } = useQuery<PersonDetail>({
     queryKey: queryKeys.persons.detail(treeId ?? '', personId ?? ''),
@@ -140,7 +144,7 @@ export default function ProfilePage() {
         <Link to={backTo} className="text-sm text-gray-500 hover:text-gray-800 mb-6 inline-block">
           {backLabel}
         </Link>
-        <p className="text-sm text-red-600">Failed to load person profile.</p>
+        <p className="text-sm text-red-600">{t('profilePage.failedToLoad')}</p>
       </div>
     );
   }
@@ -167,7 +171,7 @@ export default function ProfilePage() {
         to={backTo}
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-6 transition-colors"
       >
-        ← Back to tree
+        {t('profilePage.backToTree')}
       </Link>
 
       {/* Header card */}
@@ -192,11 +196,11 @@ export default function ProfilePage() {
             </span>
             {person.is_deceased ? (
               <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                Deceased
+                {t('profilePage.deceased')}
               </span>
             ) : person.is_living ? (
               <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">
-                Living
+                {t('profilePage.living')}
               </span>
             ) : null}
           </div>
@@ -205,19 +209,19 @@ export default function ProfilePage() {
 
       {/* Relationships card */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Relationships</h2>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('profilePage.relationships')}</h2>
         {hasRelatives ? (
           <div className="space-y-5">
-            <RelativeList ids={person.parents}  label="Parents"  treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
-            <RelativeList ids={person.spouses}  label="Spouses"  treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
-            <RelativeList ids={person.children} label="Children" treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
-            <RelativeList ids={person.siblings} label="Siblings" treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.parents}  label={t('profilePage.parents')}  treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.spouses}  label={t('profilePage.spouses')}  treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.children} label={t('profilePage.children')} treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
+            <RelativeList ids={person.siblings} label={t('profilePage.siblings')} treeId={treeId ?? ''} nameMap={nameMap} photoMap={photoMap} />
           </div>
         ) : (
           <div className="text-center py-8 text-gray-400">
-            <p className="text-sm">No relationships recorded yet.</p>
+            <p className="text-sm">{t('profilePage.noRelationships')}</p>
             <Link to={`/trees/${treeId}`} className="text-xs text-brand-500 hover:underline mt-1 inline-block">
-              Add from the tree canvas →
+              {t('profilePage.addFromCanvas')}
             </Link>
           </div>
         )}

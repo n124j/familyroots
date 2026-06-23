@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMaintenanceStore } from '@store/maintenance.store';
 
 export default function MaintenancePage() {
+  const { t } = useTranslation();
   const message = useMaintenanceStore((s) => s.maintenanceMessage);
 
   return (
@@ -28,23 +30,23 @@ export default function MaintenancePage() {
 
         {/* Title */}
         <h1 className="text-3xl font-bold text-gray-900 mb-3">
-          Under Construction
+          {t('maintenancePage.title')}
         </h1>
 
         {/* Customizable message */}
         <p className="text-lg text-gray-600 mb-8 leading-relaxed whitespace-pre-line">
-          {message || 'We are currently performing scheduled maintenance. Please check back soon!'}
+          {message || t('maintenancePage.message')}
         </p>
 
         {/* Admin access + brand */}
         <div className="flex items-center justify-center gap-3 text-sm text-gray-400">
-          <span className="font-semibold">FamilyRoots</span>
+          <span className="font-semibold">{t('common.appName')}</span>
           <span>·</span>
           <a
             href="/admin/login"
             className="text-amber-600 hover:text-amber-700 font-medium transition-colors"
           >
-            Admin
+            {t('maintenancePage.admin')}
           </a>
         </div>
       </div>

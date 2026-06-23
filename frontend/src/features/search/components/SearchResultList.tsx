@@ -3,6 +3,7 @@
  * Reads ?q from the URL, supports filter panel, pagination.
  */
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useNameSearch } from '../useSearch';
 import type { PersonHit, SearchFilters } from '../types';
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function SearchResultList({ treeId }: Props) {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +36,7 @@ export function SearchResultList({ treeId }: Props) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-gray-400">
         <SearchEmptyIcon />
-        <p className="text-sm">Enter a name to search.</p>
+        <p className="text-sm">{t('searchPage.enterName')}</p>
       </div>
     );
   }
@@ -44,7 +46,7 @@ export function SearchResultList({ treeId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">
-          {isFetching ? 'Searching…' : `${data?.total ?? 0} results for "${q}"`}
+          {isFetching ? t('searchPage.searching') : t('searchPage.resultsFor', { count: data?.total ?? 0, query: q })}
           {data && (
             <span className="ml-2 text-xs font-normal text-gray-400">
               ({data.took_ms} ms)
@@ -58,10 +60,10 @@ export function SearchResultList({ treeId }: Props) {
           onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value as SearchFilters['sort'] }))}
           className="rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
-          <option value="relevance">Most relevant</option>
-          <option value="name">Name A–Z</option>
-          <option value="birth_year">Birth year</option>
-          <option value="updated_at">Recently updated</option>
+          <option value="relevance">{t('searchPage.mostRelevant')}</option>
+          <option value="name">{t('searchPage.nameAZ')}</option>
+          <option value="birth_year">{t('searchPage.birthYear')}</option>
+          <option value="updated_at">{t('searchPage.recentlyUpdated')}</option>
         </select>
       </div>
 
@@ -75,7 +77,7 @@ export function SearchResultList({ treeId }: Props) {
 
       {data?.hits.length === 0 && !isFetching && (
         <div className="rounded-lg border border-dashed border-gray-300 py-12 text-center">
-          <p className="text-sm text-gray-500">No people found matching "{q}".</p>
+          <p className="text-sm text-gray-500">{t('searchPage.noMatchingPeople')} "{q}".</p>
           {!filters.fuzzy && (
             <button
               className="mt-2 text-sm text-indigo-600 hover:underline"
@@ -190,6 +192,7 @@ function Pagination({
   total: number;
   onChange: (p: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-center gap-2">
       <button
@@ -197,7 +200,7 @@ function Pagination({
         disabled={current === 1}
         className="rounded border px-3 py-1 text-sm disabled:opacity-40 hover:bg-gray-50"
       >
-        ← Previous
+        {t('common.previous')}
       </button>
       <span className="text-sm text-gray-600">
         Page {current} of {total}
@@ -207,7 +210,7 @@ function Pagination({
         disabled={current === total}
         className="rounded border px-3 py-1 text-sm disabled:opacity-40 hover:bg-gray-50"
       >
-        Next →
+        {t('common.next')}
       </button>
     </div>
   );

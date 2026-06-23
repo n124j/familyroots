@@ -3,6 +3,7 @@
  * Delegates to useMediaUpload for the 3-step S3 flow.
  */
 import React, { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMediaUpload } from '../useMediaUpload';
 import type { UploadProgress } from '../types';
 
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function MediaUploader({ treeId, personId, onUploadComplete }: Props) {
+  const { t } = useTranslation();
   const { uploads, uploadFile, clearUpload } = useMediaUpload(treeId, personId);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,10 +75,10 @@ export function MediaUploader({ treeId, personId, onUploadComplete }: Props) {
       >
         <UploadIcon />
         <span className="text-sm font-medium text-gray-700">
-          Drop files here, or <span className="text-indigo-600">browse</span>
+          {t('mediaUploader.dropFiles')} <span className="text-indigo-600">{t('mediaUploader.browse')}</span>
         </span>
         <span className="text-xs text-gray-500">
-          Photos, documents, audio, video — up to 500 MB
+          {t('mediaUploader.sizeHint')}
         </span>
         <input
           ref={inputRef}
