@@ -200,8 +200,9 @@ function UnionEdgeComponent({
     catch { return iso; }
   };
 
+  const tooltipTitle = displayLabel ?? UNION_TYPE_LABEL[unionType];
   const tooltipParts: string[] = [
-    isDivorced ? `${UNION_TYPE_LABEL[unionType]} (Divorced)` : UNION_TYPE_LABEL[unionType],
+    isDivorced ? `${tooltipTitle} (Divorced)` : tooltipTitle,
   ];
   const startStr = fmtDateShort(data?.unionDate) ?? (data?.unionDateYear != null ? String(data.unionDateYear) : null);
   const endStr = fmtDateShort(data?.unionEndDate) ?? (data?.unionEndDateYear != null ? String(data.unionEndDateYear) : null);

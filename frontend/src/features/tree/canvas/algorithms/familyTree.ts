@@ -29,10 +29,10 @@ import {
   FAMILY_NODE_SIZE   as FS,
 } from '../../types';
 
-const COUPLE_GAP          = 20;   // px between adjacent spouse cards
+const DEFAULT_COUPLE_GAP  = 20;   // px between adjacent spouse cards
 const DEFAULT_SIBLING_GAP = 32;   // px between sibling subtrees
 const DEFAULT_V_GAP       = 80;   // px between generation rows
-const MARGIN              = 40;
+const DEFAULT_MARGIN      = 40;
 
 // ── Generation assignment ────────────────────────────────────────────────────
 
@@ -139,12 +139,14 @@ function computeGenerations(
 
 export function familyTreeLayout(
   graph: ApiTreeGraph,
-  opts: { nodeHGap?: number; nodeVGap?: number; alignByBirthYear?: boolean } = {},
+  opts: { nodeHGap?: number; nodeVGap?: number; coupleGap?: number; margin?: number; alignByBirthYear?: boolean } = {},
 ): PositionedNode[] {
   if (graph.persons.length === 0) return [];
 
-  const sibGap = opts.nodeHGap ?? DEFAULT_SIBLING_GAP;
-  const vGap   = opts.nodeVGap ?? DEFAULT_V_GAP;
+  const sibGap    = opts.nodeHGap  ?? DEFAULT_SIBLING_GAP;
+  const vGap      = opts.nodeVGap  ?? DEFAULT_V_GAP;
+  const COUPLE_GAP = opts.coupleGap ?? DEFAULT_COUPLE_GAP;
+  const MARGIN     = opts.margin    ?? DEFAULT_MARGIN;
 
   // ── Lookup maps ──────────────────────────────────────────────────────────────
   const fgById     = new Map(graph.familyGroups.map((fg) => [fg.id, fg]));

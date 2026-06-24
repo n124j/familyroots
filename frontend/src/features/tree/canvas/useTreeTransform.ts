@@ -116,8 +116,24 @@ export function transformGraphToFlow(
 
   // Pre-compute per-person union ordinals (1-based) for each union type.
   // Only populated when a person has 2+ unions of the same type.
+  // FGs are sorted chronologically (by union date, then earliest child birth year).
   const unionOrdinalKey = (personId: string, fgId: string) => `${personId}::${fgId}`;
   const unionOrdinals = new Map<string, number>();
+
+  const fgLookup = new Map(graph.familyGroups.map((fg) => [fg.id, fg]));
+
+  const fgDateOrder = (fg: typeof graph.familyGroups[number] | undefined): number => {
+    if (!fg) return 9999;
+    if (fg.unionDateYear != null) return fg.unionDateYear;
+    if (fg.unionDate) {
+      const y = parseInt(fg.unionDate.slice(0, 4), 10);
+      if (!isNaN(y)) return y;
+    }
+    const childYears = Object.keys(fg.children)
+      .map((cid) => graph.persons.find((p) => p.id === cid)?.birthYear)
+      .filter((y): y is number => typeof y === 'number');
+    return childYears.length > 0 ? Math.min(...childYears) : 9999;
+  };
 
   const personFgs = new Map<string, Array<{ fgId: string; unionType: string }>>();
   for (const fg of graph.familyGroups) {
@@ -125,6 +141,9 @@ export function transformGraphToFlow(
       if (!personFgs.has(parentId)) personFgs.set(parentId, []);
       personFgs.get(parentId)!.push({ fgId: fg.id, unionType: fg.unionType });
     }
+  }
+  for (const fgs of personFgs.values()) {
+    fgs.sort((a, b) => fgDateOrder(fgLookup.get(a.fgId)) - fgDateOrder(fgLookup.get(b.fgId)));
   }
   for (const [personId, fgs] of personFgs) {
     const byType = new Map<string, string[]>();
@@ -147,9 +166,9 @@ export function transformGraphToFlow(
     // Parent → FamilyGroup (union edge)
     //
     // For each family group we show at most ONE label (ordinal or customLabel).
-    // We assign it to whichever parent edge has the highest ordinal — that parent
-    // has the most marriages and gives the most useful context ("3rd Marriage"
-    // rather than "1st Marriage" from the other partner's perspective).
+    // We assign it to the parent with the most unions of this type — that parent's
+    // ordinal gives the most useful context ("3rd Marriage" from the person who
+    // has had 3 marriages, not "1st Marriage" from the partner's perspective).
     // If no parent has an ordinal (everyone has exactly 1 marriage of this type),
     // the customLabel (if any) falls back to the first parent's edge.
     const parentOrdinals = fg.parentIds.map((pid) =>
@@ -157,9 +176,14 @@ export function transformGraphToFlow(
     );
 
     let labelIdx = -1;
+    let bestCount = 0;
     let bestOrdinal = 0;
-    parentOrdinals.forEach((ord, i) => {
-      if (ord != null && ord > bestOrdinal) {
+    fg.parentIds.forEach((pid, i) => {
+      const pFgs = personFgs.get(pid);
+      const typeCount = pFgs?.filter((f) => f.unionType === fg.unionType).length ?? 0;
+      const ord = parentOrdinals[i] ?? 0;
+      if (typeCount > bestCount || (typeCount === bestCount && ord > bestOrdinal)) {
+        bestCount = typeCount;
         bestOrdinal = ord;
         labelIdx = i;
       }

@@ -10,7 +10,7 @@
  */
 
 import { useMemo } from 'react';
-import type { ApiTreeGraph, TreeNode, TreeEdge, LayoutOptions, LayoutMode } from '../types';
+import type { ApiTreeGraph, TreeNode, TreeEdge, LayoutOptions, LayoutMode, UnionEdgeData } from '../types';
 import { transformGraphToFlow } from './useTreeTransform';
 import { dagreLayout } from './algorithms/dagre';
 import { fanChartLayout, fanChartVisibleIds } from './algorithms/fanChart';
@@ -26,6 +26,150 @@ import { pedigreeChartLayout, pedigreeChartVisibleIds } from './algorithms/pedig
 export interface UseTreeLayoutResult {
   nodes: TreeNode[];
   edges: TreeEdge[];
+}
+
+/**
+ * Deduplicate family-group nodes: when multiple FGs share the same visible
+ * parent set, keep only the one with the most children.  This mirrors the
+ * dedup in filterByExpanded() but is applied to subgraph-filtered views
+ * (descendant-family, ancestor-family) where filterByExpanded is skipped.
+ */
+function deduplicateFGNodes(
+  nodes: TreeNode[],
+  edges: TreeEdge[],
+): { nodes: TreeNode[]; edges: TreeEdge[] } {
+  const personNodes = nodes.filter((n) => n.type === 'person');
+  const fgNodes     = nodes.filter((n) => n.type === 'family-group');
+  const visiblePersonIds = new Set(personNodes.map((n) => n.id));
+
+  const childCountOf = (fgId: string) =>
+    edges.filter((e) => e.source === fgId && (e.data as any)?.kind === 'parent-child').length;
+
+  const parentKeyToFgId = new Map<string, string>();
+  for (const n of fgNodes) {
+    const key = [...((n.data as any).parentIds as string[])]
+      .filter((pid: string) => visiblePersonIds.has(pid))
+      .sort()
+      .join('|');
+    if (!key) continue;
+    const existing = parentKeyToFgId.get(key);
+    if (!existing || childCountOf(n.id) > childCountOf(existing)) {
+      parentKeyToFgId.set(key, n.id);
+    }
+  }
+
+  const keptFgIds = new Set(parentKeyToFgId.values());
+  const dedupedNodes = [...personNodes, ...fgNodes.filter((n) => keptFgIds.has(n.id))];
+  const visibleIds   = new Set(dedupedNodes.map((n) => n.id));
+  const dedupedEdges = edges.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target));
+
+  return { nodes: dedupedNodes, edges: dedupedEdges };
+}
+
+/**
+ * Recompute union ordinals on a filtered edge set so labels reflect only
+ * the visible unions (e.g., "1st Marriage", "2nd Marriage") rather than
+ * stale ordinals from the full graph.
+ *
+ * Only couple FGs (2+ visible parents) participate in ordinal counting —
+ * single-parent FGs are data artifacts and shouldn't inflate ordinals.
+ */
+function recomputeUnionOrdinals(edges: TreeEdge[], graph: ApiTreeGraph): TreeEdge[] {
+  const fgById = new Map(graph.familyGroups.map((fg) => [fg.id, fg]));
+  const personById = new Map(graph.persons.map((p) => [p.id, p]));
+
+  const fgDateOrder = (fg: typeof graph.familyGroups[number] | undefined): number => {
+    if (!fg) return 9999;
+    if (fg.unionDateYear != null) return fg.unionDateYear;
+    if (fg.unionDate) {
+      const y = parseInt(fg.unionDate.slice(0, 4), 10);
+      if (!isNaN(y)) return y;
+    }
+    const childYears = Object.keys(fg.children)
+      .map((cid) => personById.get(cid)?.birthYear)
+      .filter((y): y is number => typeof y === 'number');
+    return childYears.length > 0 ? Math.min(...childYears) : 9999;
+  };
+
+  // Count visible parents per FG (from union edges)
+  const fgParentCount = new Map<string, number>();
+  for (const e of edges) {
+    if ((e.data as any)?.kind !== 'union') continue;
+    fgParentCount.set(e.target, (fgParentCount.get(e.target) ?? 0) + 1);
+  }
+
+  const perPerson = new Map<string, Array<{ fgId: string; unionType: string }>>();
+  for (const e of edges) {
+    if ((e.data as any)?.kind !== 'union') continue;
+    // Only count couple FGs (2+ visible parents) for ordinal labeling
+    if ((fgParentCount.get(e.target) ?? 0) < 2) continue;
+    const fg = fgById.get(e.target);
+    if (!fg) continue;
+    if (!perPerson.has(e.source)) perPerson.set(e.source, []);
+    const list = perPerson.get(e.source)!;
+    if (!list.some((x) => x.fgId === e.target)) {
+      list.push({ fgId: e.target, unionType: fg.unionType });
+    }
+  }
+
+  for (const fgs of perPerson.values()) {
+    fgs.sort((a, b) => fgDateOrder(fgById.get(a.fgId)) - fgDateOrder(fgById.get(b.fgId)));
+  }
+
+  const ordinals = new Map<string, number>();
+  for (const [personId, fgs] of perPerson) {
+    const byType = new Map<string, string[]>();
+    for (const { fgId, unionType } of fgs) {
+      if (!byType.has(unionType)) byType.set(unionType, []);
+      byType.get(unionType)!.push(fgId);
+    }
+    for (const fgIds of byType.values()) {
+      if (fgIds.length >= 2) {
+        fgIds.forEach((fgId, idx) => {
+          ordinals.set(`${personId}::${fgId}`, idx + 1);
+        });
+      }
+    }
+  }
+
+  const fgUnionEdges = new Map<string, TreeEdge[]>();
+  for (const e of edges) {
+    if ((e.data as any)?.kind !== 'union') continue;
+    if (!fgUnionEdges.has(e.target)) fgUnionEdges.set(e.target, []);
+    fgUnionEdges.get(e.target)!.push(e);
+  }
+
+  const updated = new Map<string, TreeEdge>();
+  for (const [fgId, fgEdges] of fgUnionEdges) {
+    const fg = fgById.get(fgId);
+    let labelIdx = -1;
+    let bestCount = 0;
+    let bestOrd = 0;
+    fgEdges.forEach((e, i) => {
+      const pFgs = perPerson.get(e.source);
+      const typeCount = pFgs?.filter((f) => f.unionType === fg?.unionType).length ?? 0;
+      const ord = ordinals.get(`${e.source}::${fgId}`) ?? 0;
+      if (typeCount > bestCount || (typeCount === bestCount && ord > bestOrd)) {
+        bestCount = typeCount;
+        bestOrd = ord;
+        labelIdx = i;
+      }
+    });
+    const customIdx = labelIdx >= 0 ? labelIdx : 0;
+
+    fgEdges.forEach((e, i) => {
+      updated.set(e.id, {
+        ...e,
+        data: {
+          ...(e.data as UnionEdgeData),
+          unionOrdinal: i === labelIdx ? ordinals.get(`${e.source}::${fgId}`) : undefined,
+          customLabel: i === customIdx ? fg?.customLabel : undefined,
+        },
+      } as TreeEdge);
+    });
+  }
+
+  return edges.map((e) => updated.get(e.id) ?? e);
 }
 
 /**
@@ -199,8 +343,8 @@ function applyLayout(
           })),
       };
       positions = familyTreeLayout(filteredGraph, {
-        nodeHGap: 20,
-        nodeVGap: 65,
+        nodeHGap: opts.nodeHGap,
+        nodeVGap: opts.nodeVGap,
       });
       break;
     }
@@ -287,18 +431,19 @@ export function useTreeLayout(
         (e) => visibleIds.has(e.source) && visibleIds.has(e.target),
       );
     } else if (layoutOpts.mode === 'ancestor-family' && layoutOpts.focusPersonId) {
-      // ancestorSubgraphIds already follows both parents at each level, so spouses are included
       const visibleIds = ancestorSubgraphIds(graph, layoutOpts.focusPersonId, 100);
-      filteredNodes = rawNodes.filter((n) => visibleIds.has(n.id));
-      filteredEdges = rawEdges.filter(
-        (e) => visibleIds.has(e.source) && visibleIds.has(e.target),
-      );
+      const preNodes = rawNodes.filter((n) => visibleIds.has(n.id));
+      const preEdges = rawEdges.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target));
+      const deduped  = deduplicateFGNodes(preNodes, preEdges);
+      filteredNodes  = deduped.nodes;
+      filteredEdges  = recomputeUnionOrdinals(deduped.edges, graph);
     } else if (layoutOpts.mode === 'descendant-family' && layoutOpts.focusPersonId) {
       const visibleIds = descendantFamilySubgraphIds(graph, layoutOpts.focusPersonId, 100);
-      filteredNodes = rawNodes.filter((n) => visibleIds.has(n.id));
-      filteredEdges = rawEdges.filter(
-        (e) => visibleIds.has(e.source) && visibleIds.has(e.target),
-      );
+      const preNodes = rawNodes.filter((n) => visibleIds.has(n.id));
+      const preEdges = rawEdges.filter((e) => visibleIds.has(e.source) && visibleIds.has(e.target));
+      const deduped  = deduplicateFGNodes(preNodes, preEdges);
+      filteredNodes  = deduped.nodes;
+      filteredEdges  = recomputeUnionOrdinals(deduped.edges, graph);
     } else {
       ({ nodes: filteredNodes, edges: filteredEdges } = filterByExpanded(
         rawNodes,
