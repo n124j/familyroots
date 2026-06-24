@@ -56,6 +56,15 @@ class AccountNotVerifiedError(AuthenticationError):
         super().__init__("Email address not verified.", "ACCOUNT_NOT_VERIFIED")
 
 
+class ActiveSessionConflictError(DomainError):
+    def __init__(self) -> None:
+        super().__init__(
+            "This account is already signed in on another device. "
+            "A verification email has been sent to confirm this login.",
+            "ACTIVE_SESSION_CONFLICT",
+        )
+
+
 class AuthorizationError(DomainError):
     """Action not permitted for the current actor."""
 

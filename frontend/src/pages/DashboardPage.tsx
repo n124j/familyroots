@@ -708,10 +708,10 @@ export default function DashboardPage() {
           onClick={(e) => { if (e.target === e.currentTarget && !editing) setEditTarget(null); }}
         >
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit tree</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.editTreeTitle')}</h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboard.name')}</label>
                 <input
                   autoFocus
                   type="text"
@@ -723,9 +723,8 @@ export default function DashboardPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description <span className="text-gray-400 font-normal">(optional)</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1"
+                  dangerouslySetInnerHTML={{ __html: t('dashboard.descriptionOptional') }} />
                 <textarea
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
@@ -735,7 +734,7 @@ export default function DashboardPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cover photo</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('dashboard.coverPhoto')}</label>
                 <input
                   ref={photoInputRef}
                   type="file"
@@ -757,7 +756,7 @@ export default function DashboardPage() {
                         disabled={uploadingPhoto}
                         className="text-sm text-brand-600 hover:text-brand-700 font-medium disabled:opacity-50"
                       >
-                        {uploadingPhoto ? 'Uploading…' : 'Change photo'}
+                        {uploadingPhoto ? t('dashboard.uploading') : t('dashboard.changePhoto')}
                       </button>
                       <button
                         type="button"
@@ -765,7 +764,7 @@ export default function DashboardPage() {
                         disabled={uploadingPhoto}
                         className="text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
                       >
-                        Remove photo
+                        {t('dashboard.removePhoto')}
                       </button>
                     </div>
                   </div>
@@ -776,14 +775,14 @@ export default function DashboardPage() {
                     disabled={uploadingPhoto}
                     className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-brand-400 hover:text-brand-600 transition-colors disabled:opacity-50"
                   >
-                    {uploadingPhoto ? 'Uploading…' : '+ Upload photo'}
+                    {uploadingPhoto ? t('dashboard.uploading') : t('dashboard.uploadPhoto')}
                   </button>
                 )}
                 {photoError && <p className="text-xs text-red-600 mt-1">{photoError}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cover icon <span className="text-gray-400 font-normal">(used when no photo)</span>
+                  {t('dashboard.coverIcon')} <span className="text-gray-400 font-normal">{t('dashboard.coverIconHint')}</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {TREE_COVER_PRESETS.map((emoji) => (
@@ -806,11 +805,11 @@ export default function DashboardPage() {
               <div className="flex justify-end gap-3 pt-1">
                 <button type="button" onClick={() => setEditTarget(null)} disabled={editing}
                   className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors">
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" disabled={editing || !editName.trim()}
                   className="px-4 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors">
-                  {editing ? 'Saving…' : 'Save changes'}
+                  {editing ? t('dashboard.saving') : t('dashboard.saveChanges')}
                 </button>
               </div>
             </form>
@@ -877,6 +876,7 @@ function ShareTreeModal({
   currentUserId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const appRole    = useAuthStore((s) => s.user?.appRole);
   const isStandard = appRole === 'STANDARD';
 
@@ -1042,7 +1042,7 @@ function ShareTreeModal({
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Share "{tree.name}"</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('dashboard.shareTitle', { name: tree.name })}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
@@ -1072,7 +1072,7 @@ function ShareTreeModal({
                           inviteMode === m ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
                         }`}
                       >
-                        {m === 'user' ? 'Select user' : 'Email address'}
+                        {m === 'user' ? t('dashboard.selectUser') : t('dashboard.emailAddress')}
                       </button>
                     ))}
                   </div>
@@ -1089,7 +1089,7 @@ function ShareTreeModal({
                           className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                         >
                           <option value="">
-                            {tenantUsers.length === 0 ? 'All users are already members' : 'Select a person…'}
+                            {tenantUsers.length === 0 ? t('dashboard.allUsersAreMembers') : t('dashboard.selectPerson')}
                           </option>
                           {tenantUsers.map((u) => (
                             <option key={u.id} value={u.id}>{u.display_name} ({u.email})</option>
@@ -1100,7 +1100,7 @@ function ShareTreeModal({
                           type="email"
                           value={emailInput}
                           onChange={(e) => setEmailInput(e.target.value)}
-                          placeholder="Add people by email"
+                          placeholder={t('dashboard.addByEmail')}
                           required
                           className="w-full h-10 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                         />
@@ -1111,16 +1111,16 @@ function ShareTreeModal({
                       onChange={(e) => setInviteRole(e.target.value)}
                       className="h-10 px-2 text-sm border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                     >
-                      <option value="VIEWER">Viewer</option>
-                      <option value="EDITOR">Editor</option>
-                      <option value="ADMIN">Admin</option>
+                      <option value="VIEWER">{t('roles.VIEWER')}</option>
+                      <option value="EDITOR">{t('roles.EDITOR')}</option>
+                      <option value="ADMIN">{t('roles.ADMIN')}</option>
                     </select>
                     <button
                       type="submit"
                       disabled={inviting || (inviteMode === 'user' ? !selectedUser : !emailInput.trim())}
                       className="h-10 px-4 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 disabled:opacity-50 transition-colors whitespace-nowrap"
                     >
-                      {inviting ? '…' : 'Share'}
+                      {inviting ? '…' : t('common.share')}
                     </button>
                   </div>
                   {inviteError && <p className="text-xs text-red-600 mt-1.5">{inviteError}</p>}
@@ -1131,7 +1131,7 @@ function ShareTreeModal({
             {/* People with access — members + pending invitations */}
             <div className="px-6 py-4">
               <p className="text-sm font-medium text-gray-700 mb-3">
-                People with access
+                {t('dashboard.peopleWithAccess')}
               </p>
               <div className="space-y-0.5">
                 {members.map((m) => (
@@ -1153,7 +1153,7 @@ function ShareTreeModal({
                         && !(tree.role === 'ADMIN' && m.role === 'ADMIN') && (
                         <button
                           onClick={() => handleRemoveMember(m.user_id)}
-                          title="Remove from tree"
+                          title={t('dashboard.removeFromTree')}
                           className="text-sm text-gray-300 hover:text-red-500 transition-colors leading-none"
                         >
                           ×
@@ -1171,7 +1171,7 @@ function ShareTreeModal({
                       </div>
                       <div className="min-w-0">
                         <div className="text-sm text-gray-800 truncate">{inv.invitee_email}</div>
-                        <div className="text-xs text-amber-600">Invitation pending</div>
+                        <div className="text-xs text-amber-600">{t('dashboard.invitationPending')}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -1181,7 +1181,7 @@ function ShareTreeModal({
                       {canManage && (
                         <button
                           onClick={() => handleRevoke(inv.id)}
-                          title="Revoke invitation"
+                          title={t('dashboard.revokeInvitation')}
                           className="text-sm text-gray-300 hover:text-red-500 transition-colors leading-none"
                         >
                           ×
@@ -1207,9 +1207,9 @@ function ShareTreeModal({
               className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 disabled:opacity-50"
             />
             <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-900">Searchable</p>
+              <p className="text-sm font-medium text-gray-900">{t('dashboard.searchable')}</p>
               <p className="text-xs text-gray-500">
-                Allow other users to find this tree by searching for family members
+                {t('dashboard.searchableDesc')}
               </p>
             </div>
           </label>
@@ -1217,7 +1217,7 @@ function ShareTreeModal({
 
         {/* General access — visible to all users */}
         <div className="px-6 py-4 border-t border-gray-100">
-          <p className="text-sm font-medium text-gray-700 mb-3">General access</p>
+          <p className="text-sm font-medium text-gray-700 mb-3">{t('dashboard.generalAccess')}</p>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
@@ -1243,18 +1243,18 @@ function ShareTreeModal({
                     disabled={savingSharing}
                     className="text-sm font-medium text-gray-900 bg-transparent border-none outline-none cursor-pointer pr-1 disabled:opacity-60"
                   >
-                    <option value="RESTRICTED">Restricted</option>
-                    <option value="ANYONE">Anyone with the link</option>
+                    <option value="RESTRICTED">{t('dashboard.restricted')}</option>
+                    <option value="ANYONE">{t('dashboard.anyoneWithLink')}</option>
                   </select>
                 ) : (
                   <p className="text-sm font-medium text-gray-900">
-                    {linkSharing === 'ANYONE' ? 'Anyone with the link' : 'Restricted'}
+                    {linkSharing === 'ANYONE' ? t('dashboard.anyoneWithLink') : t('dashboard.restricted')}
                   </p>
                 )}
                 <p className="text-xs text-gray-500">
                   {linkSharing === 'ANYONE'
-                    ? 'Anyone with the link can view this tree'
-                    : 'Only people invited can access'}
+                    ? t('dashboard.anyoneCanView')
+                    : t('dashboard.onlyInvited')}
                 </p>
               </div>
             </div>
@@ -1267,7 +1267,7 @@ function ShareTreeModal({
                     : 'text-brand-600 hover:text-brand-700 border-brand-200 hover:border-brand-300'
                 }`}
               >
-                {linkCopied ? '✓ Copied!' : 'Copy link'}
+                {linkCopied ? t('common.copied') : t('common.copyLink')}
               </button>
             )}
           </div>
@@ -1277,7 +1277,7 @@ function ShareTreeModal({
         {tree.role === 'OWNER' && (accessRequests.length > 0 || mergeRequests.length > 0) && (
           <div className="px-6 py-4 border-t border-gray-100">
             <p className="text-sm font-medium text-gray-700 mb-3">
-              Pending Requests
+              {t('dashboard.pendingRequests')}
               <span className="ml-1.5 text-xs font-normal text-gray-400">
                 ({accessRequests.length + mergeRequests.length})
               </span>
@@ -1290,7 +1290,7 @@ function ShareTreeModal({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 truncate">{ar.requester_name}</p>
                     <p className="text-xs text-gray-500">
-                      Wants <span className="font-medium">{ar.requested_role}</span> access
+                      {t('dashboard.wantsAccess', { role: ar.requested_role })}
                       {ar.message && <> &middot; "{ar.message}"</>}
                     </p>
                   </div>
@@ -1307,7 +1307,7 @@ function ShareTreeModal({
                       }}
                       className="px-2.5 py-1 text-xs font-medium bg-brand-500 text-white rounded-md hover:bg-brand-600 transition-colors"
                     >
-                      Approve
+                      {t('common.approve')}
                     </button>
                     <button
                       onClick={async () => {
@@ -1321,7 +1321,7 @@ function ShareTreeModal({
                       }}
                       className="px-2.5 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
                     >
-                      Deny
+                      {t('common.deny')}
                     </button>
                   </div>
                 </div>
@@ -1332,12 +1332,12 @@ function ShareTreeModal({
                 <div key={mr.id} className="flex items-center justify-between gap-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      Merge from "{mr.source_tree_name}"
+                      {t('dashboard.mergeFrom', { name: mr.source_tree_name })}
                     </p>
                     <p className="text-xs text-gray-500">
-                      by {mr.requester_name}
+                      {t('dashboard.by')} {mr.requester_name}
                       {mr.target_pivot_name && mr.source_pivot_name && (
-                        <> &middot; pivot: {mr.source_pivot_name} = {mr.target_pivot_name}</>
+                        <> &middot; {t('dashboard.pivot')}: {mr.source_pivot_name} = {mr.target_pivot_name}</>
                       )}
                     </p>
                     {mr.message && <p className="text-xs text-gray-400 mt-0.5 truncate">"{mr.message}"</p>}
@@ -1384,7 +1384,7 @@ function ShareTreeModal({
             onClick={onClose}
             className="px-5 py-2 bg-brand-500 text-white text-sm font-medium rounded-lg hover:bg-brand-600 transition-colors"
           >
-            Done
+            {t('common.done')}
           </button>
         </div>
 

@@ -57,6 +57,10 @@ class AbstractUserRepository(AbstractRepository["UserModel"]):  # type: ignore[t
     async def exists_by_email(self, tenant_id: uuid.UUID, email: str) -> bool:
         ...
 
+    @abstractmethod
+    async def get_by_login_verification_token(self, token: str) -> "UserModel | None":  # type: ignore[name-defined]
+        ...
+
 
 class AbstractTenantRepository(AbstractRepository["TenantModel"]):  # type: ignore[type-arg]
     """Tenant-specific query methods."""
@@ -89,4 +93,22 @@ class AbstractRefreshTokenRepository(ABC):
 
     @abstractmethod
     async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
+        ...
+
+    @abstractmethod
+    async def has_active_sessions(self, user_id: uuid.UUID) -> bool:
+        ...
+
+    @abstractmethod
+    async def store_pending_login(
+        self, token: str, user_id: uuid.UUID, ip_address: str | None, expires_in_seconds: int,
+    ) -> None:
+        ...
+
+    @abstractmethod
+    async def get_pending_login(self, token: str) -> dict | None:
+        ...
+
+    @abstractmethod
+    async def delete_pending_login(self, token: str) -> None:
         ...

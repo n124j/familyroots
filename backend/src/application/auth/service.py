@@ -23,6 +23,7 @@ from src.application.auth.schemas import (
 from src.domain.exceptions import (
     AccountLockedError,
     AccountNotVerifiedError,
+    ActiveSessionConflictError,
     AlreadyExistsError,
     InvalidCredentialsError,
     NotFoundError,
@@ -116,6 +117,7 @@ class AuthService:
     # ── Login ─────────────────────────────────────────────────────
 
     async def login(self, req: LoginRequest, ip_address: str | None = None) -> tuple[TokenResponse, str]:
+        session_conflict = False
         async with self._uow:
             # 1. Find tenant implicitly via email (single-tenant mode for now;
             #    multi-tenant login requires tenant slug in request)
@@ -143,30 +145,55 @@ class AuthService:
             if not user.email_verified:
                 raise AccountNotVerifiedError()
 
-            # 6. Auto-promote to SUPER_ADMIN if email matches config
-            from src.config import get_settings
-            sa_email = get_settings().super_admin_email
-            if sa_email and user.email.lower() == sa_email.lower():
-                if user.app_role != "SUPER_ADMIN":
-                    user.app_role = "SUPER_ADMIN"
-            elif user.app_role == "SUPER_ADMIN":
-                user.app_role = "ADMIN"
+            # 6. Check for active sessions — require email verification
+            has_sessions = await self._tokens.has_active_sessions(user.id)
+            if has_sessions:
+                verification_token = secrets.token_hex(32)
+                user.login_verification_token = verification_token
+                user.login_verification_expires_at = datetime.now(tz=timezone.utc) + _TOKEN_EXPIRE
+                await self._uow.users.update(user)
+                session_conflict = True
+            else:
+                # 7. Auto-promote to SUPER_ADMIN if email matches config
+                from src.config import get_settings
+                sa_email = get_settings().super_admin_email
+                if sa_email and user.email.lower() == sa_email.lower():
+                    if user.app_role != "SUPER_ADMIN":
+                        user.app_role = "SUPER_ADMIN"
+                elif user.app_role == "SUPER_ADMIN":
+                    user.app_role = "ADMIN"
 
-            # 7. Reset failure counter, update last login
-            user.failed_login_attempts = 0
-            user.locked_until = None
-            user.last_login_at = datetime.now(tz=timezone.utc)
-            await self._uow.users.update(user)
+                # 8. Reset failure counter, update last login
+                user.failed_login_attempts = 0
+                user.locked_until = None
+                user.last_login_at = datetime.now(tz=timezone.utc)
+                await self._uow.users.update(user)
 
-            # 7. Record login event
-            await self._record_login_event(
+                # 9. Record login event
+                await self._record_login_event(
+                    user_id=user.id,
+                    tenant_id=user.tenant_id,
+                    display_name=user.full_name,
+                    email=user.email,
+                    success=True,
+                    ip_address=ip_address,
+                )
+
+        # Raise after UoW commits so the verification token is persisted
+        if session_conflict:
+            await self._tokens.store_pending_login(
+                token=verification_token,
                 user_id=user.id,
-                tenant_id=user.tenant_id,
-                display_name=user.full_name,
+                ip_address=ip_address,
+                expires_in_seconds=int(_TOKEN_EXPIRE.total_seconds()),
+            )
+            await self._send_login_verification_email(
                 email=user.email,
-                success=True,
+                display_name=user.full_name,
+                token=verification_token,
                 ip_address=ip_address,
             )
+            raise ActiveSessionConflictError()
 
         log.info("user.login", user_id=str(user.id))
         return await self._issue_tokens(user, remember_me=req.remember_me)
@@ -303,6 +330,91 @@ class AuthService:
         await self._tokens.revoke_all_for_user(user.id)
         log.info("user.password_reset", user_id=str(user.id))
 
+    # ── Verify new login (active session takeover) ─────────────────
+
+    async def verify_new_login(self, token: str) -> tuple[TokenResponse, str]:
+        pending = await self._tokens.get_pending_login(token)
+        if pending is None:
+            raise TokenInvalidError("Invalid or expired login verification token")
+
+        new_login_ip = pending.get("ip_address")
+
+        async with self._uow:
+            user = await self._uow.users.get_by_login_verification_token(token)
+            if user is None:
+                raise TokenInvalidError("Invalid or expired login verification token")
+
+            if (
+                user.login_verification_expires_at is None
+                or user.login_verification_expires_at < datetime.now(tz=timezone.utc)
+            ):
+                raise TokenExpiredError()
+
+            # Get IP of the last active session from login_events
+            old_session_ip = await self._get_last_login_ip(user.id)
+
+            # Revoke all existing sessions
+            await self._tokens.revoke_all_for_user(user.id)
+
+            # Clear verification token
+            user.login_verification_token = None
+            user.login_verification_expires_at = None
+
+            # Auto-promote to SUPER_ADMIN if email matches config
+            from src.config import get_settings
+            sa_email = get_settings().super_admin_email
+            if sa_email and user.email.lower() == sa_email.lower():
+                if user.app_role != "SUPER_ADMIN":
+                    user.app_role = "SUPER_ADMIN"
+            elif user.app_role == "SUPER_ADMIN":
+                user.app_role = "ADMIN"
+
+            # Update login state
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            user.last_login_at = datetime.now(tz=timezone.utc)
+            await self._uow.users.update(user)
+
+            # Record login event
+            await self._record_login_event(
+                user_id=user.id,
+                tenant_id=user.tenant_id,
+                display_name=user.full_name,
+                email=user.email,
+                success=True,
+                ip_address=new_login_ip,
+            )
+
+        # Clean up pending login from Redis
+        await self._tokens.delete_pending_login(token)
+
+        # Send session takeover notification email
+        await self._send_session_takeover_email(
+            email=user.email,
+            display_name=user.full_name,
+            old_ip=old_session_ip,
+        )
+
+        log.info("user.login_verified", user_id=str(user.id), old_ip=old_session_ip)
+        return await self._issue_tokens(user, remember_me=False)
+
+    async def _get_last_login_ip(self, user_id: uuid.UUID) -> str | None:
+        from sqlalchemy import select
+        from src.infrastructure.database.models.login_event import LoginEventModel
+        session = self._uow._session  # type: ignore[attr-defined]
+        result = await session.execute(
+            select(LoginEventModel.ip_address)
+            .where(
+                LoginEventModel.user_id == user_id,
+                LoginEventModel.event_type == "LOGIN",
+                LoginEventModel.success.is_(True),
+            )
+            .order_by(LoginEventModel.occurred_at.desc())
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        return row
+
     # ── Helpers ───────────────────────────────────────────────────
 
     async def _find_user_by_email(
@@ -387,6 +499,43 @@ class AuthService:
         await send_email(
             to=email,
             subject="Reset your FamilyRoots password",
+            html_body=html,
+            text_body=text,
+        )
+
+    async def _send_login_verification_email(
+        self,
+        email: str,
+        display_name: str,
+        token: str,
+        ip_address: str | None,
+    ) -> None:
+        from src.config import get_settings
+        from src.infrastructure.email.service import send_email, login_verification_email
+        settings = get_settings()
+        verify_url = f"{settings.frontend_base_url}/verify-new-login?token={token}"
+        html, text = login_verification_email(display_name, verify_url, ip_address)
+        await send_email(
+            to=email,
+            subject="Verify new login to your FamilyRoots account",
+            html_body=html,
+            text_body=text,
+        )
+
+    async def _send_session_takeover_email(
+        self,
+        email: str,
+        display_name: str,
+        old_ip: str | None,
+    ) -> None:
+        from src.config import get_settings
+        from src.infrastructure.email.service import send_email, session_takeover_email
+        settings = get_settings()
+        change_pw_url = f"{settings.frontend_base_url}/settings/security"
+        html, text = session_takeover_email(display_name, old_ip, change_pw_url)
+        await send_email(
+            to=email,
+            subject="Security alert: New login to your FamilyRoots account",
             html_body=html,
             text_body=text,
         )

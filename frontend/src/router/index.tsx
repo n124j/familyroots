@@ -26,6 +26,7 @@ const OAuthCallbackPage   = lazy(() => import('@pages/auth/OAuthCallbackPage'));
 const ForgotPasswordPage  = lazy(() => import('@pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage   = lazy(() => import('@pages/auth/ResetPasswordPage'));
 const VerifyEmailPage     = lazy(() => import('@pages/auth/VerifyEmailPage'));
+const VerifyNewLoginPage  = lazy(() => import('@pages/auth/VerifyNewLoginPage'));
 
 const DashboardPage           = lazy(() => import('@pages/DashboardPage'));
 const InvitationAcceptPage    = lazy(() => import('@pages/InvitationAcceptPage'));
@@ -119,6 +120,12 @@ const router = createBrowserRouter([
   {
     path: '/privacy',
     element: <Lazy><PrivacyPage /></Lazy>,
+  },
+
+  // ── Login verification (public — token arrives here from email) ─────────
+  {
+    path: '/verify-new-login',
+    element: <Lazy><VerifyNewLoginPage /></Lazy>,
   },
 
   // ── Account deletion confirmation (public — token arrives here) ─────────

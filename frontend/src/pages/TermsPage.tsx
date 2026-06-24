@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { SEO } from '@shared/components/SEO';
 import { Footer } from '@shared/components/layout/Footer';
 
-const LAST_UPDATED = 'June 3, 2026';
 const CONTACT_EMAIL = 'familyroots@aipioneerlab.com';
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
@@ -16,27 +15,28 @@ function Section({ id, title, children }: { id: string; title: string; children:
   );
 }
 
-const TOC = [
-  ['acceptance',     '1. Acceptance of Terms'],
-  ['service',        '2. Description of Service'],
-  ['accounts',       '3. User Accounts'],
-  ['content',        '4. User Content & Data'],
-  ['living',         '5. Living Individuals Policy'],
-  ['acceptable-use', '6. Acceptable Use'],
-  ['ip',             '7. Intellectual Property'],
-  ['privacy',        '8. Privacy'],
-  ['disclaimers',    '9. Disclaimers'],
-  ['security',       '10. Security & Data Breach'],
-  ['liability',      '11. Limitation of Liability'],
-  ['indemnification','12. Indemnification'],
-  ['termination',    '13. Termination'],
-  ['changes',        '14. Changes to Terms'],
-  ['governing-law',  '15. Governing Law'],
-  ['contact',        '16. Contact'],
-] as const;
-
 export default function TermsPage() {
   const { t } = useTranslation();
+
+  const TOC: readonly (readonly [string, string])[] = [
+    ['acceptance',     t('termsPage.toc1')],
+    ['service',        t('termsPage.toc2')],
+    ['accounts',       t('termsPage.toc3')],
+    ['content',        t('termsPage.toc4')],
+    ['living',         t('termsPage.toc5')],
+    ['acceptable-use', t('termsPage.toc6')],
+    ['ip',             t('termsPage.toc7')],
+    ['privacy',        t('termsPage.toc8')],
+    ['disclaimers',    t('termsPage.toc9')],
+    ['security',       t('termsPage.toc10')],
+    ['liability',      t('termsPage.toc11')],
+    ['indemnification',t('termsPage.toc12')],
+    ['termination',    t('termsPage.toc13')],
+    ['changes',        t('termsPage.toc14')],
+    ['governing-law',  t('termsPage.toc15')],
+    ['contact',        t('termsPage.toc16')],
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-surface-muted">
       <SEO
@@ -45,28 +45,25 @@ export default function TermsPage() {
         canonical="/terms"
       />
 
-      {/* ── Top nav ── */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold text-gray-900 hover:text-brand-600 transition-colors">
             <span className="text-xl">🌳</span> FamilyRoots
           </Link>
-          <Link to="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700">Sign in →</Link>
+          <Link to="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700">{t('termsPage.signInArrow')}</Link>
         </div>
       </nav>
 
       <main className="flex-1 py-12 px-4">
         <div className="max-w-5xl mx-auto">
 
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('termsPage.title')}</h1>
-            <p className="text-sm text-gray-500">{t('termsPage.lastUpdated')}: {LAST_UPDATED}</p>
+            <p className="text-sm text-gray-500">{t('termsPage.lastUpdated')}: {t('termsPage.lastUpdatedDate')}</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
-            {/* Sidebar TOC */}
             <aside className="lg:col-span-1 hidden lg:block">
               <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-20">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">{t('termsPage.tableOfContents')}</p>
@@ -80,238 +77,193 @@ export default function TermsPage() {
               </div>
             </aside>
 
-            {/* Content */}
             <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-200 p-6 md:p-8 space-y-8">
 
               <div className="bg-brand-50 border border-brand-200 rounded-lg px-4 py-3 text-sm text-brand-800">
-                Please read these Terms &amp; Conditions carefully before using FamilyRoots. By accessing or using our service, you agree to be bound by these terms.
+                {t('termsPage.introBanner')}
               </div>
 
-              <Section id="acceptance" title="1. Acceptance of Terms">
+              <Section id="acceptance" title={t('termsPage.toc1')}>
+                <p>{t('termsPage.s1_p1')}</p>
                 <p>
-                  These Terms and Conditions ("Terms") constitute a legally binding agreement between you ("User", "you") and AIPioneerLab ("Company", "we", "us") governing your use of the FamilyRoots platform, including the website at familyroots.aipioneerlab.com and all related services (collectively, the "Service").
+                  {t('termsPage.s1_p2_before')}
+                  <Link to="/privacy" className="text-brand-600 hover:underline">{t('termsPage.s1_p2_link')}</Link>
+                  {t('termsPage.s1_p2_after')}
                 </p>
+                <p>{t('termsPage.s1_p3')}</p>
+              </Section>
+
+              <Section id="service" title={t('termsPage.toc2')}>
+                <p>{t('termsPage.s2_p1')}</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>{t('termsPage.s2_li1')}</li>
+                  <li>{t('termsPage.s2_li2')}</li>
+                  <li>{t('termsPage.s2_li3')}</li>
+                  <li>{t('termsPage.s2_li4')}</li>
+                  <li>{t('termsPage.s2_li5')}</li>
+                  <li>{t('termsPage.s2_li6')}</li>
+                  <li>{t('termsPage.s2_li7')}</li>
+                </ul>
+                <p>{t('termsPage.s2_p2')}</p>
+              </Section>
+
+              <Section id="accounts" title={t('termsPage.toc3')}>
+                <p>{t('termsPage.s3_p1')}</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>{t('termsPage.s3_li1')}</li>
+                  <li>{t('termsPage.s3_li2')}</li>
+                  <li>{t('termsPage.s3_li3')}</li>
+                  <li>{t('termsPage.s3_li4')}</li>
+                  <li>{t('termsPage.s3_li5')}<a href={`mailto:${CONTACT_EMAIL}`} className="text-brand-600 hover:underline">{CONTACT_EMAIL}</a></li>
+                </ul>
+                <p>{t('termsPage.s3_p2')}</p>
                 <p>
-                  By creating an account, accessing, or using the Service, you acknowledge that you have read, understood, and agree to be bound by these Terms and our <Link to="/privacy" className="text-brand-600 hover:underline">Privacy Policy</Link>. If you do not agree, you must not use the Service.
-                </p>
-                <p>
-                  You must be at least 13 years of age to use the Service. If you are under 18, you represent that you have your parent's or legal guardian's permission.
+                  <strong>{t('termsPage.s3_p3_label')}</strong>{t('termsPage.s3_p3')}
                 </p>
               </Section>
 
-              <Section id="service" title="2. Description of Service">
+              <Section id="content" title={t('termsPage.toc4')}>
                 <p>
-                  FamilyRoots is a collaborative genealogy platform that enables users to build, visualise, and share family trees. Key features include:
+                  <strong>{t('termsPage.s4_p1_label')}</strong>{t('termsPage.s4_p1')}
+                </p>
+                <p>
+                  <strong>{t('termsPage.s4_p2_label')}</strong>{t('termsPage.s4_p2')}
+                </p>
+                <p>
+                  <strong>{t('termsPage.s4_p3_label')}</strong>{t('termsPage.s4_p3')}
+                </p>
+                <p>
+                  <strong>{t('termsPage.s4_p4_label')}</strong>{t('termsPage.s4_p4')}
+                </p>
+              </Section>
+
+              <Section id="living" title={t('termsPage.toc5')}>
+                <p>{t('termsPage.s5_p1')}</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>{t('termsPage.s5_li1')}</li>
+                  <li>{t('termsPage.s5_li2')}</li>
+                  <li>{t('termsPage.s5_li3')}</li>
+                  <li>{t('termsPage.s5_li4')}</li>
+                  <li>{t('termsPage.s5_li5')}</li>
+                </ul>
+                <p>{t('termsPage.s5_p2')}</p>
+              </Section>
+
+              <Section id="acceptable-use" title={t('termsPage.toc6')}>
+                <p>{t('termsPage.s6_p1')}</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>{t('termsPage.s6_li1')}</li>
+                  <li>{t('termsPage.s6_li2')}</li>
+                  <li>{t('termsPage.s6_li3')}</li>
+                  <li>{t('termsPage.s6_li4')}</li>
+                  <li>{t('termsPage.s6_li5')}</li>
+                  <li>{t('termsPage.s6_li6')}</li>
+                  <li>{t('termsPage.s6_li7')}</li>
+                  <li>{t('termsPage.s6_li8')}</li>
+                  <li>{t('termsPage.s6_li9')}</li>
+                </ul>
+                <p>{t('termsPage.s6_p2')}</p>
+              </Section>
+
+              <Section id="ip" title={t('termsPage.toc7')}>
+                <p>{t('termsPage.s7_p1')}</p>
+                <p>{t('termsPage.s7_p2')}</p>
+                <p>
+                  {t('termsPage.s7_p3_before')}
+                  <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand-600 hover:underline">{CONTACT_EMAIL}</a>
+                  {t('termsPage.s7_p3_after')}
+                </p>
+              </Section>
+
+              <Section id="privacy" title={t('termsPage.toc8')}>
+                <p>
+                  {t('termsPage.s8_p1_before')}
+                  <Link to="/privacy" className="text-brand-600 hover:underline">{t('termsPage.s8_p1_link')}</Link>
+                  {t('termsPage.s8_p1_after')}
+                </p>
+                <p>{t('termsPage.s8_p2')}</p>
+              </Section>
+
+              <Section id="disclaimers" title={t('termsPage.toc9')}>
+                <p>{t('termsPage.s9_p1')}</p>
+                <p>{t('termsPage.s9_p2')}</p>
+                <p>{t('termsPage.s9_p3')}</p>
+              </Section>
+
+              <Section id="security" title={t('termsPage.toc10')}>
+                <p>
+                  <strong>{t('termsPage.s10_p1_label')}</strong>{t('termsPage.s10_p1')}
+                </p>
+                <p>
+                  <strong>{t('termsPage.s10_p2_label')}</strong>{t('termsPage.s10_p2')}<strong>{t('termsPage.s10_p2_bold')}</strong>{t('termsPage.s10_p2_after')}
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Family tree creation and management with multiple generations</li>
-                  <li>Interactive visualisation including fan charts, pedigree views, and node-based layouts</li>
-                  <li>Collaborative editing with role-based access controls (Owner, Admin, Editor, Viewer)</li>
-                  <li>Person profiles with biographical information and photo uploads</li>
-                  <li>Global search across trees and members</li>
-                  <li>Data export in multiple formats (PDF, CSV, .frt, ZIP)</li>
-                  <li>Activity logging and audit trails</li>
+                  <li>{t('termsPage.s10_li1')}</li>
+                  <li>{t('termsPage.s10_li2')}</li>
+                  <li>{t('termsPage.s10_li3')}</li>
+                  <li>{t('termsPage.s10_li4')}</li>
+                  <li>{t('termsPage.s10_li5')}</li>
+                  <li>{t('termsPage.s10_li6')}</li>
                 </ul>
                 <p>
-                  We reserve the right to modify, suspend, or discontinue any part of the Service at any time with reasonable notice. We are not liable to you or any third party for any modification, suspension, or discontinuation.
-                </p>
-              </Section>
-
-              <Section id="accounts" title="3. User Accounts">
-                <p>
-                  To access most features of FamilyRoots, you must create an account. When registering, you agree to:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Provide accurate, current, and complete information</li>
-                  <li>Maintain and promptly update your account information</li>
-                  <li>Keep your password confidential and not share it with others</li>
-                  <li>Be responsible for all activity that occurs under your account</li>
-                  <li>Notify us immediately of any unauthorised use at <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand-600 hover:underline">{CONTACT_EMAIL}</a></li>
-                </ul>
-                <p>
-                  You may not create more than one account per person, or create an account on behalf of someone else without their explicit consent. We reserve the right to refuse registration or cancel accounts at our discretion.
+                  <strong>{t('termsPage.s10_p3_label')}</strong>{t('termsPage.s10_p3')}
                 </p>
                 <p>
-                  <strong>Account Security:</strong> You are fully responsible for maintaining the confidentiality of your login credentials. AIPioneerLab will not be liable for any loss or damage arising from your failure to protect your account credentials.
-                </p>
-              </Section>
-
-              <Section id="content" title="4. User Content & Data">
-                <p>
-                  <strong>Ownership:</strong> You retain full ownership of all family tree data, biographical information, photos, and other content you upload or create on FamilyRoots ("User Content"). We do not claim any intellectual property rights over your User Content.
+                  <strong>{t('termsPage.s10_p4_label')}</strong>{t('termsPage.s10_p4')}
                 </p>
                 <p>
-                  <strong>Licence to us:</strong> By uploading User Content, you grant AIPioneerLab a limited, non-exclusive, royalty-free licence to store, process, display, and transmit your User Content solely for the purpose of operating and improving the Service. This licence terminates when you delete your content or account.
-                </p>
-                <p>
-                  <strong>Accuracy:</strong> You are solely responsible for the accuracy, quality, and legality of your User Content. We do not verify the historical or biographical accuracy of information entered into the Service.
-                </p>
-                <p>
-                  <strong>Backup:</strong> While we take reasonable precautions to protect your data, we recommend exporting and maintaining your own backups using the built-in export features (PDF, CSV, .frt, ZIP).
-                </p>
-              </Section>
-
-              <Section id="living" title="5. Living Individuals Policy">
-                <p>
-                  FamilyRoots may be used to record information about living people. Given the sensitive nature of personal data, you agree to the following when adding living individuals to your family trees:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Obtain appropriate consent from living individuals before recording their personal information</li>
-                  <li>Not share or make accessible the private details of living individuals without their consent</li>
-                  <li>Use the "Viewer" or restricted roles when sharing trees containing living person data with others</li>
-                  <li>Remove any living individual's data promptly if requested by that individual</li>
-                  <li>Comply with applicable data protection laws in your jurisdiction (including GDPR, CCPA, or equivalent legislation)</li>
-                </ul>
-                <p>
-                  AIPioneerLab is not responsible for any privacy violations resulting from your failure to comply with this section. You indemnify us against any claims arising from such violations.
-                </p>
-              </Section>
-
-              <Section id="acceptable-use" title="6. Acceptable Use">
-                <p>You agree not to use the Service to:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Violate any applicable laws or regulations</li>
-                  <li>Upload or share content that is defamatory, obscene, fraudulent, or violates third-party rights</li>
-                  <li>Impersonate another person or misrepresent your affiliation with any entity</li>
-                  <li>Attempt to gain unauthorised access to any part of the Service or its servers</li>
-                  <li>Introduce malware, viruses, or other harmful code</li>
-                  <li>Scrape, crawl, or harvest data from the Service without written permission</li>
-                  <li>Circumvent any access controls, rate limits, or security mechanisms</li>
-                  <li>Resell, sublicense, or commercially exploit the Service without our written consent</li>
-                  <li>Use the Service to harass, intimidate, or harm any individual</li>
-                </ul>
-                <p>
-                  Violation of this section may result in immediate account suspension or termination without notice.
-                </p>
-              </Section>
-
-              <Section id="ip" title="7. Intellectual Property">
-                <p>
-                  The FamilyRoots platform, including its software, design, trademarks, logos, and documentation, is owned by AIPioneerLab and protected by intellectual property laws. Nothing in these Terms transfers any such rights to you.
-                </p>
-                <p>
-                  You are granted a limited, non-exclusive, non-transferable, revocable licence to access and use the Service solely for personal, non-commercial genealogy purposes in accordance with these Terms.
-                </p>
-                <p>
-                  If you believe your intellectual property rights have been infringed by content on the platform, please contact us at <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand-600 hover:underline">{CONTACT_EMAIL}</a> with a description of the alleged infringement.
-                </p>
-              </Section>
-
-              <Section id="privacy" title="8. Privacy">
-                <p>
-                  Your privacy is important to us. Our collection and use of your personal information is governed by our <Link to="/privacy" className="text-brand-600 hover:underline">Privacy Policy</Link>, which is incorporated into these Terms by reference.
-                </p>
-                <p>
-                  By using the Service, you consent to the collection and use of your data as described in the Privacy Policy.
-                </p>
-              </Section>
-
-              <Section id="disclaimers" title="9. Disclaimers">
-                <p>
-                  THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE. TO THE FULLEST EXTENT PERMITTED BY LAW, AIPIONEERLAB DISCLAIMS ALL WARRANTIES INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-                </p>
-                <p>
-                  We do not warrant that: (a) the Service will be uninterrupted or error-free; (b) defects will be corrected; (c) the Service is free of viruses or other harmful components; or (d) the accuracy or completeness of any information on the Service.
-                </p>
-                <p>
-                  FamilyRoots is a tool to assist in genealogical research. We make no representations as to the historical accuracy of information entered by users.
-                </p>
-              </Section>
-
-              <Section id="security" title="10. Security &amp; Data Breach">
-                <p>
-                  <strong>No guarantee of absolute security.</strong> While AIPioneerLab implements reasonable technical and organisational measures to protect your data — including encrypted storage, access controls, and routine security assessments — no method of transmission over the internet or electronic storage is 100% secure. We cannot guarantee the absolute security of your information.
-                </p>
-                <p>
-                  <strong>Limitation of liability for security incidents.</strong> AIPioneerLab, its officers, directors, employees, contractors, and agents shall <strong>not be held liable or responsible</strong> for any loss, damage, unauthorised access, theft, alteration, or disclosure of your personal data or family tree information that results from:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>A cyberattack, hacking, or intrusion by third parties despite reasonable security measures being in place;</li>
-                  <li>A data breach caused by vulnerabilities in third-party services, libraries, or infrastructure providers we rely upon;</li>
-                  <li>Your failure to maintain the confidentiality of your account credentials or use of a weak or reused password;</li>
-                  <li>Unauthorised access resulting from your sharing of login credentials or account access with others;</li>
-                  <li>Force majeure events, including but not limited to natural disasters, government actions, or acts of war;</li>
-                  <li>Any other circumstances beyond our reasonable control.</li>
-                </ul>
-                <p>
-                  <strong>Your responsibility.</strong> You are responsible for maintaining the security of your account. We strongly recommend using a unique, strong password and enabling any available two-factor authentication. You should not share your credentials with anyone.
-                </p>
-                <p>
-                  <strong>Breach notification.</strong> In the event of a data breach that is likely to result in a risk to your rights or freedoms, we will make reasonable efforts to notify affected users within a reasonable timeframe as required by applicable law, and will take steps to mitigate the impact.
-                </p>
-                <p>
-                  <strong>Data backup.</strong> We recommend that you regularly export and retain your own copies of your family tree data using the built-in export features (.frt, ZIP). AIPioneerLab is not liable for any loss of data, including data lost due to system failure, corruption, or a security incident.
+                  <strong>{t('termsPage.s10_p5_label')}</strong>{t('termsPage.s10_p5')}
                 </p>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 mt-2">
-                  <strong>Important notice:</strong> By creating an account and using FamilyRoots, you acknowledge and accept that internet-based services carry inherent security risks, and that AIPioneerLab will not be held responsible for any damages arising from unauthorised access to, or compromise of, your account or the platform, to the fullest extent permitted by applicable law.
+                  <strong>{t('termsPage.s10_notice_label')}</strong>{t('termsPage.s10_notice')}
                 </div>
               </Section>
 
-              <Section id="liability" title="11. Limitation of Liability">
-                <p>
-                  TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL AIPIONEERLAB, ITS OFFICERS, DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH:
-                </p>
+              <Section id="liability" title={t('termsPage.toc11')}>
+                <p>{t('termsPage.s11_p1')}</p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Your access to or use of (or inability to access or use) the Service</li>
-                  <li>Any conduct or content of any third party on the Service</li>
-                  <li>Any content obtained from the Service</li>
-                  <li>Unauthorised access, use, or alteration of your transmissions or content</li>
+                  <li>{t('termsPage.s11_li1')}</li>
+                  <li>{t('termsPage.s11_li2')}</li>
+                  <li>{t('termsPage.s11_li3')}</li>
+                  <li>{t('termsPage.s11_li4')}</li>
                 </ul>
-                <p>
-                  In jurisdictions that do not allow the exclusion of certain warranties or limitation of liability, our liability shall be limited to the fullest extent permitted by law.
-                </p>
+                <p>{t('termsPage.s11_p2')}</p>
               </Section>
 
-              <Section id="indemnification" title="12. Indemnification">
-                <p>
-                  You agree to indemnify, defend, and hold harmless AIPioneerLab and its affiliates, officers, agents, employees, and partners from any claim, demand, loss, damage, or expense (including reasonable legal fees) arising out of or related to: (a) your use of the Service; (b) your User Content; (c) your violation of these Terms; or (d) your violation of any rights of a third party.
-                </p>
+              <Section id="indemnification" title={t('termsPage.toc12')}>
+                <p>{t('termsPage.s12_p1')}</p>
               </Section>
 
-              <Section id="termination" title="13. Termination">
+              <Section id="termination" title={t('termsPage.toc13')}>
                 <p>
-                  <strong>By you:</strong> You may delete your account at any time through the Settings page. Upon deletion, your personal data and family trees will be removed from our active systems within 30 days, subject to any legal retention obligations.
+                  <strong>{t('termsPage.s13_p1_label')}</strong>{t('termsPage.s13_p1')}
                 </p>
                 <p>
-                  <strong>By us:</strong> We may suspend or terminate your account immediately, without prior notice, if we believe you have violated these Terms or for any other reason at our discretion. We will notify you by email where reasonably practicable.
+                  <strong>{t('termsPage.s13_p2_label')}</strong>{t('termsPage.s13_p2')}
                 </p>
-                <p>
-                  Upon termination, all rights granted under these Terms immediately cease. Provisions that by their nature should survive termination (including Sections 4, 7, 9, 10, 11, and 12) shall survive.
-                </p>
+                <p>{t('termsPage.s13_p3')}</p>
               </Section>
 
-              <Section id="changes" title="14. Changes to Terms">
-                <p>
-                  We may update these Terms from time to time. When we make material changes, we will notify you by email or by displaying a prominent notice within the Service at least 14 days before the changes take effect.
-                </p>
-                <p>
-                  Your continued use of the Service after the effective date of the revised Terms constitutes your acceptance of the changes. If you do not agree to the new Terms, you must stop using the Service.
-                </p>
-                <p>
-                  The most current version of the Terms will always be available at this page. We encourage you to review this page periodically.
-                </p>
+              <Section id="changes" title={t('termsPage.toc14')}>
+                <p>{t('termsPage.s14_p1')}</p>
+                <p>{t('termsPage.s14_p2')}</p>
+                <p>{t('termsPage.s14_p3')}</p>
               </Section>
 
-              <Section id="governing-law" title="15. Governing Law">
-                <p>
-                  These Terms shall be governed by and construed in accordance with applicable law. Any disputes arising under these Terms shall first be subject to good-faith negotiation between the parties before being submitted to the appropriate courts or arbitration.
-                </p>
-                <p>
-                  If any provision of these Terms is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary so that these Terms will otherwise remain in full force and effect.
-                </p>
+              <Section id="governing-law" title={t('termsPage.toc15')}>
+                <p>{t('termsPage.s15_p1')}</p>
+                <p>{t('termsPage.s15_p2')}</p>
               </Section>
 
-              <Section id="contact" title="16. Contact">
-                <p>
-                  If you have any questions about these Terms, please contact us:
-                </p>
+              <Section id="contact" title={t('termsPage.toc16')}>
+                <p>{t('termsPage.s16_p1')}</p>
                 <div className="bg-gray-50 rounded-lg p-4 mt-2">
-                  <p className="font-semibold text-gray-800">AIPioneerLab — FamilyRoots Team</p>
+                  <p className="font-semibold text-gray-800">{t('termsPage.s16_company')}</p>
                   <p className="text-sm mt-1">
-                    Email: <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand-600 hover:underline">{CONTACT_EMAIL}</a>
+                    {t('termsPage.s16_email')}<a href={`mailto:${CONTACT_EMAIL}`} className="text-brand-600 hover:underline">{CONTACT_EMAIL}</a>
                   </p>
                   <p className="text-sm mt-1">
-                    Contact form: <Link to="/contact" className="text-brand-600 hover:underline">familyroots.aipioneerlab.com/contact</Link>
+                    {t('termsPage.s16_contactForm')}<Link to="/contact" className="text-brand-600 hover:underline">{t('termsPage.s16_contactLink')}</Link>
                   </p>
                 </div>
               </Section>

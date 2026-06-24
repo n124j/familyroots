@@ -18,6 +18,7 @@ Revoke all → SCAN + DEL the user-index keys, then DEL the primary keys.
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import redis.asyncio as aioredis
@@ -29,6 +30,7 @@ _redis: aioredis.Redis | None = None
 
 PRIMARY_PREFIX = "familyroots:refresh:"
 USER_INDEX_PREFIX = "familyroots:refresh:user:"
+PENDING_LOGIN_PREFIX = "familyroots:pending_login:"
 
 
 def get_redis() -> aioredis.Redis:
@@ -113,3 +115,32 @@ class RedisRefreshTokenRepository(AbstractRefreshTokenRepository):
             pipe.delete(self._primary_key(jti))
             pipe.delete(self._user_index_key(user_id, jti))
         await pipe.execute()
+
+    async def has_active_sessions(self, user_id: uuid.UUID) -> bool:
+        pattern = f"{USER_INDEX_PREFIX}{user_id}:*"
+        cursor = 0
+        while True:
+            cursor, keys = await self._redis.scan(cursor, match=pattern, count=100)
+            if keys:
+                return True
+            if cursor == 0:
+                break
+        return False
+
+    def _pending_login_key(self, token: str) -> str:
+        return f"{PENDING_LOGIN_PREFIX}{token}"
+
+    async def store_pending_login(
+        self, token: str, user_id: uuid.UUID, ip_address: str | None, expires_in_seconds: int,
+    ) -> None:
+        data = json.dumps({"user_id": str(user_id), "ip_address": ip_address})
+        await self._redis.setex(self._pending_login_key(token), expires_in_seconds, data)
+
+    async def get_pending_login(self, token: str) -> dict | None:
+        raw = await self._redis.get(self._pending_login_key(token))
+        if raw is None:
+            return None
+        return json.loads(raw)
+
+    async def delete_pending_login(self, token: str) -> None:
+        await self._redis.delete(self._pending_login_key(token))

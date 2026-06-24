@@ -17,6 +17,10 @@ class UnverifiedError extends Error {
   constructor() { super('unverified'); }
 }
 
+class ActiveSessionError extends Error {
+  constructor(public detail: string) { super('active-session'); }
+}
+
 async function login(email: string, password: string) {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
@@ -28,6 +32,9 @@ async function login(email: string, password: string) {
     const err = await res.json().catch(() => ({}));
     if (res.status === 403 && String((err as any).type ?? '').includes('account-not-verified')) {
       throw new UnverifiedError();
+    }
+    if (res.status === 409 && String((err as any).type ?? '').includes('active-session-conflict')) {
+      throw new ActiveSessionError((err as any).detail ?? 'Active session detected. Verification email sent.');
     }
     throw new Error((err as any).detail ?? 'Invalid email or password');
   }
@@ -41,11 +48,12 @@ export default function LoginPage() {
   const storeLogin  = useAuthStore((s) => s.login);
   const justRegistered = searchParams.get('registered') === '1';
 
-  const [email,       setEmail]       = useState('');
-  const [password,    setPassword]    = useState('');
-  const [error,       setError]       = useState('');
-  const [unverified,  setUnverified]  = useState(false);
-  const [loading,     setLoading]     = useState(false);
+  const [email,              setEmail]              = useState('');
+  const [password,           setPassword]           = useState('');
+  const [error,              setError]              = useState('');
+  const [unverified,         setUnverified]         = useState(false);
+  const [activeSession,      setActiveSession]      = useState(false);
+  const [loading,            setLoading]            = useState(false);
 
   const oauthError = searchParams.get('error');
 
@@ -53,6 +61,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setUnverified(false);
+    setActiveSession(false);
     setLoading(true);
     try {
       const data = await login(email, password);
@@ -76,6 +85,8 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof UnverifiedError) {
         setUnverified(true);
+      } else if (err instanceof ActiveSessionError) {
+        setActiveSession(true);
       } else {
         setError((err as Error).message);
       }
@@ -178,6 +189,12 @@ export default function LoginPage() {
               <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                 <p className="font-medium mb-0.5">{t('auth.emailNotVerified')}</p>
                 <p className="text-xs">{t('auth.checkVerificationLinkAdmin')}</p>
+              </div>
+            )}
+            {activeSession && (
+              <div className="px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <p className="font-medium mb-0.5">{t('auth.activeSessionDetected')}</p>
+                <p className="text-xs">{t('auth.activeSessionVerifyEmail')}</p>
               </div>
             )}
             {error && (

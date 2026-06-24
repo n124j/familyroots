@@ -21,6 +21,7 @@ from src.application.auth.schemas import (
     ResetPasswordRequest,
     TokenResponse,
     VerifyEmailRequest,
+    VerifyNewLoginRequest,
 )
 from src.application.auth.service import AuthService
 
@@ -174,3 +175,19 @@ async def reset_password(
     svc: AuthService = Depends(_get_auth_service),
 ) -> None:
     await svc.reset_password(req.token, req.new_password)
+
+
+@router.post(
+    "/verify-new-login",
+    response_model=TokenResponse,
+    summary="Verify a new login when the account has active sessions",
+)
+async def verify_new_login(
+    req: VerifyNewLoginRequest,
+    response: Response,
+    settings: SettingsDep,
+    svc: AuthService = Depends(_get_auth_service),
+) -> TokenResponse:
+    token_resp, refresh_token = await svc.verify_new_login(req.token)
+    _set_refresh_cookie(response, refresh_token, secure=settings.is_production)
+    return token_resp

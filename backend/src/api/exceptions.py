@@ -15,6 +15,7 @@ from src.api.schemas.errors import FieldError, ProblemDetail
 from src.domain.exceptions import (
     AccountLockedError,
     AccountNotVerifiedError,
+    ActiveSessionConflictError,
     AlreadyExistsError,
     AuthenticationError,
     AuthorizationError,
@@ -95,6 +96,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AccountNotVerifiedError)
     async def _not_verified(request: Request, exc: AccountNotVerifiedError) -> JSONResponse:
         return _problem(403, "Email Not Verified", exc.message, "account-not-verified", str(request.url.path))
+
+    @app.exception_handler(ActiveSessionConflictError)
+    async def _active_session(request: Request, exc: ActiveSessionConflictError) -> JSONResponse:
+        return _problem(409, "Active Session Conflict", exc.message, "active-session-conflict", str(request.url.path))
 
     @app.exception_handler(AuthenticationError)
     async def _auth_error(request: Request, exc: AuthenticationError) -> JSONResponse:

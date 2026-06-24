@@ -79,6 +79,12 @@ class UserModel(Base, TenantMixin, TimestampMixin):
     email_verification_token: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )
+    login_verification_token: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
+    login_verification_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     app_role: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default=text("'STANDARD'")
     )

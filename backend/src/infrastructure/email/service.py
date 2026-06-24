@@ -425,6 +425,95 @@ def contact_form_email(
     return html, text
 
 
+def login_verification_email(display_name: str, verify_url: str, ip_address: str | None) -> tuple[str, str]:
+    """Email sent when a login attempt is made on an account with active sessions."""
+    ip_info = f" from IP address <strong>{ip_address}</strong>" if ip_address else ""
+    ip_text = f" from IP address {ip_address}" if ip_address else ""
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:sans-serif;background:#f8fafc;margin:0;padding:32px 16px;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e2e8f0;">
+    <h1 style="font-size:22px;font-weight:700;color:#d97706;margin:0 0 8px;">New login attempt detected</h1>
+    <p style="color:#64748b;margin:0 0 6px;">Hi {display_name},</p>
+    <p style="color:#64748b;margin:0 0 16px;">
+      Someone is trying to sign in to your FamilyRoots account{ip_info}.
+      Your account is currently signed in on another device.
+    </p>
+    <p style="color:#64748b;margin:0 0 24px;">
+      If this is you, click the button below to verify this login. Your other sessions will be signed out.
+    </p>
+    <a href="{verify_url}"
+       style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;
+              padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px;">
+      Verify and sign in
+    </a>
+    <p style="color:#94a3b8;font-size:12px;margin:24px 0 0;">
+      This link expires in 1 hour. If you didn't attempt to sign in, you can safely ignore this email
+      &mdash; your account remains secure.
+    </p>
+    <p style="color:#94a3b8;font-size:11px;margin:8px 0 0;word-break:break-all;">
+      Or copy this URL: {verify_url}
+    </p>
+  </div>
+</body>
+</html>
+"""
+    text = (
+        f"Hi {display_name},\n\n"
+        f"Someone is trying to sign in to your FamilyRoots account{ip_text}.\n"
+        f"Your account is currently signed in on another device.\n\n"
+        f"If this is you, verify this login by visiting:\n\n"
+        f"{verify_url}\n\n"
+        f"This link expires in 1 hour. If you didn't attempt to sign in, ignore this email."
+    )
+    return html, text
+
+
+def session_takeover_email(display_name: str, old_ip: str | None, change_password_url: str) -> tuple[str, str]:
+    """Email sent after a verified login signs out a previous session."""
+    ip_info = f" (IP: <strong>{old_ip}</strong>)" if old_ip else ""
+    ip_text = f" (IP: {old_ip})" if old_ip else ""
+    html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:sans-serif;background:#f8fafc;margin:0;padding:32px 16px;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;border:1px solid #e2e8f0;">
+    <h1 style="font-size:22px;font-weight:700;color:#dc2626;margin:0 0 8px;">Security alert</h1>
+    <p style="color:#64748b;margin:0 0 6px;">Hi {display_name},</p>
+    <p style="color:#64748b;margin:0 0 16px;">
+      A new login to your FamilyRoots account was verified. Your previous session{ip_info} has been signed out.
+    </p>
+    <p style="color:#64748b;margin:0 0 24px;">
+      For your security, we strongly recommend changing your password immediately.
+    </p>
+    <a href="{change_password_url}"
+       style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;
+              padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px;">
+      Change your password
+    </a>
+    <p style="color:#94a3b8;font-size:12px;margin:24px 0 0;">
+      If you did not initiate this login, your account may be compromised.
+      Change your password immediately and contact support.
+    </p>
+  </div>
+</body>
+</html>
+"""
+    text = (
+        f"Hi {display_name},\n\n"
+        f"A new login to your FamilyRoots account was verified. "
+        f"Your previous session{ip_text} has been signed out.\n\n"
+        f"For your security, we strongly recommend changing your password immediately.\n\n"
+        f"Change your password at:\n{change_password_url}\n\n"
+        f"If you did not initiate this login, your account may be compromised. "
+        f"Change your password immediately and contact support."
+    )
+    return html, text
+
+
 def broadcast_email(
     subject: str,
     body: str,

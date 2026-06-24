@@ -320,9 +320,10 @@ export default function ActivityPage() {
       {/* Stats bar */}
       {data && (
         <p className="text-xs text-gray-500 mb-3">
-          {t('activityPage.eventCount', { count: data.total })}
-          {debouncedSearch || action || entityType ? ` ${t('activityPage.matchingFilters')}` : ` ${t('activityPage.total')}`}
-          {' · '}{t('activityPage.page', { current: data.page, total: data.total_pages })}
+          {debouncedSearch || action || entityType
+            ? t('activityPage.eventsMatching', { count: data.total })
+            : t('activityPage.eventsTotal', { count: data.total })}
+          {' · '}{t('activityPage.page')} {data.page} / {data.total_pages}
         </p>
       )}
 

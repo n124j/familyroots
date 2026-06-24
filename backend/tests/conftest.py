@@ -98,6 +98,9 @@ class FakeUserRepository(AbstractUserRepository):
     async def get_by_verification_token(self, token: str) -> UserModel | None:
         return next((u for u in self._users if u.email_verification_token == token), None)
 
+    async def get_by_login_verification_token(self, token: str) -> UserModel | None:
+        return next((u for u in self._users if u.login_verification_token == token), None)
+
 
 class FakeTenantRepository:
     def __init__(self) -> None:
@@ -257,6 +260,7 @@ class FakeUnitOfWork(AbstractUnitOfWork):
 class FakeTokenStore(AbstractRefreshTokenRepository):
     def __init__(self) -> None:
         self._store: dict[str, str] = {}
+        self._pending_logins: dict[str, dict] = {}
 
     async def store(self, jti: str, user_id: uuid.UUID, expires_in_seconds: int) -> None:
         self._store[jti] = str(user_id)
@@ -269,6 +273,20 @@ class FakeTokenStore(AbstractRefreshTokenRepository):
 
     async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
         self._store = {k: v for k, v in self._store.items() if v != str(user_id)}
+
+    async def has_active_sessions(self, user_id: uuid.UUID) -> bool:
+        return any(v == str(user_id) for v in self._store.values())
+
+    async def store_pending_login(
+        self, token: str, user_id: uuid.UUID, ip_address: str | None, expires_in_seconds: int,
+    ) -> None:
+        self._pending_logins[token] = {"user_id": str(user_id), "ip_address": ip_address}
+
+    async def get_pending_login(self, token: str) -> dict | None:
+        return self._pending_logins.get(token)
+
+    async def delete_pending_login(self, token: str) -> None:
+        self._pending_logins.pop(token, None)
 
 
 # ── Fixtures ──────────────────────────────────────────────────────

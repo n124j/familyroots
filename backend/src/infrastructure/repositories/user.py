@@ -63,3 +63,9 @@ class SqlAlchemyUserRepository(
     ) -> UserModel | None:
         stmt = select(UserModel).where(UserModel.deletion_request_token == token)
         return await self._first(stmt)
+
+    async def get_by_login_verification_token(
+        self, token: str
+    ) -> UserModel | None:
+        stmt = select(UserModel).where(UserModel.login_verification_token == token)
+        return await self._first(stmt)
