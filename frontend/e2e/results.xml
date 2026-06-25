@@ -1,28 +1,28 @@
-<testsuites id="" name="" tests="36" failures="0" skipped="6" errors="0" time="30.579486">
-<testsuite name="auth.spec.ts" timestamp="2026-06-25T03:35:38.532Z" hostname="chromium" tests="18" failures="0" skipped="2" time="70.332" errors="0">
-<testcase name="Registration › user can register a new account" classname="auth.spec.ts" time="3.464">
+<testsuites id="" name="" tests="36" failures="0" skipped="6" errors="0" time="27.789864">
+<testsuite name="auth.spec.ts" timestamp="2026-06-25T03:42:21.222Z" hostname="chromium" tests="18" failures="0" skipped="2" time="60.225" errors="0">
+<testcase name="Registration › user can register a new account" classname="auth.spec.ts" time="3.106">
 </testcase>
-<testcase name="Registration › duplicate email shows error" classname="auth.spec.ts" time="5.999">
+<testcase name="Registration › duplicate email shows error" classname="auth.spec.ts" time="5.238">
 </testcase>
-<testcase name="Registration › weak password shows validation error" classname="auth.spec.ts" time="2.225">
+<testcase name="Registration › weak password shows validation error" classname="auth.spec.ts" time="2.263">
 </testcase>
-<testcase name="Registration › registration form has no Organisation ID field" classname="auth.spec.ts" time="1.623">
+<testcase name="Registration › registration form has no Organisation ID field" classname="auth.spec.ts" time="1.473">
 </testcase>
-<testcase name="Registration › after registration hard-refresh does not grant dashboard access" classname="auth.spec.ts" time="3.196">
+<testcase name="Registration › after registration hard-refresh does not grant dashboard access" classname="auth.spec.ts" time="2.841">
 </testcase>
-<testcase name="Login › valid credentials redirect to dashboard" classname="auth.spec.ts" time="6.144">
+<testcase name="Login › valid credentials redirect to dashboard" classname="auth.spec.ts" time="5.034">
 </testcase>
-<testcase name="Login › wrong password shows error message" classname="auth.spec.ts" time="6.098">
+<testcase name="Login › wrong password shows error message" classname="auth.spec.ts" time="5.074">
 </testcase>
-<testcase name="Login › access token is NOT stored in localStorage" classname="auth.spec.ts" time="6.019">
+<testcase name="Login › access token is NOT stored in localStorage" classname="auth.spec.ts" time="4.942">
 </testcase>
-<testcase name="Login › ?next param preserves redirect after login" classname="auth.spec.ts" time="5.752">
+<testcase name="Login › ?next param preserves redirect after login" classname="auth.spec.ts" time="4.953">
 </testcase>
-<testcase name="Logout › logout clears session and redirects to login" classname="auth.spec.ts" time="6.674">
+<testcase name="Logout › logout clears session and redirects to login" classname="auth.spec.ts" time="5.68">
 </testcase>
-<testcase name="Logout › accessing protected route after logout redirects to login" classname="auth.spec.ts" time="3">
+<testcase name="Logout › accessing protected route after logout redirects to login" classname="auth.spec.ts" time="2.687">
 </testcase>
-<testcase name="Session persistence › hard refresh preserves authenticated state via silent refresh" classname="auth.spec.ts" time="5.876">
+<testcase name="Session persistence › hard refresh preserves authenticated state via silent refresh" classname="auth.spec.ts" time="5.148">
 </testcase>
 <testcase name="OAuth — Google › login page shows Google sign-in button" classname="auth.spec.ts">
 <properties>
@@ -40,16 +40,16 @@
 <skipped>
 </skipped>
 </testcase>
-<testcase name="OAuth — Google › OAuth callback with error redirects to login with message" classname="auth.spec.ts" time="3.023">
+<testcase name="OAuth — Google › OAuth callback with error redirects to login with message" classname="auth.spec.ts" time="2.685">
 </testcase>
-<testcase name="OAuth — Google › OAuth callback without token redirects to login" classname="auth.spec.ts" time="2.946">
+<testcase name="OAuth — Google › OAuth callback without token redirects to login" classname="auth.spec.ts" time="2.363">
 </testcase>
-<testcase name="OAuth — Google › login page shows error banner for OAuth state mismatch" classname="auth.spec.ts" time="2.711">
+<testcase name="OAuth — Google › login page shows error banner for OAuth state mismatch" classname="auth.spec.ts" time="2.444">
 </testcase>
-<testcase name="OAuth — Google › login page shows generic error banner for OAuth provider error" classname="auth.spec.ts" time="2.623">
+<testcase name="OAuth — Google › login page shows generic error banner for OAuth provider error" classname="auth.spec.ts" time="2.266">
 </testcase>
 </testsuite>
-<testsuite name="media-upload.spec.ts" timestamp="2026-06-25T03:35:38.532Z" hostname="chromium" tests="4" failures="0" skipped="4" time="42.377" errors="0">
+<testsuite name="media-upload.spec.ts" timestamp="2026-06-25T03:42:21.222Z" hostname="chromium" tests="4" failures="0" skipped="4" time="36.882" errors="0">
 <testcase name="Media upload › MediaUploader drop zone is visible on person page" classname="media-upload.spec.ts">
 <properties>
 <property name="skip" value="">
@@ -83,36 +83,36 @@
 </skipped>
 </testcase>
 </testsuite>
-<testsuite name="search.spec.ts" timestamp="2026-06-25T03:35:38.532Z" hostname="chromium" tests="8" failures="0" skipped="0" time="89.093" errors="0">
-<testcase name="Global search › search bar is present in navigation" classname="search.spec.ts" time="11.609">
+<testsuite name="search.spec.ts" timestamp="2026-06-25T03:42:21.222Z" hostname="chromium" tests="8" failures="0" skipped="0" time="72.06" errors="0">
+<testcase name="Global search › search bar is present in navigation" classname="search.spec.ts" time="9.49">
 </testcase>
-<testcase name="Global search › typing in search bar shows results" classname="search.spec.ts" time="11.447">
+<testcase name="Global search › typing in search bar shows results" classname="search.spec.ts" time="9.637">
 </testcase>
-<testcase name="Global search › search shows &quot;No results&quot; for nonsense query" classname="search.spec.ts" time="11.761">
+<testcase name="Global search › search shows &quot;No results&quot; for nonsense query" classname="search.spec.ts" time="9.773">
 </testcase>
-<testcase name="Global search › Enter key navigates to full results page" classname="search.spec.ts" time="11.516">
+<testcase name="Global search › Enter key navigates to full results page" classname="search.spec.ts" time="9.225">
 </testcase>
-<testcase name="Results page › search results page renders" classname="search.spec.ts" time="11.506">
+<testcase name="Results page › search results page renders" classname="search.spec.ts" time="9.681">
 </testcase>
-<testcase name="Results page › sort dropdown changes sort order" classname="search.spec.ts" time="10.852">
+<testcase name="Results page › sort dropdown changes sort order" classname="search.spec.ts" time="8.3">
 </testcase>
-<testcase name="Results page › birth year filter works" classname="search.spec.ts" time="10.376">
+<testcase name="Results page › birth year filter works" classname="search.spec.ts" time="7.138">
 </testcase>
-<testcase name="Relationship finder › relationship finder panel renders on tree page" classname="search.spec.ts" time="10.026">
+<testcase name="Relationship finder › relationship finder panel renders on tree page" classname="search.spec.ts" time="8.816">
 </testcase>
 </testsuite>
-<testsuite name="tree-management.spec.ts" timestamp="2026-06-25T03:35:38.532Z" hostname="chromium" tests="6" failures="0" skipped="0" time="40.443" errors="0">
-<testcase name="Tree creation › can create a new family tree" classname="tree-management.spec.ts" time="8.696">
+<testsuite name="tree-management.spec.ts" timestamp="2026-06-25T03:42:21.222Z" hostname="chromium" tests="6" failures="0" skipped="0" time="37.682" errors="0">
+<testcase name="Tree creation › can create a new family tree" classname="tree-management.spec.ts" time="6.547">
 </testcase>
-<testcase name="Tree creation › tree name is required" classname="tree-management.spec.ts" time="4.428">
+<testcase name="Tree creation › tree name is required" classname="tree-management.spec.ts" time="5.254">
 </testcase>
-<testcase name="Person management › can add a person to the tree" classname="tree-management.spec.ts" time="6.27">
+<testcase name="Person management › can add a person to the tree" classname="tree-management.spec.ts" time="5.735">
 </testcase>
-<testcase name="Person management › can edit a person" classname="tree-management.spec.ts" time="9.687">
+<testcase name="Person management › can edit a person" classname="tree-management.spec.ts" time="9.944">
 </testcase>
-<testcase name="Person management › tree canvas renders on tree page" classname="tree-management.spec.ts" time="5.849">
+<testcase name="Person management › tree canvas renders on tree page" classname="tree-management.spec.ts" time="5.153">
 </testcase>
-<testcase name="Person management › layout toggle buttons are visible" classname="tree-management.spec.ts" time="5.513">
+<testcase name="Person management › layout toggle buttons are visible" classname="tree-management.spec.ts" time="5.049">
 </testcase>
 </testsuite>
 </testsuites>
