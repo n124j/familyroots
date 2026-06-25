@@ -539,8 +539,8 @@ function translateRelLabel(
   const full = wk(raw);
   if (full !== raw) return full;
   const translated = raw
-    .split(/( \/ | ↔ )/)
-    .map((part) => /^ \/ $|^ ↔ $/.test(part) ? part : wk(part.trim()))
+    .split(/( \/ | ↔ |\/)/)
+    .map((part) => /^ \/ $|^ ↔ $|^\/$/.test(part) ? '/' : wk(part.trim()))
     .join('');
   return translated;
 }

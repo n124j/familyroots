@@ -527,7 +527,8 @@ class SearchRepository:
         if path_ids:
             uuid_list = ", ".join(f"'{pid}'::uuid" for pid in path_ids)
             name_sql = text(f"""
-                SELECT id, display_given_name AS given_name, display_surname AS surname, sex
+                SELECT id, display_given_name AS given_name, display_surname AS surname,
+                       sex, birth_year
                 FROM persons
                 WHERE id IN ({uuid_list})
             """)
@@ -536,6 +537,7 @@ class SearchRepository:
             name_rows = []
         name_map = {str(r.id): f"{r.given_name or ''} {r.surname or ''}".strip() for r in name_rows}
         sex_map  = {str(r.id): r.sex for r in name_rows}
+        birth_year_map = {str(r.id): r.birth_year for r in name_rows}
 
         path_steps = [
             {"person_id": pid, "name": name_map.get(pid, pid), "sex": sex_map.get(pid)}
@@ -543,7 +545,7 @@ class SearchRepository:
         ]
 
         edge_labels = _compute_edge_labels(path_ids, person_to_fgs)
-        relationship_label = _infer_specific_label(path_ids, person_to_fgs, sex_map)
+        relationship_label = _infer_specific_label(path_ids, person_to_fgs, sex_map, birth_year_map)
 
         # For a 1st cousin, also surface the culturally-common in-law alias
         # (female 1st cousin → Sister-in-law, male → Brother-in-law)
@@ -774,10 +776,28 @@ def _sex_aware_label(
     return label_generic
 
 
+def _is_elder(
+    person_a: str,
+    person_b: str,
+    birth_year_map: dict[str, int | None],
+) -> bool | None:
+    """Return True if person_a is elder than person_b, False if younger, None if unknown."""
+    ya = birth_year_map.get(person_a)
+    yb = birth_year_map.get(person_b)
+    if ya is None or yb is None:
+        return None
+    if ya < yb:
+        return True
+    if ya > yb:
+        return False
+    return None
+
+
 def _infer_specific_label(
     path_ids: list[str],
     person_to_fgs: dict[str, list[tuple[str, str]]],
     sex_map: dict[str, str | None] | None = None,
+    birth_year_map: dict[str, int | None] | None = None,
 ) -> str:
     """
     Derive a precise relationship label by inspecting PARENT/CHILD roles along
@@ -788,6 +808,8 @@ def _infer_specific_label(
     """
     if sex_map is None:
         sex_map = {}
+    if birth_year_map is None:
+        birth_year_map = {}
 
     distance = len(path_ids) - 1
     if distance == 0:
@@ -814,7 +836,7 @@ def _infer_specific_label(
             if s1 == "FEMALE" and s2 == "FEMALE":
                 return "Sisters"
             if {s1, s2} == {"MALE", "FEMALE"}:
-                return "Brother & Sister"
+                return "Brother/Sister"
             return "Siblings"
         if r1 == "PARENT" and r2 == "CHILD":
             p = _sex_aware_label("Father", "Mother", "Parent", path_ids[0], sex_map)
@@ -825,7 +847,7 @@ def _infer_specific_label(
             p = _sex_aware_label("Father", "Mother", "Parent", path_ids[1], sex_map)
             return f"{c} / {p}"
         if r1 == "PARENT" and r2 == "PARENT":
-            return "Spouses / Partners"
+            return "Husband/Wife"
         return "Direct family member"
 
     if distance == 2:
@@ -849,11 +871,11 @@ def _infer_specific_label(
         if combo == ("CHILD", "CHILD", "PARENT", "CHILD"):
             ua = _sex_aware_label("Uncle", "Aunt", "Uncle/Aunt", path_ids[0], sex_map)
             nn = _sex_aware_label("Nephew", "Niece", "Nephew/Niece", path_ids[-1], sex_map)
-            return f"{ua} ↔ {nn}"
+            return f"{ua}/{nn}"
         if combo == ("CHILD", "PARENT", "CHILD", "CHILD"):
             nn = _sex_aware_label("Nephew", "Niece", "Nephew/Niece", path_ids[0], sex_map)
             ua = _sex_aware_label("Uncle", "Aunt", "Uncle/Aunt", path_ids[-1], sex_map)
-            return f"{nn} ↔ {ua}"
+            return f"{nn}/{ua}"
         if combo == ("PARENT", "CHILD", "CHILD", "CHILD"):
             gp = _sex_aware_label("Grandfather", "Grandmother", "Grandparent", path_ids[0], sex_map)
             gc = _sex_aware_label("Grandson", "Granddaughter", "Grandchild", path_ids[-1], sex_map)
@@ -862,6 +884,77 @@ def _infer_specific_label(
             gc = _sex_aware_label("Grandson", "Granddaughter", "Grandchild", path_ids[0], sex_map)
             gp = _sex_aware_label("Grandfather", "Grandmother", "Grandparent", path_ids[-1], sex_map)
             return f"{gc} / {gp}"
+        # In-law: sibling's spouse
+        # Path: Person1 → Mid(sibling) → Person2(spouse)
+        # Compare Mid vs Person1 to determine elder/younger sibling
+        if combo == ("CHILD", "CHILD", "PARENT", "PARENT"):
+            s_mid = (sex_map.get(path_ids[1]) or "").upper()
+            mid_elder = _is_elder(path_ids[1], path_ids[0], birth_year_map)
+            if s_mid == "MALE":
+                if mid_elder is True:
+                    return _sex_aware_label(
+                        "Brother-in-law (elder brother's husband)",
+                        "Sister-in-law (elder brother's wife)",
+                        "Brother-in-law/Sister-in-law", path_ids[-1], sex_map,
+                    )
+                if mid_elder is False:
+                    return _sex_aware_label(
+                        "Brother-in-law (younger brother's husband)",
+                        "Sister-in-law (younger brother's wife)",
+                        "Brother-in-law/Sister-in-law", path_ids[-1], sex_map,
+                    )
+                return _sex_aware_label(
+                    "Brother-in-law (brother's husband)",
+                    "Sister-in-law (brother's wife)",
+                    "Brother-in-law/Sister-in-law", path_ids[-1], sex_map,
+                )
+            if s_mid == "FEMALE":
+                if mid_elder is True:
+                    return _sex_aware_label(
+                        "Brother-in-law (elder sister's husband)",
+                        "Sister-in-law (elder sister's wife)",
+                        "Brother-in-laws", path_ids[-1], sex_map,
+                    )
+                if mid_elder is False:
+                    return _sex_aware_label(
+                        "Brother-in-law (younger sister's husband)",
+                        "Sister-in-law (younger sister's wife)",
+                        "Brother-in-laws", path_ids[-1], sex_map,
+                    )
+                return "Brother-in-laws"
+            return _sex_aware_label("Brother-in-law", "Sister-in-law", "Brother-in-law/Sister-in-law", path_ids[-1], sex_map)
+        # In-law: spouse's sibling
+        # Path: Person1 → Mid(spouse) → Person2(sibling)
+        # Compare Person2 vs Mid(spouse) to determine elder/younger
+        if combo == ("PARENT", "PARENT", "CHILD", "CHILD"):
+            p2_elder = _is_elder(path_ids[-1], path_ids[1], birth_year_map)
+            if s1 == "MALE":
+                if s2 == "MALE":
+                    if p2_elder is True:
+                        return "Elder brother-in-law"
+                    if p2_elder is False:
+                        return "Younger brother-in-law"
+                    return "Brother-in-laws"
+                if s2 == "FEMALE":
+                    return "Sister-in-laws"
+            if s1 == "FEMALE":
+                if s2 == "MALE":
+                    if p2_elder is True:
+                        return "Brother-in-law (husband's elder brother)"
+                    if p2_elder is False:
+                        return "Brother-in-law (husband's younger brother)"
+                    return "Brother-in-laws"
+                if s2 == "FEMALE":
+                    return "Sister-in-laws"
+            return _sex_aware_label("Brother-in-law", "Sister-in-law", "Brother-in-law/Sister-in-law", path_ids[-1], sex_map)
+        # In-law: spouse's parent (bidirectional label)
+        if combo == ("PARENT", "PARENT", "CHILD", "PARENT"):
+            parent = _sex_aware_label("Father-in-law", "Mother-in-law", "Parent-in-law", path_ids[-1], sex_map)
+            child_in = _sex_aware_label("Son-in-law", "Daughter-in-law", "Child-in-law", path_ids[0], sex_map)
+            return f"{child_in}/{parent}"
+        # In-law: child's spouse
+        if combo == ("PARENT", "CHILD", "PARENT", "PARENT"):
+            return _sex_aware_label("Son-in-law", "Daughter-in-law", "Child-in-law", path_ids[-1], sex_map)
 
         return _degree_to_label(distance)
 
@@ -888,11 +981,23 @@ def _infer_specific_label(
         if roles6 == ("CHILD", "PARENT", "CHILD", "PARENT", "CHILD", "CHILD"):
             gn = _sex_aware_label("Great-nephew", "Great-niece", "Great-nephew/niece", path_ids[0], sex_map)
             gu = _sex_aware_label("Great-uncle", "Great-aunt", "Great-uncle/aunt", path_ids[-1], sex_map)
-            return f"{gn} ↔ {gu}"
+            return f"{gn}/{gu}"
         if roles6 == ("CHILD", "CHILD", "PARENT", "CHILD", "PARENT", "CHILD"):
             gu = _sex_aware_label("Great-uncle", "Great-aunt", "Great-uncle/aunt", path_ids[0], sex_map)
             gn = _sex_aware_label("Great-nephew", "Great-niece", "Great-nephew/niece", path_ids[-1], sex_map)
-            return f"{gu} ↔ {gn}"
+            return f"{gu}/{gn}"
+        # In-law: spouse's sibling's spouse (co-in-law)
+        if roles6 == ("PARENT", "PARENT", "CHILD", "CHILD", "PARENT", "PARENT"):
+            return _sex_aware_label(
+                "Co-brother-in-law", "Co-sister-in-law", "Co-in-law",
+                path_ids[-1], sex_map,
+            )
+        # In-law: sibling's spouse's sibling
+        if roles6 == ("CHILD", "CHILD", "PARENT", "PARENT", "CHILD", "CHILD"):
+            return _sex_aware_label(
+                "Co-brother-in-law", "Co-sister-in-law", "Co-in-law",
+                path_ids[-1], sex_map,
+            )
 
         return _degree_to_label(distance)
 
