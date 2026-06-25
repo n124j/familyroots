@@ -253,11 +253,21 @@ jobs:
               working-directory: frontend
               run: npx playwright install --with-deps chromium
 
+            - name: Serve frontend build
+              working-directory: frontend
+              run: |
+                  npx vite preview --port 4173 &
+                  for i in $(seq 1 15); do
+                    curl -s http://localhost:4173 > /dev/null && break
+                    sleep 1
+                  done
+
             - name: Run E2E tests
               working-directory: frontend
               run: npx playwright test --project=chromium
               env:
-                  PLAYWRIGHT_BASE_URL: http://localhost:5173
+                  VITE_API_BASE_URL: http://localhost:8000/api/v1
+                  PLAYWRIGHT_BASE_URL: http://localhost:4173
 
             - name: Upload Playwright report
               if: always()
