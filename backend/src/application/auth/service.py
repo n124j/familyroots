@@ -146,17 +146,20 @@ class AuthService:
                 raise AccountNotVerifiedError()
 
             # 6. Check for active sessions — require email verification
-            has_sessions = await self._tokens.has_active_sessions(user.id)
-            if has_sessions:
-                verification_token = secrets.token_hex(32)
-                user.login_verification_token = verification_token
-                user.login_verification_expires_at = datetime.now(tz=timezone.utc) + _TOKEN_EXPIRE
-                await self._uow.users.update(user)
-                session_conflict = True
-            else:
+            from src.config import get_settings
+            settings = get_settings()
+            if not settings.auto_verify_email:
+                has_sessions = await self._tokens.has_active_sessions(user.id)
+                if has_sessions:
+                    verification_token = secrets.token_hex(32)
+                    user.login_verification_token = verification_token
+                    user.login_verification_expires_at = datetime.now(tz=timezone.utc) + _TOKEN_EXPIRE
+                    await self._uow.users.update(user)
+                    session_conflict = True
+
+            if not session_conflict:
                 # 7. Auto-promote to SUPER_ADMIN if email matches config
-                from src.config import get_settings
-                sa_email = get_settings().super_admin_email
+                sa_email = settings.super_admin_email
                 if sa_email and user.email.lower() == sa_email.lower():
                     if user.app_role != "SUPER_ADMIN":
                         user.app_role = "SUPER_ADMIN"
