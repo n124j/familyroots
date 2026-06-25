@@ -188,7 +188,7 @@ services:
             retries: 5
         deploy:
             resources:
-                limits: {memory: 128M}
+                limits: {memory: 192M}
 
     # MinIO bucket initializer (runs once then exits)
     minio-init:
@@ -254,7 +254,7 @@ services:
             start_period: 15s
         deploy:
             resources:
-                limits: {memory: 256M}
+                limits: {memory: 384M}
 
     # ── Celery worker ──────────────────────────────────────────────────────────
     worker:
