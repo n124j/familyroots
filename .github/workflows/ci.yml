@@ -238,36 +238,23 @@ jobs:
                   REDIS_URL: redis://localhost:6379/0
                   JWT_SECRET_KEY: c871c8ac24249675f12a1e67d2b88675f56a9f9ee74205a9d1b59bb4341a6791d44111efb81063d60fede6aed3b163caacd708bd7c8d86bdd99787fcf5befab4
                   ENVIRONMENT: test
+                  AUTO_VERIFY_EMAIL: 'true'
 
             - name: Install frontend dependencies
               working-directory: frontend
               run: npm ci
 
-            - name: Build frontend
-              working-directory: frontend
-              run: npm run build
-              env:
-                  VITE_API_BASE_URL: http://localhost:8000/api/v1
-
             - name: Install Playwright browsers
               working-directory: frontend
               run: npx playwright install --with-deps chromium
-
-            - name: Serve frontend build
-              working-directory: frontend
-              run: |
-                  npx vite preview --port 4173 &
-                  for i in $(seq 1 15); do
-                    curl -s http://localhost:4173 > /dev/null && break
-                    sleep 1
-                  done
 
             - name: Run E2E tests
               working-directory: frontend
               run: npx playwright test --project=chromium
               env:
                   VITE_API_BASE_URL: http://localhost:8000/api/v1
-                  PLAYWRIGHT_BASE_URL: http://localhost:4173
+                  VITE_API_PROXY_TARGET: http://localhost:8000
+                  PLAYWRIGHT_BASE_URL: http://localhost:5173
 
             - name: Upload Playwright report
               if: always()

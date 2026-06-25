@@ -60,7 +60,7 @@ export const test = base.extend<AuthFixtures>({
     // Get API token using a separate request context (avoids leaking cookies into browser)
     let apiToken = '';
     let userId = '';
-    const baseURL = 'http://localhost:5173';
+    const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173';
     const apiCtx = await playwright.request.newContext({ baseURL });
     try {
       const loginRes = await apiCtx.post('/api/v1/auth/login', {
