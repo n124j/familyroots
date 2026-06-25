@@ -25,6 +25,7 @@ export interface AncestorHit {
 export interface PathStep {
   person_id: string;
   name: string;
+  sex?: string | null;
 }
 
 export interface RelationshipPath {

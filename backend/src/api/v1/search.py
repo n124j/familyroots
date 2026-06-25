@@ -47,6 +47,7 @@ class AncestorHitSchema(BaseModel):
 class PathStepSchema(BaseModel):
     person_id: str
     name: str
+    sex: Optional[str] = None
 
 
 class RelationshipPathSchema(BaseModel):
@@ -290,7 +291,7 @@ async def get_relationship(
         relationship=RelationshipPathSchema(
             found=rel.found,
             distance=rel.distance,
-            path=[PathStepSchema(person_id=s["person_id"], name=s["name"]) for s in rel.path],
+            path=[PathStepSchema(person_id=s["person_id"], name=s["name"], sex=s.get("sex")) for s in rel.path],
             relationship_label=rel.relationship_label,
             alternative_label=rel.alternative_label,
             edge_labels=rel.edge_labels,

@@ -46,7 +46,7 @@ export function RelationshipSearch({ trees }: Props) {
       </div>
 
       {/* Person pickers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 items-end">
         <PersonPicker
           label={t('relationshipSearch.person1')}
           treeId={treeId}
@@ -55,6 +55,20 @@ export function RelationshipSearch({ trees }: Props) {
           placeholder={t('relationshipSearch.searchFirst')}
           excludeId={person2?.person_id}
         />
+        <button
+          type="button"
+          onClick={() => { setPerson1(person2); setPerson2(person1); }}
+          disabled={!person1 && !person2}
+          className="mb-0.5 h-9 w-9 flex items-center justify-center rounded-full border border-gray-300
+                     bg-white text-gray-500 shadow-sm transition-colors
+                     hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300
+                     disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-500 disabled:hover:border-gray-300"
+          title={t('relationshipSearch.swap')}
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </button>
         <PersonPicker
           label={t('relationshipSearch.person2')}
           treeId={treeId}
@@ -215,8 +229,11 @@ function RelationshipResult({
     );
   }
 
-  const label = rel.relationship_label
-    ?? `${rel.distance} ${rel.distance === 1 ? t('relationshipSearch.step') : t('relationshipSearch.steps')} ${t('relationshipSearch.apart')}`;
+  const rawLabel = rel.relationship_label;
+  const lineage = inferLineage(rel.path, rel.edge_labels ?? []);
+  const label = rawLabel
+    ? translateRelLabel(rawLabel, t, lineage)
+    : `${rel.distance} ${rel.distance === 1 ? t('relationshipSearch.step') : t('relationshipSearch.steps')} ${t('relationshipSearch.apart')}`;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -462,6 +479,70 @@ function RelationshipTreeView({
 
 function personName(hit: PersonHit): string {
   return [hit.given_name, hit.surname].filter(Boolean).join(' ') || '?';
+}
+
+const LINEAGE_WORDS = new Set([
+  'Uncle', 'Aunt', 'Nephew', 'Niece',
+  'Great-uncle', 'Great-aunt', 'Great-nephew', 'Great-niece',
+  'Grandfather', 'Grandmother', 'Grandson', 'Granddaughter',
+]);
+
+function inferLineage(
+  path: PathStep[],
+  edgeLabels: string[],
+): 'paternal' | 'maternal' | null {
+  if (path.length < 3) return null;
+
+  const siblingIdx = edgeLabels.indexOf('sibling');
+  if (siblingIdx !== -1) {
+    const hasPrev = siblingIdx > 0 && (edgeLabels[siblingIdx - 1] === 'parent' || edgeLabels[siblingIdx - 1] === 'child');
+    const hasNext = siblingIdx < edgeLabels.length - 1 && (edgeLabels[siblingIdx + 1] === 'parent' || edgeLabels[siblingIdx + 1] === 'child');
+    let connectingPerson: PathStep | undefined;
+    if (hasPrev && hasNext) {
+      connectingPerson = path[siblingIdx] ?? path[siblingIdx + 1];
+    } else if (hasPrev) {
+      connectingPerson = path[siblingIdx];
+    } else if (hasNext) {
+      connectingPerson = path[siblingIdx + 1];
+    }
+    if (connectingPerson) {
+      const sex = (connectingPerson.sex ?? '').toUpperCase();
+      if (sex === 'MALE') return 'paternal';
+      if (sex === 'FEMALE') return 'maternal';
+    }
+    return null;
+  }
+
+  if (path.length === 3 && edgeLabels.every((l) => l === 'parent' || l === 'child')) {
+    const mid = path[1];
+    if (!mid) return null;
+    const sex = (mid.sex ?? '').toUpperCase();
+    if (sex === 'MALE') return 'paternal';
+    if (sex === 'FEMALE') return 'maternal';
+  }
+
+  return null;
+}
+
+function translateRelLabel(
+  raw: string,
+  t: (key: string, opts?: Record<string, string>) => string,
+  lineage: 'paternal' | 'maternal' | null,
+): string {
+  const wk = (w: string) => {
+    if (lineage && LINEAGE_WORDS.has(w)) {
+      const suffixed = t(`relationshipSearch.words.${w}_${lineage}`, { defaultValue: '' });
+      if (suffixed) return suffixed;
+    }
+    return t(`relationshipSearch.words.${w}`, { defaultValue: w });
+  };
+  const full = wk(raw);
+  if (full !== raw) return full;
+  const translated = raw
+    .split(/( \/ | ↔ )/)
+    .map((part) => /^ \/ $|^ ↔ $/.test(part) ? part : wk(part.trim()))
+    .join('');
+  return translated;
 }
 
 function Spinner() {

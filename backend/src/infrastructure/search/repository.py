@@ -538,12 +538,12 @@ class SearchRepository:
         sex_map  = {str(r.id): r.sex for r in name_rows}
 
         path_steps = [
-            {"person_id": pid, "name": name_map.get(pid, pid)}
+            {"person_id": pid, "name": name_map.get(pid, pid), "sex": sex_map.get(pid)}
             for pid in path_ids
         ]
 
         edge_labels = _compute_edge_labels(path_ids, person_to_fgs)
-        relationship_label = _infer_specific_label(path_ids, person_to_fgs)
+        relationship_label = _infer_specific_label(path_ids, person_to_fgs, sex_map)
 
         # For a 1st cousin, also surface the culturally-common in-law alias
         # (female 1st cousin → Sister-in-law, male → Brother-in-law)
@@ -742,26 +742,42 @@ def _compute_edge_labels(
         shared = set(fgs_a.keys()) & set(fgs_b.keys())
         label = "relative"
         for fg_id in shared:
-            ra, rb = fgs_a[fg_id], fgs_b[fg_id]
-            if ra == "parent" and rb == "child":
+            ra, rb = fgs_a[fg_id].upper(), fgs_b[fg_id].upper()
+            if ra == "PARENT" and rb == "CHILD":
                 label = "child"
                 break
-            elif ra == "child" and rb == "parent":
+            elif ra == "CHILD" and rb == "PARENT":
                 label = "parent"
                 break
-            elif ra == "parent" and rb == "parent":
+            elif ra == "PARENT" and rb == "PARENT":
                 label = "spouse"
                 break
-            elif ra == "child" and rb == "child":
+            elif ra == "CHILD" and rb == "CHILD":
                 label = "sibling"
                 break
         labels.append(label)
     return labels
 
 
+def _sex_aware_label(
+    label_male: str,
+    label_female: str,
+    label_generic: str,
+    person_id: str,
+    sex_map: dict[str, str | None],
+) -> str:
+    sex = (sex_map.get(person_id) or "").upper()
+    if sex == "MALE":
+        return label_male
+    if sex == "FEMALE":
+        return label_female
+    return label_generic
+
+
 def _infer_specific_label(
     path_ids: list[str],
     person_to_fgs: dict[str, list[tuple[str, str]]],
+    sex_map: dict[str, str | None] | None = None,
 ) -> str:
     """
     Derive a precise relationship label by inspecting PARENT/CHILD roles along
@@ -770,9 +786,15 @@ def _infer_specific_label(
     Each 'hop' in the path goes through exactly one shared family group.
     The role each person holds in that group determines direction (up/down/lateral).
     """
+    if sex_map is None:
+        sex_map = {}
+
     distance = len(path_ids) - 1
     if distance == 0:
         return "Same person"
+
+    s1 = (sex_map.get(path_ids[0]) or "").upper()
+    s2 = (sex_map.get(path_ids[-1]) or "").upper()
 
     # Helper: find the first shared family group between two people and return
     # (role_of_a, role_of_b).  Returns (None, None) when no shared group exists.
@@ -786,10 +808,24 @@ def _infer_specific_label(
 
     if distance == 1:
         r1, r2 = roles_in_shared_fg(path_ids[0], path_ids[1])
-        if r1 == "CHILD"  and r2 == "CHILD":   return "Siblings"
-        if r1 == "PARENT" and r2 == "CHILD":   return "Parent / Child"
-        if r1 == "CHILD"  and r2 == "PARENT":  return "Child / Parent"
-        if r1 == "PARENT" and r2 == "PARENT":  return "Spouses / Partners"
+        if r1 == "CHILD" and r2 == "CHILD":
+            if s1 == "MALE" and s2 == "MALE":
+                return "Brothers"
+            if s1 == "FEMALE" and s2 == "FEMALE":
+                return "Sisters"
+            if {s1, s2} == {"MALE", "FEMALE"}:
+                return "Brother & Sister"
+            return "Siblings"
+        if r1 == "PARENT" and r2 == "CHILD":
+            p = _sex_aware_label("Father", "Mother", "Parent", path_ids[0], sex_map)
+            c = _sex_aware_label("Son", "Daughter", "Child", path_ids[1], sex_map)
+            return f"{p} / {c}"
+        if r1 == "CHILD" and r2 == "PARENT":
+            c = _sex_aware_label("Son", "Daughter", "Child", path_ids[0], sex_map)
+            p = _sex_aware_label("Father", "Mother", "Parent", path_ids[1], sex_map)
+            return f"{c} / {p}"
+        if r1 == "PARENT" and r2 == "PARENT":
+            return "Spouses / Partners"
         return "Direct family member"
 
     if distance == 2:
@@ -797,17 +833,37 @@ def _infer_specific_label(
         r1,  r_m1 = roles_in_shared_fg(p1,  mid)
         r_m2, r2  = roles_in_shared_fg(mid, p2)
         combo = (r1, r_m1, r_m2, r2)
-        mapping = {
-            ("PARENT", "CHILD",  "PARENT", "CHILD"):  "Grandparent / Grandchild",
-            ("CHILD",  "PARENT", "CHILD",  "PARENT"): "Grandchild / Grandparent",
-            ("CHILD",  "PARENT", "PARENT", "CHILD"):  "Half-siblings / Step-siblings",
-            ("PARENT", "CHILD",  "CHILD",  "PARENT"): "Co-parents",
-            ("CHILD",  "CHILD",  "PARENT", "CHILD"):  "Uncle/Aunt ↔ Nephew/Niece",
-            ("CHILD",  "PARENT", "CHILD",  "CHILD"):  "Nephew/Niece ↔ Uncle/Aunt",
-            ("PARENT", "CHILD",  "CHILD",  "CHILD"):  "Grandparent / Grandchild (via sibling)",
-            ("CHILD",  "CHILD",  "CHILD",  "PARENT"): "Grandchild / Grandparent (via sibling)",
-        }
-        return mapping.get(combo, _degree_to_label(distance))
+
+        if combo == ("PARENT", "CHILD", "PARENT", "CHILD"):
+            gp = _sex_aware_label("Grandfather", "Grandmother", "Grandparent", path_ids[0], sex_map)
+            gc = _sex_aware_label("Grandson", "Granddaughter", "Grandchild", path_ids[-1], sex_map)
+            return f"{gp} / {gc}"
+        if combo == ("CHILD", "PARENT", "CHILD", "PARENT"):
+            gc = _sex_aware_label("Grandson", "Granddaughter", "Grandchild", path_ids[0], sex_map)
+            gp = _sex_aware_label("Grandfather", "Grandmother", "Grandparent", path_ids[-1], sex_map)
+            return f"{gc} / {gp}"
+        if combo == ("CHILD", "PARENT", "PARENT", "CHILD"):
+            return "Half-siblings / Step-siblings"
+        if combo == ("PARENT", "CHILD", "CHILD", "PARENT"):
+            return "Co-parents"
+        if combo == ("CHILD", "CHILD", "PARENT", "CHILD"):
+            ua = _sex_aware_label("Uncle", "Aunt", "Uncle/Aunt", path_ids[0], sex_map)
+            nn = _sex_aware_label("Nephew", "Niece", "Nephew/Niece", path_ids[-1], sex_map)
+            return f"{ua} ↔ {nn}"
+        if combo == ("CHILD", "PARENT", "CHILD", "CHILD"):
+            nn = _sex_aware_label("Nephew", "Niece", "Nephew/Niece", path_ids[0], sex_map)
+            ua = _sex_aware_label("Uncle", "Aunt", "Uncle/Aunt", path_ids[-1], sex_map)
+            return f"{nn} ↔ {ua}"
+        if combo == ("PARENT", "CHILD", "CHILD", "CHILD"):
+            gp = _sex_aware_label("Grandfather", "Grandmother", "Grandparent", path_ids[0], sex_map)
+            gc = _sex_aware_label("Grandson", "Granddaughter", "Grandchild", path_ids[-1], sex_map)
+            return f"{gp} / {gc}"
+        if combo == ("CHILD", "CHILD", "CHILD", "PARENT"):
+            gc = _sex_aware_label("Grandson", "Granddaughter", "Grandchild", path_ids[0], sex_map)
+            gp = _sex_aware_label("Grandfather", "Grandmother", "Grandparent", path_ids[-1], sex_map)
+            return f"{gc} / {gp}"
+
+        return _degree_to_label(distance)
 
     if distance == 3:
         p1, a, b, p2 = path_ids
@@ -815,20 +871,29 @@ def _infer_specific_label(
         r_a2, r_b1 = roles_in_shared_fg(a,  b)
         r_b2, r_p2 = roles_in_shared_fg(b,  p2)
         roles6 = (r_p1, r_a1, r_a2, r_b1, r_b2, r_p2)
-        mapping3 = {
-            # p1 → parent(a) → a's sibling(b) → b's child(p2) : 1st cousins
-            ("CHILD",  "PARENT", "CHILD",  "CHILD",  "PARENT", "CHILD"):  "1st Cousins",
-            # p1 ← child(a) ← a's sibling(b) ← b's parent(p2) : same viewed from p2
-            ("PARENT", "CHILD",  "CHILD",  "CHILD",  "CHILD",  "PARENT"): "1st Cousins",
-            # Great-grandparent chain going up
-            ("CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD",  "PARENT"): "Great-grandchild / Great-grandparent",
-            # Great-grandparent chain going down
-            ("PARENT", "CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD"):  "Great-grandparent / Great-grandchild",
-            # Great-uncle/aunt: p1 ← parent(a) ← a's parent(b) ← b's sibling(p2)
-            ("CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD",  "CHILD"):  "Great-nephew/niece ↔ Great-uncle/aunt",
-            # Reverse
-            ("CHILD",  "CHILD",  "PARENT", "CHILD",  "PARENT", "CHILD"):  "Great-uncle/aunt ↔ Great-nephew/niece",
-        }
-        return mapping3.get(roles6, _degree_to_label(distance))
+
+        if roles6 in (
+            ("CHILD",  "PARENT", "CHILD",  "CHILD",  "PARENT", "CHILD"),
+            ("PARENT", "CHILD",  "CHILD",  "CHILD",  "CHILD",  "PARENT"),
+        ):
+            return "1st Cousins"
+        if roles6 == ("CHILD", "PARENT", "CHILD", "PARENT", "CHILD", "PARENT"):
+            ggc = _sex_aware_label("Great-grandson", "Great-granddaughter", "Great-grandchild", path_ids[0], sex_map)
+            ggp = _sex_aware_label("Great-grandfather", "Great-grandmother", "Great-grandparent", path_ids[-1], sex_map)
+            return f"{ggc} / {ggp}"
+        if roles6 == ("PARENT", "CHILD", "PARENT", "CHILD", "PARENT", "CHILD"):
+            ggp = _sex_aware_label("Great-grandfather", "Great-grandmother", "Great-grandparent", path_ids[0], sex_map)
+            ggc = _sex_aware_label("Great-grandson", "Great-granddaughter", "Great-grandchild", path_ids[-1], sex_map)
+            return f"{ggp} / {ggc}"
+        if roles6 == ("CHILD", "PARENT", "CHILD", "PARENT", "CHILD", "CHILD"):
+            gn = _sex_aware_label("Great-nephew", "Great-niece", "Great-nephew/niece", path_ids[0], sex_map)
+            gu = _sex_aware_label("Great-uncle", "Great-aunt", "Great-uncle/aunt", path_ids[-1], sex_map)
+            return f"{gn} ↔ {gu}"
+        if roles6 == ("CHILD", "CHILD", "PARENT", "CHILD", "PARENT", "CHILD"):
+            gu = _sex_aware_label("Great-uncle", "Great-aunt", "Great-uncle/aunt", path_ids[0], sex_map)
+            gn = _sex_aware_label("Great-nephew", "Great-niece", "Great-nephew/niece", path_ids[-1], sex_map)
+            return f"{gu} ↔ {gn}"
+
+        return _degree_to_label(distance)
 
     return _degree_to_label(distance)
